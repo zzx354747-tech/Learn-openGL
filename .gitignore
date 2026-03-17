@@ -6,6 +6,7 @@ build/
 # IDE files
 .vscode/
 .DS_Store
+**/.DS_Store
 
 # Claude files
 .claude/

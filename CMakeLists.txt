@@ -39,3 +39,23 @@ target_link_libraries(rot_demo
 set_target_properties(rot_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
+
+# 添加可执行文件 - db_triangle
+add_executable(db_triangle
+    src/demo/db_triangle.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(db_triangle
+    glfw
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(db_triangle PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
