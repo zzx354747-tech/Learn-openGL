@@ -1,0 +1,11 @@
+# Build files
+build/
+*.o
+*.out
+
+# IDE files
+.vscode/
+.DS_Store
+
+# Claude files
+.claude/
