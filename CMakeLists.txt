@@ -20,6 +20,48 @@ set(GLAD_SOURCES
     ${CMAKE_SOURCE_DIR}/third_party/glad/src/gl.c
 )
 
+# 添加可执行文件 - 3Ddemo
+add_executable(3Ddemo
+    src/demo/3Ddemo.cpp
+    src/camera.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(3Ddemo
+    glfw
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(3Ddemo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
+
+# 添加可执行文件 - 3Dbkp
+add_executable(3Dbkp
+    src/demo/3Dbkp.cpp
+    src/camera.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(3Dbkp
+    glfw
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(3Dbkp PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
+
 # 添加可执行文件 - Rot_demo
 add_executable(rot_demo
     src/demo/Rot_demo.cpp
@@ -40,25 +82,6 @@ set_target_properties(rot_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
 
-# # 添加可执行文件 - db_triangle
-# add_executable(db_triangle
-#     src/demo/db_triangle.cpp
-#     ${GLAD_SOURCES}
-# )
-# 
-# # 链接库
-# target_link_libraries(db_triangle
-#     glfw
-#     "-framework OpenGL"
-#     "-framework Cocoa"
-#     "-framework IOKit"
-#     "-framework CoreVideo"
-# )
-# 
-# # 设置输出目录
-# set_target_properties(db_triangle PROPERTIES
-#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-# )
 
 # 添加可执行文件 - texture_demo
 add_executable(texture_demo
@@ -74,8 +97,30 @@ target_link_libraries(texture_demo
     "-framework IOKit"
     "-framework CoreVideo"
 )
+# set_target_properties(db_triangle PROPERTIES
+
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+
+# )
+
+# 添加可执行文件 - light_demo
+add_executable(light_demo
+    src/demo/light.cpp
+    src/camera.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(light_demo
+    glfw
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
 
 # 设置输出目录
-set_target_properties(texture_demo PROPERTIES
+set_target_properties(light_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
+

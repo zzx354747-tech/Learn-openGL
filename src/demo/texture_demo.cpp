@@ -37,6 +37,60 @@ glm::vec3& vfront, glm::vec3& vright, glm::vec3& vup, float deltaTime)
         cameraPos -= vup * speed;
 }
 
+// 鼠标回调函数需要的全局变量
+float lastX = 400.0f;
+float lastY = 300.0f;
+float yaw = -90.0f;
+float pitch = 0.0f;
+bool firstMouse = true;
+bool cursorCaptured = true; // 光标是否被程序捕获
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_GRAVE_ACCENT && action == GLFW_PRESS)
+    {
+        cursorCaptured = !cursorCaptured;
+        if (cursorCaptured)
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            firstMouse = true; // 重新捕获时重置，防止视角跳跃
+        }
+        else
+        {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    }
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (!cursorCaptured) return;
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+}
+
 int main()
 {
     glfwInit();
@@ -53,15 +107,20 @@ int main()
         glfwTerminate();
         return -1;
     }
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetKeyCallback(window, key_callback);
 
     if (!gladLoadGL(glfwGetProcAddress))
     {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-    glViewport(0, 0, 800, 600);
+    glViewport(0, 0, width, height);
 
     float vertices[] = {
     // ---- 位置 ----       ---- 颜色 ----        ---- 纹理 ----
@@ -144,7 +203,7 @@ glm::vec3 cubePositions[] = {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    int width, height, nrChannels;
+    int nrChannels;
     stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load("container.jpg", &width, &height, &nrChannels, 0);
     if (data)
@@ -198,6 +257,14 @@ glm::vec3 cubePositions[] = {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        // 根据鼠标输入更新相机方向
+        vfront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        vfront.y = sin(glm::radians(pitch));
+        vfront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        vfront = glm::normalize(vfront);
+        vright = glm::normalize(glm::cross(vfront, up));
+        vup = glm::normalize(glm::cross(vright, vfront));
+
         processInput(window, cameraPos, vfront, vright, vup, deltaTime);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -215,7 +282,7 @@ glm::vec3 cubePositions[] = {
         //创建观察矩阵
         glm::mat4 view = glm::mat4(1.0f);
         //参数1：相机位置，参数2：观察目标位置，参数3：相机上向量
-        view = glm::lookAt(cameraPos, cameraPos + vfront, cameraUp);
+        view = glm::lookAt(cameraPos, cameraPos + vfront, vup);
         shader.setMat4("view", view);
         //创建投影矩阵
         glm::mat4 projection = glm::mat4(1.0f);
