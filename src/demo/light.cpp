@@ -56,7 +56,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     camera.ProcessMouseMovement(static_cast<float>(xpos), static_cast<float>(ypos));
 }
 
-glm::vec3 lightPos(1.5f, 1.5f, 0.5f);
+glm::vec3 lightPos(1.5f, 1.5f, 1.0f);
 
 int main()
 {
@@ -204,6 +204,13 @@ int main()
         processInput(window, deltaTime);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        float time = glfwGetTime();
+        float radius = 2.0f;
+        lightPos.x = cos(time) * radius;
+        lightPos.y = sin(time) * radius;
+        //保持z轴不变，使光源在水平面上绕着原点旋转
+        lightPos.z = 1.0f;
 
         lightingShader.use();
         lightingShader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
