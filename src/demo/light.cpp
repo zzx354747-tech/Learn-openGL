@@ -10,19 +10,53 @@
 #include "camera.h"
 
 Camera camera;
+float lastFrame = 0.0f;
+float currentFrame = 0.0f;
+bool cursorLocked = true;
+bool gravePresslastFrame = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow* window)
+void processInput(GLFWwindow* window, float deltaTime)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        camera.ProcessKeyboard(UP, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        camera.ProcessKeyboard(DOWN, deltaTime);
+
+    bool gravePressedNow = glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT) == GLFW_PRESS;
+    if (gravePressedNow && !gravePresslastFrame)
+    {        
+        cursorLocked = !cursorLocked;
+        if (cursorLocked)
+        {            
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            camera.Resetmouse();
+        }
+    }
+    gravePresslastFrame = gravePressedNow;
 }
 
-glm::vec3 lightPos(1.5f, 1.5f, 1.0f);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    if (!cursorLocked) return; // 如果光标未锁定，忽略鼠标输入
+    camera.ProcessMouseMovement(static_cast<float>(xpos), static_cast<float>(ypos));
+}
+
+glm::vec3 lightPos(1.5f, 1.5f, 0.5f);
 
 int main()
 {
@@ -41,6 +75,8 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     if (!gladLoadGL(glfwGetProcAddress))
     {
         std::cerr << "Failed to initialize GLAD" << std::endl;
@@ -161,7 +197,11 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
-        processInput(window);
+        glfwGetFramebufferSize(window, &bfwidth, &bfheight);
+        currentFrame = glfwGetTime();
+        float deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        processInput(window, deltaTime);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -173,7 +213,7 @@ int main()
 
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, glm::radians(20.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
+        glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)bfwidth / (float)bfheight, 0.1f, 100.0f);
         lightingShader.setMat4("model", model);
         lightingShader.setMat4("view", view);
