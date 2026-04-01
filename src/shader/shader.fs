@@ -5,7 +5,7 @@ struct Material {
     vec3 diffuse;
     vec3 specular;
     float shininess;        
-}
+};
 
 in vec3 Normal;
 in vec3 FragPos;

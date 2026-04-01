@@ -29,11 +29,9 @@ public:
         float speed = 2.5f
 );
 
-    glm::vec3 Getposition () const { return Position;}
-
-
 //对外接口
 glm::mat4 GetViewMatrix() const;
+glm::vec3 Getposition () const { return Position;}
 void ProcessKeyboard(Camera_Movement direction, float deltaTime);
 void ProcessMouseMovement(float xpos, float ypos);
 void Resetmouse();
