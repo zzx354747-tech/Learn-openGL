@@ -7,6 +7,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "shader.h"
+#include "camera.h"
+
+Camera camera;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -165,6 +168,7 @@ int main()
         lightingShader.use();
         lightingShader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
         lightingShader.setVec3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
+        lightingShader.setVec3("viewPos", camera.Getposition());
         lightingShader.setVec3("lightPos", lightPos);
 
         glm::mat4 model = glm::mat4(1.0f);
