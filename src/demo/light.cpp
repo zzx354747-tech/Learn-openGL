@@ -205,7 +205,7 @@ int main()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        float time = glfwGetTime();
+        float time = glfwGetTime() * 0.2f;
         float radius = 2.0f;
         lightPos.x = cos(time) * radius;
         lightPos.y = sin(time) * radius;
@@ -218,8 +218,8 @@ int main()
         lightingShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
 
         lightingShader.setVec3("viewPos", camera.Getposition());
-        lightingShader.setVec3("lightPos", lightPos);
-        
+        lightingShader.setVec3("light.position", lightPos);
+
         lightingShader.setVec3("material.ambient",  glm::vec3(0.5f, 0.31f, 0.31f));
         lightingShader.setVec3("material.diffuse",  glm::vec3(1.0f, 0.5f, 0.31f));
         lightingShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
