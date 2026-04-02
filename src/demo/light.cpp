@@ -213,10 +213,13 @@ int main()
         lightPos.z = 1.0f;
 
         lightingShader.use();
-        lightingShader.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-        lightingShader.setVec3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
+        lightingShader.setVec3("light.ambient",  glm::vec3(0.2f, 0.2f, 0.2f));
+        lightingShader.setVec3("light.diffuse",  glm::vec3(0.5f, 0.5f, 0.5f)); 
+        lightingShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
         lightingShader.setVec3("viewPos", camera.Getposition());
         lightingShader.setVec3("lightPos", lightPos);
+        
         lightingShader.setVec3("material.ambient",  glm::vec3(0.5f, 0.31f, 0.31f));
         lightingShader.setVec3("material.diffuse",  glm::vec3(1.0f, 0.5f, 0.31f));
         lightingShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));

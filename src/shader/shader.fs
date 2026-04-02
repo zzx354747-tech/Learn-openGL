@@ -1,10 +1,25 @@
 #version 330 core
 
 struct Material {
+    // 材质对环境光的RGB系数，同时决定颜色和强度
     vec3 ambient;
+    // 材质对漫反射光RGB系数，同时决定颜色和强度
     vec3 diffuse;
+    // 材质对镜面反射光RGB系数，同时决定颜色和强度
     vec3 specular;
+    // 高光点的散射程度，值越大，散射越小，光点越集中
     float shininess;        
+};
+
+struct Light {
+    // 都是光自身的属性，和物体无关
+    vec3 position;
+    // 环境光分量的RGB值，同时决定颜色和强度
+    vec3 ambient;
+    // 漫反射分量的RGB值，同时决定颜色和强度
+    vec3 diffuse;
+    // 镜面反射分量的RGB值，同时决定颜色和强度
+    vec3 specular;
 };
 
 in vec3 Normal;
@@ -12,23 +27,22 @@ in vec3 FragPos;
 
 out vec4 FragColor;
 
+uniform Light light;
 uniform Material material;
-uniform vec3 lightPos;
-uniform vec3 objectColor;
-uniform vec3 lightColor;
 uniform vec3 viewPos;
 
 void main()
 {
-    // ambient
-    vec3 ambient = lightColor * material.ambient; 
+    // 定义环境光 （如果没有环境光，物体将完全黑暗，如果环境光过强，物体将过于明亮）
+    vec3 ambient = light.ambient * material.ambient; 
 
-    // diffuse
+    // 定义漫反射 
     vec3 norm = normalize(Normal);
-    vec3 lightDir = normalize(lightPos - FragPos);
+    vec3 lightDir = normalize(light.position - FragPos);
+    // 点乘计算夹角余弦值
     float diff = max(dot(norm, lightDir), 0.0);
-    // material.diffuse物体反射光的能力，lightColor光源颜色，diff入射光与法线的夹角余弦值
-    vec3 diffuse = lightColor * (diff * material.diffuse);
+    // diff最大为1，所以matrial.d/light.d共同定义了最大漫反射强度
+    vec3 diffuse = light.diffuse * (diff * material.diffuse);
 
     // view direction
     vec3 viewDir = normalize(viewPos - FragPos);
@@ -36,10 +50,13 @@ void main()
     //reflection direction
     vec3 reflectionDir = reflect(-lightDir, norm);
 
-    // specular
+    // specular 将dot后的值提升到material.shininess次幂
+    // 意味着当dot趋近1时，光照才会显著增强，且shininess越大，高光点越集中
     float spec = pow(max(dot(viewDir, reflectionDir), 0.0), material.shininess);
-    vec3 specular = material.specular * spec * lightColor;
-
-    vec3 result = (ambient + diffuse + specular) * objectColor;
+    // spec最大为1，所以material.s/light.s共同定义了最大镜面反射强度
+    vec3 specular = material.specular * spec * light.specular;
+    // 三部分都会影响最终颜色
+    // 我们并没有定义物体本身颜色，而是定义了物体被看到的颜色
+    vec3 result = ambient + diffuse + specular;
     FragColor = vec4(result, 1.0);
 }
