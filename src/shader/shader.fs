@@ -1,12 +1,10 @@
 #version 330 core
 
 struct Material {
-    // 材质对环境光的RGB系数，同时决定颜色和强度
-    vec3 ambient;
+    // 漫反射贴图，决定颜色，但不决定强度
+    sampler2D diffuse;
     // 材质对漫反射光RGB系数，同时决定颜色和强度
-    vec3 diffuse;
-    // 材质对镜面反射光RGB系数，同时决定颜色和强度
-    vec3 specular;
+    sampler2D specular;
     // 高光点的散射程度，值越大，散射越小，光点越集中
     float shininess;        
 };
@@ -24,6 +22,7 @@ struct Light {
 
 in vec3 Normal;
 in vec3 FragPos;
+in vec2 TexCoords;
 
 out vec4 FragColor;
 
@@ -34,15 +33,14 @@ uniform vec3 viewPos;
 void main()
 {
     // 定义环境光 （如果没有环境光，物体将完全黑暗，如果环境光过强，物体将过于明亮）
-    vec3 ambient = light.ambient * material.ambient; 
-
+    vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));  
     // 定义漫反射 
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(light.position - FragPos);
     // 点乘计算夹角余弦值
     float diff = max(dot(norm, lightDir), 0.0);
     // diff最大为1，所以matrial.d/light.d共同定义了最大漫反射强度
-    vec3 diffuse = light.diffuse * (diff * material.diffuse);
+    vec3 diffuse = light.diffuse * (diff * vec3(texture(material.diffuse, TexCoords)));
 
     // view direction
     vec3 viewDir = normalize(viewPos - FragPos);
@@ -54,7 +52,7 @@ void main()
     // 意味着当dot趋近1时，光照才会显著增强，且shininess越大，高光点越集中
     float spec = pow(max(dot(viewDir, reflectionDir), 0.0), material.shininess);
     // spec最大为1，所以material.s/light.s共同定义了最大镜面反射强度
-    vec3 specular = material.specular * spec * light.specular;
+    vec3 specular = vec3(texture(material.specular, TexCoords)) * spec * light.specular;
     // 三部分都会影响最终颜色
     // 我们并没有定义物体本身颜色，而是定义了物体被看到的颜色
     vec3 result = ambient + diffuse + specular;

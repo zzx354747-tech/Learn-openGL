@@ -35,14 +35,18 @@ glm::mat4 Camera::GetViewMatrix() const
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
     float velocity = MovementSpeed * deltaTime;
+    glm::vec3 flatFront = glm::normalize(glm::vec3(Front.x, 0.0f, Front.z));
+    if (glm::length(flatFront) < 0.001f)
+        flatFront = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::vec3 flatRight = glm::cross(flatFront, WorldUp); 
     if (direction == FORWARD)
-        Position += Front * velocity;
+        Position += flatFront * velocity;
     if (direction == BACKWARD)
-        Position -= Front * velocity;
+        Position -= flatFront * velocity;
     if (direction == LEFT)
-        Position -= Right * velocity;
+        Position -= flatRight * velocity;
     if (direction == RIGHT)
-        Position += Right * velocity;
+        Position += flatRight * velocity;
     if (direction == UP)
         Position += WorldUp * velocity;
     if (direction == DOWN)
@@ -92,9 +96,12 @@ void Camera::updateCameraVectors()
     Front = glm::normalize(front);
     
     glm::vec3 rightVec = glm::cross(Front, WorldUp);
-    if (glm::length(rightVec) > 0.0f) {
+    if (glm::length(rightVec) > 0.0f) 
+    {
         Right = glm::normalize(rightVec);
-    } else {
+    } 
+    else 
+    {
         Right = glm::vec3(1.0f, 0.0f, 0.0f);
     }
     
