@@ -217,7 +217,6 @@ int main()
         //保持z轴不变，使光源在水平面上绕着原点旋转
         lightPos.z = 1.0f;
 
-        // 绘制材质1
         lightingShader.use();
         lightingShader.setVec3("light.ambient",  glm::vec3(0.2f, 0.2f, 0.2f));
         lightingShader.setVec3("light.diffuse",  glm::vec3(0.5f, 0.5f, 0.5f)); 
@@ -227,39 +226,17 @@ int main()
         lightingShader.setVec3("light.position", lightPos);
 
         lightingShader.setInt("material.diffuse", 0);
+        lightingShader.setInt("material.specular", 1);
+        lightingShader.setFloat("material.shininess", 32.0f);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
-
-        lightingShader.setVec3("material.ambient",  glm::vec3(0.5f, 0.31f, 0.31f));
-        lightingShader.setVec3("material.diffuse",  glm::vec3(1.0f, 0.5f, 0.31f));
-        lightingShader.setVec3("material.specular", glm::vec3(0.0f, 0.0f, 0.0f)); 
-        lightingShader.setFloat("material.shininess", 32.0f);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texture2);
 
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, glm::radians(20.0f), glm::vec3(0.5f, 1.0f, 0.0f));
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)bfwidth / (float)bfheight, 0.1f, 100.0f);
-        lightingShader.setMat4("model", model);
-        lightingShader.setMat4("view", view);
-        lightingShader.setMat4("projection", projection);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // 绘制材质2
-        lightingShader.use();
-        lightingShader.setVec3("light.ambient",  glm::vec3(0.2f, 0.2f, 0.2f));
-        lightingShader.setVec3("light.diffuse",  glm::vec3(0.5f, 0.5f, 0.5f)); 
-        lightingShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));  
-        lightingShader.setVec3("viewPos", camera.Getposition());
-        lightingShader.setVec3("light.position", lightPos);
-        lightingShader.setInt("material.diffuse", 1);
-        lightingShader.setInt("material.specular", 1);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture2);
-        lightingShader.setVec3("material.ambient",  glm::vec3(0.5f, 0.31f, 0.31f));
-        lightingShader.setVec3("material.diffuse",  glm::vec3(1.0f, 0.5f, 0.31f));
-        lightingShader.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f)); 
-        lightingShader.setFloat("material.shininess", 32.0f);
         lightingShader.setMat4("model", model);
         lightingShader.setMat4("view", view);
         lightingShader.setMat4("projection", projection);
