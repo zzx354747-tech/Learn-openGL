@@ -68,7 +68,7 @@ void main()
     // 三部分都会影响最终颜色
     // 我们并没有定义物体本身颜色，而是定义了物体被看到的颜色
 
-     ambient *= attenuation;
+    ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
 

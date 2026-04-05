@@ -14,6 +14,8 @@ float lastFrame = 0.0f;
 float currentFrame = 0.0f;
 bool cursorLocked = true;
 bool gravePresslastFrame = false;
+bool flashlightOn = true;
+bool flashlightPressLastFrame = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -52,6 +54,13 @@ void processInput(GLFWwindow* window, float deltaTime)
         }
     }
     gravePresslastFrame = gravePressedNow;
+
+    bool flashlightPressedNow = glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS;
+    if (flashlightPressedNow && !flashlightPressLastFrame)
+    {
+        flashlightOn = !flashlightOn;
+    }
+    flashlightPressLastFrame = flashlightPressedNow;
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -212,7 +221,6 @@ int main()
     glEnable(GL_DEPTH_TEST);
     Shader lightingShader("../src/shader/lighting.vs", "../src/shader/lighting.fs");
     Shader lightcubShader("../src/shader/lighting.vs", "../src/shader/light.fs");
-    Shader flashliShader("../src/shader/lighting.vs", "../src/shader/flashlight.fs");
 
     while (!glfwWindowShouldClose(window))
     {
@@ -236,7 +244,11 @@ int main()
         lightingShader.setVec3("light.ambient",  glm::vec3(0.2f, 0.2f, 0.2f));
         lightingShader.setVec3("light.diffuse",  glm::vec3(0.5f, 0.5f, 0.5f)); 
         lightingShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+        lightingShader.setVec3("light.flashliPosition", camera.Getposition());
         lightingShader.setVec3("light.position", lightPos);
+        lightingShader.setVec3("light.direction", camera.GetFront());
+        lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+        lightingShader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.0f)));
         lightingShader.setVec3("viewPos", camera.Getposition());
         lightingShader.setInt("material.diffuse", 0);
         lightingShader.setInt("material.specular", 1);
@@ -244,23 +256,7 @@ int main()
         lightingShader.setFloat("light.constant", 1.0f);
         lightingShader.setFloat("light.linear", 0.09f);
         lightingShader.setFloat("light.quadratic", 0.032f);
-
-        //flashliShader
-        flashliShader.use();
-        flashliShader.setVec3("light.ambient",  glm::vec3(0.2f, 0.2f, 0.2f));
-        flashliShader.setVec3("light.diffuse",  glm::vec3(0.5f, 0.5f, 0.5f)); 
-        flashliShader.setVec3("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        flashliShader.setVec3("light.position", camera.Getposition());
-        flashliShader.setVec3("light.direction", camera.GetFront());
-        flashliShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
-        flashliShader.setFloat("light.outerCutOff", glm::cos(glm::radians(15.0f)));
-        flashliShader.setVec3("viewPos", camera.Getposition());
-        flashliShader.setInt("material.diffuse", 0);
-        flashliShader.setInt("material.specular", 1);
-        flashliShader.setFloat("material.shininess", 32.0f);
-        flashliShader.setFloat("light.constant", 1.0f);
-        flashliShader.setFloat("light.linear", 0.09f);
-        flashliShader.setFloat("light.quadratic", 0.032f);
+        lightingShader.setBool("flashlightOn", flashlightOn);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
