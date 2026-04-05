@@ -124,3 +124,24 @@ set_target_properties(light_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
 
+# 添加可执行文件 - parallel_demo
+add_executable(parallel_demo
+    src/demo/parallel.cpp
+    src/camera.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(parallel_demo
+    glfw
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(parallel_demo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
+

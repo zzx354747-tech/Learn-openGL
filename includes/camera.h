@@ -32,6 +32,7 @@ public:
 //对外接口
 glm::mat4 GetViewMatrix() const;
 glm::vec3 Getposition () const { return Position;}
+glm::vec3 GetFront() const { return Front; }
 void ProcessKeyboard(Camera_Movement direction, float deltaTime);
 void ProcessMouseMovement(float xpos, float ypos);
 void Resetmouse();

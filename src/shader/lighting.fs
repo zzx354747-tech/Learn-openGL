@@ -18,6 +18,11 @@ struct Light {
     vec3 diffuse;
     // 镜面反射分量的RGB值，同时决定颜色和强度
     vec3 specular;
+
+    // 衰减参数，常数项、一次项、二次项
+    float constant;
+    float linear;
+    float quadratic;
 };
 
 in vec3 Normal;
@@ -32,6 +37,9 @@ uniform vec3 viewPos;
 
 void main()
 {
+    float distance = length(light.position - FragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance
+    + light.quadratic * (distance * distance));
     // 定义环境光 （如果没有环境光，物体将完全黑暗，如果环境光过强，物体将过于明亮）
     vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));  
     // 定义漫反射 
@@ -55,6 +63,12 @@ void main()
     vec3 specular = vec3(texture(material.specular, TexCoords)) * spec * light.specular;
     // 三部分都会影响最终颜色
     // 我们并没有定义物体本身颜色，而是定义了物体被看到的颜色
+
+     ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
     vec3 result = ambient + diffuse + specular;
     FragColor = vec4(result, 1.0);
+   
 }
