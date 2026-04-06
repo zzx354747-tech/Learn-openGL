@@ -219,8 +219,8 @@ int main()
     glViewport(0, 0, bfwidth, bfheight);
 
     glEnable(GL_DEPTH_TEST);
-    Shader lightingShader("../src/shader/lighting.vs", "../src/shader/lighting.fs");
-    Shader lightcubShader("../src/shader/lighting.vs", "../src/shader/light.fs");
+    Shader lightingShader("../src/shader/example/lighting.vs", "../src/shader/example/lighting.fs");
+    Shader lightcubShader("../src/shader/example/lighting.vs", "../src/shader/example/light.fs");
 
     while (!glfwWindowShouldClose(window))
     {
