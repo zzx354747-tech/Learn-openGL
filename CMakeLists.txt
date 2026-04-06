@@ -43,7 +43,7 @@ set_target_properties(3Ddemo PROPERTIES
 
 # 添加可执行文件 - 3Dbkp
 add_executable(3Dbkp
-    src/demo/3Dbkp.cpp
+    src/example/3Dbkp.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
@@ -105,7 +105,7 @@ target_link_libraries(texture_demo
 
 # 添加可执行文件 - light_demo
 add_executable(light_demo
-    src/demo/light.cpp
+    src/example/light.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
@@ -126,7 +126,7 @@ set_target_properties(light_demo PROPERTIES
 
 # 添加可执行文件 - parallel_demo
 add_executable(parallel_demo
-    src/demo/parallel.cpp
+    src/example/parallel.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
