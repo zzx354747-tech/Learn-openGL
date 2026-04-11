@@ -97,11 +97,6 @@ target_link_libraries(texture_demo
     "-framework IOKit"
     "-framework CoreVideo"
 )
-# set_target_properties(db_triangle PROPERTIES
-
-#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-
-# )
 
 # 添加可执行文件 - light_demo
 add_executable(light_demo
@@ -145,3 +140,24 @@ set_target_properties(parallel_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
 
+
+# 添加可执行文件 - diffuse_demo
+add_executable(diffuse_demo
+    src/demo/light_demo.cpp
+    src/camera.cpp
+    src/uni_light.cpp
+    ${GLAD_SOURCES}
+)
+# 链接库
+target_link_libraries(diffuse_demo
+    glfw
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(diffuse_demo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
