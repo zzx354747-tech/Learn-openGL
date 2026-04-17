@@ -6,8 +6,8 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include "camera.h"
-#include "shader.h"
+#include "scene/camera.h"
+#include "core/shader.h"
 
 Camera camera;
 

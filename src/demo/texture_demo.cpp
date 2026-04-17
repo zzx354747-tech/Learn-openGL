@@ -6,7 +6,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "shader.h"
+#include "core/shader.h"
 
 float speed = 0.1f;
 float deltaTime = 0.0f; // 当前帧与上一帧的时间差

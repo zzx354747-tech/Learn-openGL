@@ -6,8 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "camera.h"
-#include "shader.h"
+#include "scene/camera.h"
+#include "core/shader.h"
 
 Camera camera;
 

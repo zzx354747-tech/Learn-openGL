@@ -5,12 +5,12 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "shader.h"
-#include "camera.h"
+#include "core/shader.h"
+#include "scene/camera.h"
 #include "stb_image.h"
 #include "uni_light.h"
-#include "light.h"
-#include "Graphics.h"
+#include "scene/light.h"
+#include "utils/Graphics.h"
 
 Camera camera;
 

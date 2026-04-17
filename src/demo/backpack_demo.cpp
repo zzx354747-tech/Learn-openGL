@@ -1,7 +1,7 @@
-#include "shader.h"
-#include "camera.h"
-#include "Mesh.h"
-#include "Model.h"
+#include "core/shader.h"
+#include "scene/camera.h"
+#include "rendering/Mesh.h"
+#include "rendering/Model.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
