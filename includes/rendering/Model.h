@@ -1,7 +1,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 
-#include <glad/glad.h> 
+#include <glad/gl.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -10,8 +10,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include <Mesh.h>
-#include <shader.h>
+#include "rendering/Mesh.h"
+#include "core/shader.h"
 
 #include <string>
 #include <fstream>

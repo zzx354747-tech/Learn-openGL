@@ -8,7 +8,7 @@
 #include "core/shader.h"
 #include "scene/camera.h"
 #include "stb_image.h"
-#include "uni_light.h"
+#include "utils/uni_light.h"
 #include "scene/light.h"
 #include "utils/Graphics.h"
 
