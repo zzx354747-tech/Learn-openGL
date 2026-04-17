@@ -17,7 +17,7 @@ uniform mat3 normalMatrix;
 void main()
 {
     // 只取前3个分量，因为w分量需要参与前三项运算，而第四项在此时没有作用
-    // 也可以取vec4，但在和lightPos运算时还是要取vec3
+    // 也可以取vec4，但在和lightPos运算时还是要取vec3c
     FragPos = vec3(model * vec4(aPos, 1.0));
     Normal = normalMatrix * aNormal;
     TexCoords = aTexCoord;

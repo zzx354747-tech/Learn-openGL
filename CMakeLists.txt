@@ -13,7 +13,11 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/third_party/glad/include
     ${CMAKE_SOURCE_DIR}/third_party/stb
+    ${CMAKE_SOURCE_DIR}/third_party/assimp/install/include
 )
+
+# assimp 库目录
+link_directories(${CMAKE_SOURCE_DIR}/third_party/assimp/install/lib)
 
 # GLAD 源文件
 set(GLAD_SOURCES
@@ -143,14 +147,17 @@ set_target_properties(parallel_demo PROPERTIES
 
 # 添加可执行文件 - diffuse_demo
 add_executable(diffuse_demo
-    src/demo/light_demo.cpp
+    src/example/light_example.cpp
     src/camera.cpp
     src/uni_light.cpp
+    src/Graphics.cpp
     ${GLAD_SOURCES}
 )
 # 链接库
 target_link_libraries(diffuse_demo
     glfw
+    assimp
+    z
     "-framework OpenGL"
     "-framework Cocoa"
     "-framework IOKit"
@@ -161,3 +168,28 @@ target_link_libraries(diffuse_demo
 set_target_properties(diffuse_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
+
+# 添加可执行文件 - backpack_demo
+add_executable(backpack_demo
+    src/demo/backpack_demo.cpp
+    src/camera.cpp
+    src/stb_image_impl.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(backpack_demo
+    glfw
+    assimp
+    z
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(backpack_demo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
+
