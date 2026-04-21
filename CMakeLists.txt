@@ -193,3 +193,26 @@ set_target_properties(backpack_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
 
+# 添加可执行文件 - stencil_demo
+add_executable(stencil_demo
+    src/demo/stencil_demo.cpp
+    src/camera.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(stencil_demo
+    glfw
+    assimp
+    z
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(stencil_demo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
+
