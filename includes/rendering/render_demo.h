@@ -1,0 +1,355 @@
+#include "core/shader.h"
+#include "vector"
+#include "scene/camera.h"
+#include "rendering/Model.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+struct FrameData
+{
+    glm::vec3 lightPos[4];
+    bool flashLightOn;
+    int bfwidth, bfheight;
+};
+
+struct RenderSettings
+{
+    bool enableLight;
+    bool enableAssimp;
+};
+
+struct DrawData
+{
+    unsigned int VAO = 0;
+    unsigned int VBO = 0;
+    unsigned int EBO = 0;
+    unsigned int vertexCount = 0;
+    GLenum primitive = GL_TRIANGLES;
+};
+
+enum class VertexLayoutType
+{
+    PositionOnly,
+    PositionNormal, 
+    PositionTexcoord,
+    PositionNormalTex,
+};
+
+class Renderer
+{
+public:
+
+Renderer(Camera* cam, 
+    Model* mdl,
+    const float* lightingVertices,
+    size_t lightingSize,
+    const float* lightCubeVertices,
+    size_t lightCubeSize,
+    const float* floorVertices,
+    size_t floorSize
+)
+    : 
+        camera(cam),
+        backpack(mdl),
+        lightingShader("../src/shader/backpack/model.vs", "../src/shader/backpack/model.fs"),
+        lightCubeShader("../src/shader/backpack/lightcube.vs", "../src/shader/backpack/lightcube.fs")
+    {
+        glEnable(GL_DEPTH_TEST);
+        createRawMesh(
+            lightingData,
+            lightingVertices,
+            lightingSize,
+            VertexLayoutType::PositionNormalTex
+        );
+        createRawMesh(
+            lightCubeData,
+            lightCubeVertices,
+            lightCubeSize,
+            VertexLayoutType::PositionOnly
+        );
+        createRawMesh(
+            floorData,
+            floorVertices,
+            floorSize,
+            VertexLayoutType::PositionNormalTex
+        );
+    };
+
+    void render(const FrameData& frameData, const RenderSettings& settings)
+    {
+        clear();
+
+        glm::mat4 model = glm::mat4(1.0f);
+
+        drawModel(
+            lightingShader,
+            frameData,
+            settings,
+            lightingData,
+            model
+        );
+
+        glm::mat4 floorModel = glm::mat4(1.0f);
+
+        RenderSettings floorSettings = settings;
+        floorSettings.enableAssimp = false;
+
+        drawModel(
+            lightingShader,
+            frameData,
+            floorSettings,
+            floorData,
+            floorModel
+        );
+
+        if (settings.enableLight)
+        {
+            drawLightCube(frameData, lightCubeData);
+        }
+    }
+
+~Renderer()
+    {
+        destroyRawMesh(lightingData);
+        destroyRawMesh(lightCubeData);
+        destroyRawMesh(floorData);
+    };
+
+private:
+    Camera* camera;
+    Model* backpack;
+    std::vector<float> lightCubeVertices;
+    Shader lightingShader;
+    Shader lightCubeShader;
+    DrawData lightingData;
+    DrawData lightCubeData; 
+    DrawData floorData;
+
+    int getStride(VertexLayoutType layout)
+    {
+        switch (layout)
+        {
+        case VertexLayoutType::PositionOnly:
+            return 3;
+        case VertexLayoutType::PositionNormal:
+            return 6;
+        case VertexLayoutType::PositionTexcoord:
+            return 5;
+        case VertexLayoutType::PositionNormalTex:
+            return 8;
+        default:
+            return 0;
+        }
+    }
+
+    void setupVertexLayout(VertexLayoutType type)
+{
+    switch (type)
+    {
+        case VertexLayoutType::PositionOnly:
+        {
+            int stride = 3 * sizeof(float);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+            glEnableVertexAttribArray(0);
+            break;
+        }
+
+        case VertexLayoutType::PositionNormal:
+        {
+            int stride = 6 * sizeof(float);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+            break;
+        }
+
+        case VertexLayoutType::PositionTexcoord:
+        {
+            int stride = 5 * sizeof(float);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(2);
+            break;
+        }
+
+        case VertexLayoutType::PositionNormalTex:
+        {
+            int stride = 8 * sizeof(float);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+            glEnableVertexAttribArray(2);
+            break;
+        }
+    }
+}
+    void destroyRawMesh(DrawData& data)
+    {
+        if (data.VAO != 0)
+            glDeleteVertexArrays(1, &data.VAO);
+        if (data.VBO != 0)
+            glDeleteBuffers(1, &data.VBO);
+        if (data.EBO != 0)
+            glDeleteBuffers(1, &data.EBO);
+        data.VAO = 0;
+        data.VBO = 0;
+        data.EBO = 0;
+    }
+
+    void createRawMesh(DrawData& target, const float* vertices, size_t size, VertexLayoutType type)
+{
+    glGenVertexArrays(1, &target.VAO);
+    glGenBuffers(1, &target.VBO);
+
+    glBindVertexArray(target.VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, target.VBO);
+    glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+
+    setupVertexLayout(type);
+
+    int stride = getStride(type);
+    target.vertexCount = size / (stride * sizeof(float));
+
+    glBindVertexArray(0);
+}
+
+    void clear()
+    {
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
+
+    void setupCameraData(Shader &shader,const FrameData& frameData)
+    {
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)frameData.bfwidth / (float)frameData.bfheight, 0.1f, 100.0f);
+        glm::mat4 view = camera -> GetViewMatrix();
+        shader.use();
+        shader.setMat4("projection", projection);
+        shader.setMat4("view", view);
+    }
+
+    void setupViewPos(Shader &shader)
+    {
+        glm::vec3 viewPos = camera -> Getposition();
+        shader.use();
+        shader.setVec3("viewPos", viewPos);
+    }
+
+    void setupModel(Shader &shader, const glm::mat4& model, const RenderSettings& settings)
+    {
+        shader.setMat4("model", model);
+        if (settings.enableLight)
+        {
+            shader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+        }
+    }
+
+   void setupLightData(Shader& shader,
+                    const FrameData& frameData,
+                    const RenderSettings& settings)
+    {
+        if (!settings.enableLight)
+            return;
+
+        // point lights
+        for (int i = 0; i < 4; i++)
+        {
+            std::string index = std::to_string(i);
+
+            shader.setVec3("pointLights[" + index + "].position", frameData.lightPos[i]);
+            shader.setVec3("pointLights[" + index + "].ambient", glm::vec3(0.02f));
+            shader.setVec3("pointLights[" + index + "].diffuse", glm::vec3(0.2f));
+            shader.setVec3("pointLights[" + index + "].specular", glm::vec3(1.0f));
+
+            shader.setFloat("pointLights[" + index + "].constant", 1.0f);
+            shader.setFloat("pointLights[" + index + "].linear", 0.09f);
+            shader.setFloat("pointLights[" + index + "].quadratic", 0.032f);
+        }
+
+        // flashlight
+        shader.setVec3("flashlight.position", camera->Getposition());
+        shader.setVec3("flashlight.direction", camera->GetFront());
+        shader.setInt("flashlightOn", frameData.flashLightOn);
+
+        // dir light
+        shader.setVec3("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
+    }
+
+    void drawRaw(const DrawData& drawData)
+    {
+        glBindVertexArray(drawData.VAO);
+        glDrawArrays(drawData.primitive, 0, drawData.vertexCount);
+        glBindVertexArray(0);
+    }
+        
+    void drawModel(Shader &shader,
+                const FrameData& frameData, 
+                const RenderSettings& settings, 
+                const DrawData& drawData,
+                const glm::mat4 &model
+                )
+    {
+        shader.use();
+        setupCameraData(shader, frameData);
+        setupModel(shader, model, settings);
+
+        if (settings.enableLight)
+        {
+            setupLightData(shader, frameData, settings);
+            setupViewPos(shader);
+        }
+
+        if (settings.enableAssimp)
+        {
+            backpack->Draw(shader);
+        }
+        else 
+        {
+            drawRaw(drawData);
+        }
+    }
+
+        void drawLightCube(const FrameData& frameData, const DrawData& drawData)
+    {
+        lightCubeShader.use();
+        setupCameraData(lightCubeShader, frameData);
+
+        glm::mat4 Lightmodel = glm::mat4(1.0f);
+        Lightmodel = glm::translate(Lightmodel, frameData.lightPos[0]);
+        Lightmodel = glm::scale(Lightmodel, glm::vec3(0.2f)); 
+        lightCubeShader.setMat4("model", Lightmodel);
+        drawRaw(drawData);
+
+        glm::mat4 Lightmodel2 = glm::mat4(1.0f);
+        Lightmodel2 = glm::translate(Lightmodel2, frameData.lightPos[1]);
+        Lightmodel2 = glm::scale(Lightmodel2, glm::vec3(0.2f)); 
+        lightCubeShader.setMat4("model", Lightmodel2);
+        drawRaw(drawData);
+
+        glm::mat4 Lightmodel3 = glm::mat4(1.0f);
+        Lightmodel3 = glm::translate(Lightmodel3, frameData.lightPos[2]);
+        Lightmodel3 = glm::scale(Lightmodel3, glm::vec3(0.2f)); 
+        lightCubeShader.setMat4("model", Lightmodel3);
+        drawRaw(drawData);
+
+        glm::mat4 Lightmodel4 = glm::mat4(1.0f);
+        Lightmodel4 = glm::translate(Lightmodel4, frameData.lightPos[3]);
+        Lightmodel4 = glm::scale(Lightmodel4, glm::vec3(0.2f)); 
+        lightCubeShader.setMat4("model", Lightmodel4);
+        drawRaw(drawData);
+    }
+};
