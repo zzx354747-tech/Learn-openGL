@@ -1,14 +1,12 @@
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
 #include "core/shader.h"
 #include "scene/camera.h"
+#include "rendering/render_demo.h"
 
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定
@@ -143,15 +141,26 @@ int main()
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
 
+    float grassVertices[] = {
+    // positions         // texCoords
+    0.0f,  0.5f, 0.0f,   0.0f, 1.0f,
+    0.0f, -0.5f, 0.0f,   0.0f, 0.0f,
+    1.0f, -0.5f, 0.0f,   1.0f, 0.0f,
+
+    0.0f,  0.5f, 0.0f,   0.0f, 1.0f,
+    1.0f, -0.5f, 0.0f,   1.0f, 0.0f,
+    1.0f,  0.5f, 0.0f,   1.0f, 1.0f
+    };
+
     float planeVertices[] = {
         // positions          // texCoords
-        5.0f, -0.5f,  5.0f,   2.0f, 0.0f,
-        -5.0f, -0.5f,  5.0f,   0.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,   0.0f, 2.0f,
+    5.0f, -0.5f,  5.0f,   2.0f, 0.0f,
+    -5.0f, -0.5f,  5.0f,   0.0f, 0.0f,
+    -5.0f, -0.5f, -5.0f,   0.0f, 2.0f,
 
-        5.0f, -0.5f,  5.0f,   2.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,   0.0f, 2.0f,
-        5.0f, -0.5f, -5.0f,   2.0f, 2.0f
+    5.0f, -0.5f,  5.0f,   2.0f, 0.0f,
+    -5.0f, -0.5f, -5.0f,   0.0f, 2.0f,
+    5.0f, -0.5f, -5.0f,   2.0f, 2.0f
     };
 
     glm::vec3 cubePositions[] = {
@@ -192,7 +201,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load("../marble.jpg", &width, &height, &nrChannels, 0);
+    unsigned char* data = stbi_load("../textures/marble.jpg", &width, &height, &nrChannels, 0);
     if (data)
     {
         GLenum format;
@@ -219,7 +228,7 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    data = stbi_load("../metal.png", &width, &height, &nrChannels, 0);
+    data = stbi_load("../textures/metal.png", &width, &height, &nrChannels, 0);
     if (data)
     {
             GLenum format;

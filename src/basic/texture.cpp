@@ -4,7 +4,7 @@
 int main(){
     //加载纹理图像
     int width,height,nrChannels;
-    unsigned char *data = stbi_load("container.jpg", &width, &height, &nrChannels, 0);
+    unsigned char *data = stbi_load("../textures/container.jpg", &width, &height, &nrChannels, 0);
     //创建纹理对象
     unsigned int texture;
     glGenTextures(1, &texture);

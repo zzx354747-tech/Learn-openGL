@@ -44,16 +44,22 @@ Renderer(Camera* cam,
     Model* mdl,
     const float* lightingVertices,
     size_t lightingSize,
+    const float* CubeVertices,
+    size_t CubeSize,
     const float* lightCubeVertices,
     size_t lightCubeSize,
     const float* floorVertices,
-    size_t floorSize
+    size_t floorSize,
+    const float* noLightFloorVertices,
+    size_t noLightFloorSize,
+    Shader& lightingShader,
+    Shader& lightCubeShader
 )
     : 
         camera(cam),
         backpack(mdl),
-        lightingShader("../src/shader/backpack/model.vs", "../src/shader/backpack/model.fs"),
-        lightCubeShader("../src/shader/backpack/lightcube.vs", "../src/shader/backpack/lightcube.fs")
+        lightingShader(lightingShader),
+        lightCubeShader(lightCubeShader)   
     {
         glEnable(GL_DEPTH_TEST);
         createRawMesh(
@@ -62,6 +68,14 @@ Renderer(Camera* cam,
             lightingSize,
             VertexLayoutType::PositionNormalTex
         );
+
+        createRawMesh(
+            CubeData,
+            CubeVertices,
+            CubeSize,
+            VertexLayoutType::PositionTexcoord
+        );
+
         createRawMesh(
             lightCubeData,
             lightCubeVertices,
@@ -74,39 +88,34 @@ Renderer(Camera* cam,
             floorSize,
             VertexLayoutType::PositionNormalTex
         );
+        createRawMesh(
+            noLightFloorData,
+            noLightFloorVertices,
+            noLightFloorSize,
+            VertexLayoutType::PositionTexcoord
+        );
     };
 
-    void render(const FrameData& frameData, const RenderSettings& settings)
+    void beginFrame()
     {
         clear();
+    }
 
+    void drawAssimpModel(const FrameData& frameData, const RenderSettings& settings)
+    {
         glm::mat4 model = glm::mat4(1.0f);
 
-        drawModel(
-            lightingShader,
+        drawModel(lightingShader,
             frameData,
             settings,
             lightingData,
             model
         );
+    }
 
-        glm::mat4 floorModel = glm::mat4(1.0f);
-
-        RenderSettings floorSettings = settings;
-        floorSettings.enableAssimp = false;
-
-        drawModel(
-            lightingShader,
-            frameData,
-            floorSettings,
-            floorData,
-            floorModel
-        );
-
-        if (settings.enableLight)
-        {
-            drawLightCube(frameData, lightCubeData);
-        }
+    void drawLight(const FrameData& frameData)
+    {
+        drawLightCube(frameData, lightCubeData);
     }
 
 ~Renderer()
@@ -114,18 +123,22 @@ Renderer(Camera* cam,
         destroyRawMesh(lightingData);
         destroyRawMesh(lightCubeData);
         destroyRawMesh(floorData);
+        destroyRawMesh(noLightFloorData);
+        destroyRawMesh(CubeData);   
     };
 
 private:
     Camera* camera;
     Model* backpack;
-    std::vector<float> lightCubeVertices;
-    Shader lightingShader;
-    Shader lightCubeShader;
+    Shader& lightingShader;
+    Shader& lightCubeShader;
     DrawData lightingData;
+    DrawData CubeData;
     DrawData lightCubeData; 
     DrawData floorData;
+    DrawData noLightFloorData;
 
+    // 给VAO,VBO提供stride，提供给createRawMesh使用
     int getStride(VertexLayoutType layout)
     {
         switch (layout)
@@ -143,59 +156,62 @@ private:
         }
     }
 
+    // 根据传入的type,为当前绑定的VAO设置顶点属性指针
     void setupVertexLayout(VertexLayoutType type)
-{
-    switch (type)
     {
-        case VertexLayoutType::PositionOnly:
+        switch (type)
         {
-            int stride = 3 * sizeof(float);
+            case VertexLayoutType::PositionOnly:
+            {
+                int stride = 3 * sizeof(float);
 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-            glEnableVertexAttribArray(0);
-            break;
-        }
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+                glEnableVertexAttribArray(0);
+                break;
+            }
 
-        case VertexLayoutType::PositionNormal:
-        {
-            int stride = 6 * sizeof(float);
+            case VertexLayoutType::PositionNormal:
+            {
+                int stride = 6 * sizeof(float);
 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-            glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+                glEnableVertexAttribArray(0);
 
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-            glEnableVertexAttribArray(1);
-            break;
-        }
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+                glEnableVertexAttribArray(1);
+                break;
+            }
 
-        case VertexLayoutType::PositionTexcoord:
-        {
-            int stride = 5 * sizeof(float);
+            case VertexLayoutType::PositionTexcoord:
+            {
+                int stride = 5 * sizeof(float);
 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-            glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+                glEnableVertexAttribArray(0);
 
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-            glEnableVertexAttribArray(2);
-            break;
-        }
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+                glEnableVertexAttribArray(2);
+                break;
+            }
 
-        case VertexLayoutType::PositionNormalTex:
-        {
-            int stride = 8 * sizeof(float);
+            case VertexLayoutType::PositionNormalTex:
+            {
+                int stride = 8 * sizeof(float);
 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-            glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+                glEnableVertexAttribArray(0);
 
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-            glEnableVertexAttribArray(1);
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+                glEnableVertexAttribArray(1);
 
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
-            glEnableVertexAttribArray(2);
-            break;
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+                glEnableVertexAttribArray(2);
+                break;
+            }
         }
     }
-}
+
+    // 销毁VAO,VBO,EBO，提供给析构函数使用
     void destroyRawMesh(DrawData& data)
     {
         if (data.VAO != 0)
@@ -209,23 +225,35 @@ private:
         data.EBO = 0;
     }
 
+    // 根据DrawData中的信息创建VAO,VBO,EBO，并设置顶点属性指针，提供给构造函数使用。
+    // 这里的size由外部传入：sizeof(xxx vertices)
     void createRawMesh(DrawData& target, const float* vertices, size_t size, VertexLayoutType type)
-{
-    glGenVertexArrays(1, &target.VAO);
-    glGenBuffers(1, &target.VBO);
+    {
 
-    glBindVertexArray(target.VAO);
+        if (vertices == nullptr || size == 0)
+        {
+            target.VAO = 0;
+            target.VBO = 0;
+            target.EBO = 0;
+            target.vertexCount = 0;
+            return;
+        }
+        
+        glGenVertexArrays(1, &target.VAO);
+        glGenBuffers(1, &target.VBO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, target.VBO);
-    glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+        glBindVertexArray(target.VAO);
 
-    setupVertexLayout(type);
+        glBindBuffer(GL_ARRAY_BUFFER, target.VBO);
+        glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
 
-    int stride = getStride(type);
-    target.vertexCount = size / (stride * sizeof(float));
+        setupVertexLayout(type);
 
-    glBindVertexArray(0);
-}
+        int stride = getStride(type);
+        target.vertexCount = size / (stride * sizeof(float));
+
+        glBindVertexArray(0);
+    }
 
     void clear()
     {
@@ -233,6 +261,7 @@ private:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
+    // 设置projection和view矩阵，提供给drawModel使用
     void setupCameraData(Shader &shader,const FrameData& frameData)
     {
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)frameData.bfwidth / (float)frameData.bfheight, 0.1f, 100.0f);
@@ -242,6 +271,7 @@ private:
         shader.setMat4("view", view);
     }
 
+    // 设置viewPos，提供给drawModel使用
     void setupViewPos(Shader &shader)
     {
         glm::vec3 viewPos = camera -> Getposition();
@@ -249,6 +279,7 @@ private:
         shader.setVec3("viewPos", viewPos);
     }
 
+    // 设置model矩阵和normalMatrix，提供给drawModel使用
     void setupModel(Shader &shader, const glm::mat4& model, const RenderSettings& settings)
     {
         shader.setMat4("model", model);
@@ -258,7 +289,8 @@ private:
         }
     }
 
-   void setupLightData(Shader& shader,
+    // 设置光照相关的uniform，提供给drawModel使用
+    void setupLightData(Shader& shader,
                     const FrameData& frameData,
                     const RenderSettings& settings)
     {
@@ -271,24 +303,40 @@ private:
             std::string index = std::to_string(i);
 
             shader.setVec3("pointLights[" + index + "].position", frameData.lightPos[i]);
-            shader.setVec3("pointLights[" + index + "].ambient", glm::vec3(0.02f));
-            shader.setVec3("pointLights[" + index + "].diffuse", glm::vec3(0.2f));
-            shader.setVec3("pointLights[" + index + "].specular", glm::vec3(1.0f));
 
-            shader.setFloat("pointLights[" + index + "].constant", 1.0f);
-            shader.setFloat("pointLights[" + index + "].linear", 0.09f);
+            shader.setVec3("pointLights[" + index + "].ambient",  glm::vec3(0.1f, 0.1f, 0.1f));
+            shader.setVec3("pointLights[" + index + "].diffuse",  glm::vec3(0.1f, 0.1f, 0.1f));
+            shader.setVec3("pointLights[" + index + "].specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
+            shader.setFloat("pointLights[" + index + "].constant",  1.0f);
+            shader.setFloat("pointLights[" + index + "].linear",    0.09f);
             shader.setFloat("pointLights[" + index + "].quadratic", 0.032f);
         }
 
         // flashlight
         shader.setVec3("flashlight.position", camera->Getposition());
         shader.setVec3("flashlight.direction", camera->GetFront());
+
+        shader.setVec3("flashlight.diffuse",  glm::vec3(0.5f, 0.5f, 0.5f));
+        shader.setVec3("flashlight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
+        shader.setFloat("flashlight.constant",  1.0f);
+        shader.setFloat("flashlight.linear",    0.09f);
+        shader.setFloat("flashlight.quadratic", 0.032f);
+
         shader.setInt("flashlightOn", frameData.flashLightOn);
 
         // dir light
         shader.setVec3("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
+        shader.setVec3("dirLight.ambient",   glm::vec3(0.1f, 0.1f, 0.1f));
+        shader.setVec3("dirLight.diffuse",   glm::vec3(0.1f, 0.1f, 0.1f));
+        shader.setVec3("dirLight.specular",  glm::vec3(0.5f, 0.5f, 0.5f));
+
+        // material
+        shader.setFloat("material.shininess", 32.0f);
     }
 
+    // 直接根据DrawData中的信息绘制，不使用Assimp加载的模型，提供给drawModel使用
     void drawRaw(const DrawData& drawData)
     {
         glBindVertexArray(drawData.VAO);
