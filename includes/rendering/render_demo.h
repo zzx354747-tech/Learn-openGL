@@ -8,7 +8,7 @@
 
 struct FrameData
 {
-    glm::vec3 lightPos[4];
+    std::vector<glm::vec3> lightPos;
     bool flashLightOn;
     int bfwidth, bfheight;
 };
@@ -26,6 +26,11 @@ struct DrawData
     unsigned int EBO = 0;
     unsigned int vertexCount = 0;
     GLenum primitive = GL_TRIANGLES;
+};
+
+struct LightNumber
+{
+    int numPointLights;
 };
 
 enum class VertexLayoutType
@@ -54,10 +59,11 @@ Renderer(Camera* cam,
     size_t noLightFloorSize,
     Shader& lightingShader,
     Shader& lightCubeShader
+    //the problems need to be fixed
 )
     : 
         camera(cam),
-        backpack(mdl),
+        assimpModel(mdl),
         lightingShader(lightingShader),
         lightCubeShader(lightCubeShader)   
     {
@@ -70,7 +76,7 @@ Renderer(Camera* cam,
         );
 
         createRawMesh(
-            CubeData,
+            cubeData,
             CubeVertices,
             CubeSize,
             VertexLayoutType::PositionTexcoord
@@ -103,6 +109,9 @@ Renderer(Camera* cam,
 
     void drawAssimpModel(const FrameData& frameData, const RenderSettings& settings)
     {
+        if (assimpModel == nullptr)
+            return;
+
         glm::mat4 model = glm::mat4(1.0f);
 
         drawModel(lightingShader,
@@ -124,19 +133,20 @@ Renderer(Camera* cam,
         destroyRawMesh(lightCubeData);
         destroyRawMesh(floorData);
         destroyRawMesh(noLightFloorData);
-        destroyRawMesh(CubeData);   
+        destroyRawMesh(cubeData);   
     };
 
 private:
     Camera* camera;
-    Model* backpack;
+    Model* assimpModel;
     Shader& lightingShader;
     Shader& lightCubeShader;
     DrawData lightingData;
-    DrawData CubeData;
+    DrawData cubeData;
     DrawData lightCubeData; 
     DrawData floorData;
     DrawData noLightFloorData;
+    LightNumber lightNum;
 
     // 给VAO,VBO提供stride，提供给createRawMesh使用
     int getStride(VertexLayoutType layout)
@@ -298,7 +308,7 @@ private:
             return;
 
         // point lights
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < frameData.lightPos.size(); i++)
         {
             std::string index = std::to_string(i);
 
@@ -363,7 +373,7 @@ private:
 
         if (settings.enableAssimp)
         {
-            backpack->Draw(shader);
+            assimpModel -> Draw(shader);
         }
         else 
         {
@@ -376,28 +386,14 @@ private:
         lightCubeShader.use();
         setupCameraData(lightCubeShader, frameData);
 
-        glm::mat4 Lightmodel = glm::mat4(1.0f);
-        Lightmodel = glm::translate(Lightmodel, frameData.lightPos[0]);
-        Lightmodel = glm::scale(Lightmodel, glm::vec3(0.2f)); 
-        lightCubeShader.setMat4("model", Lightmodel);
-        drawRaw(drawData);
-
-        glm::mat4 Lightmodel2 = glm::mat4(1.0f);
-        Lightmodel2 = glm::translate(Lightmodel2, frameData.lightPos[1]);
-        Lightmodel2 = glm::scale(Lightmodel2, glm::vec3(0.2f)); 
-        lightCubeShader.setMat4("model", Lightmodel2);
-        drawRaw(drawData);
-
-        glm::mat4 Lightmodel3 = glm::mat4(1.0f);
-        Lightmodel3 = glm::translate(Lightmodel3, frameData.lightPos[2]);
-        Lightmodel3 = glm::scale(Lightmodel3, glm::vec3(0.2f)); 
-        lightCubeShader.setMat4("model", Lightmodel3);
-        drawRaw(drawData);
-
-        glm::mat4 Lightmodel4 = glm::mat4(1.0f);
-        Lightmodel4 = glm::translate(Lightmodel4, frameData.lightPos[3]);
-        Lightmodel4 = glm::scale(Lightmodel4, glm::vec3(0.2f)); 
-        lightCubeShader.setMat4("model", Lightmodel4);
-        drawRaw(drawData);
+        for (int i = 0; i < frameData.lightPos.size(); i++)
+        {
+            glm::mat4 Lightmodel = glm::mat4(1.0f);
+            Lightmodel = glm::translate(Lightmodel, frameData.lightPos[i]);
+            Lightmodel = glm::scale(Lightmodel, glm::vec3(0.2f)); 
+            lightCubeShader.setMat4("model", Lightmodel);
+            drawRaw(drawData);
+        }
     }
+
 };

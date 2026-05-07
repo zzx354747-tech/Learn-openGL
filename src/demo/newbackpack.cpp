@@ -185,6 +185,7 @@ int main()
             );
 
     FrameData frameData;
+    frameData.lightPos.resize(4); 
     RenderSettings settings;
     settings.enableAssimp = true;
     settings.enableLight = true;
