@@ -148,7 +148,6 @@ Renderer(
         destroyRawMesh(lightingData);
         destroyRawMesh(lightCubeData);
         destroyRawMesh(floorData);
-        destroyRawMesh(noLightFloorData);
         destroyRawMesh(cubeData); 
         destroyRawMesh(grassData);
         destroyRawMesh(glassData);  
@@ -164,7 +163,6 @@ private:
     DrawData cubeData;
     DrawData lightCubeData; 
     DrawData floorData;
-    DrawData noLightFloorData;
     DrawData glassData;
     DrawData grassData;
 
@@ -329,7 +327,7 @@ private:
             return;
 
         // point lights
-        for (int i = 0; i < frameData.lightPos.size(); i++)
+        for (int i = 0; i < (int)frameData.lightPos.size(); i++)
         {
             std::string index = std::to_string(i);
 
@@ -345,6 +343,7 @@ private:
         }
 
         // flashlight
+        shader.setVec3("flashlight.ambient",  glm::vec3(0.0f, 0.0f, 0.0f));
         shader.setVec3("flashlight.position", camera->Getposition());
         shader.setVec3("flashlight.direction", camera->GetFront());
 
