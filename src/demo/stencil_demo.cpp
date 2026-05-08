@@ -8,7 +8,6 @@
 #include "scene/camera.h"
 #include "rendering/render_demo.h"
 #include "rendering/texture.h"
-#include "rendering/render_demo.h"
 
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定
@@ -228,20 +227,6 @@ int main()
     GLTexture floorTexture("../textures/metal.png");
     GLTexture grassTexture("../textures/grass.png");
     GLTexture glassTexture("../textures/window.png");
-
-    Renderer renderer(
-        &camera,
-        nullptr,
-        nullptr,
-        0,
-        cubeVertices,
-        sizeof(cubeVertices),
-        nullptr,
-        0,
-        planeVertices,
-        sizeof(planeVertices),
-        //the problems need to be fixed
-    );
 
     Shader shader("../src/shader/pratice/stencil.vs", "../src/shader/pratice/stencil.fs");
     Shader singleColorShader("../src/shader/pratice/stencil.vs", "../src/shader/pratice/single_color.fs");

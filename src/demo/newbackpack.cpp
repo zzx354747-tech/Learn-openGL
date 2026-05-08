@@ -10,8 +10,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <iostream>
 
+RenderSettings settings;
 Camera camera;
 FrameData frameData;
 bool cursorLocked = true;
@@ -167,28 +167,30 @@ int main()
     Shader lightingShader("../src/shader/backpack/model.vs", "../src/shader/backpack/model.fs");
     Shader lightCubeShader("../src/shader/backpack/lightcube.vs", "../src/shader/backpack/lightcube.fs");
 
-    Renderer renderer(
-            &camera,
-            &backpack,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            lightCubeVertices,
-            sizeof(lightCubeVertices),
-            nullptr,
-            0,
-            nullptr,
-            0,
-            lightingShader,
-            lightCubeShader
-            );
+    RenderContext context{
+        &camera,
+        &backpack
+     };
 
-    FrameData frameData;
-    frameData.lightPos.resize(4); 
-    RenderSettings settings;
+    RenderShaders shaders{
+        &lightingShader,
+        &lightCubeShader
+    };
+
+    RenderGeometry geometry{
+        {},
+        {},
+        {lightCubeVertices, sizeof(lightCubeVertices), VertexLayoutType::PositionOnly},
+        {},
+        {},
+        {},
+    };
+    
+    frameData.lightPos.resize(4);
     settings.enableAssimp = true;
     settings.enableLight = true;
+
+    Renderer renderer(context, shaders, geometry);
 
     while (!glfwWindowShouldClose(window))
     {

@@ -6,17 +6,56 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+enum class VertexLayoutType
+{
+    PositionOnly,
+    PositionNormal, 
+    PositionTexcoord,
+    PositionNormalTex,
+};
+
 struct FrameData
 {
     std::vector<glm::vec3> lightPos;
-    bool flashLightOn;
-    int bfwidth, bfheight;
+    bool flashLightOn = false;
+    int bfwidth = 800;
+    int bfheight = 600;
 };
 
 struct RenderSettings
 {
     bool enableLight;
     bool enableAssimp;
+};
+
+struct RenderContext
+{
+    Camera* camera = nullptr;
+    Model* assimpModel = nullptr;
+};
+
+struct RenderShaders
+{
+    Shader* lightingShader = nullptr;
+    Shader* lightCubeShader = nullptr;
+    Shader* singleColorShader = nullptr;
+};
+
+struct RawMeshDesc
+{
+    const float* vertices = nullptr;
+    size_t vertexSize = 0;
+    VertexLayoutType layoutType = VertexLayoutType::PositionOnly;
+};
+
+struct RenderGeometry
+{
+    RawMeshDesc lightingCube;
+    RawMeshDesc cube;
+    RawMeshDesc lightCube;
+    RawMeshDesc floor;
+    RawMeshDesc glass;
+    RawMeshDesc grass;
 };
 
 struct DrawData
@@ -28,77 +67,51 @@ struct DrawData
     GLenum primitive = GL_TRIANGLES;
 };
 
-struct LightNumber
-{
-    int numPointLights;
-};
-
-enum class VertexLayoutType
-{
-    PositionOnly,
-    PositionNormal, 
-    PositionTexcoord,
-    PositionNormalTex,
-};
-
 class Renderer
 {
 public:
 
-Renderer(Camera* cam, 
-    Model* mdl,
-    const float* lightingVertices,
-    size_t lightingSize,
-    const float* CubeVertices,
-    size_t CubeSize,
-    const float* lightCubeVertices,
-    size_t lightCubeSize,
-    const float* floorVertices,
-    size_t floorSize,
-    const float* noLightFloorVertices,
-    size_t noLightFloorSize,
-    Shader& lightingShader,
-    Shader& lightCubeShader
-    //the problems need to be fixed
+Renderer(
+    const RenderContext& context,
+    const RenderShaders& shaders,
+    const RenderGeometry& geometry
 )
     : 
-        camera(cam),
-        assimpModel(mdl),
-        lightingShader(lightingShader),
-        lightCubeShader(lightCubeShader)   
+        camera(context.camera),
+        assimpModel(context.assimpModel),
+        lightingShader(shaders.lightingShader),
+        lightCubeShader(shaders.lightCubeShader),
+        singleColorShader(shaders.singleColorShader)
     {
         glEnable(GL_DEPTH_TEST);
         createRawMesh(
             lightingData,
-            lightingVertices,
-            lightingSize,
-            VertexLayoutType::PositionNormalTex
+            geometry.lightingCube
         );
 
         createRawMesh(
             cubeData,
-            CubeVertices,
-            CubeSize,
-            VertexLayoutType::PositionTexcoord
+            geometry.cube
         );
 
         createRawMesh(
             lightCubeData,
-            lightCubeVertices,
-            lightCubeSize,
-            VertexLayoutType::PositionOnly
+            geometry.lightCube
         );
+
         createRawMesh(
             floorData,
-            floorVertices,
-            floorSize,
-            VertexLayoutType::PositionNormalTex
+            geometry.floor
         );
+
         createRawMesh(
-            noLightFloorData,
-            noLightFloorVertices,
-            noLightFloorSize,
-            VertexLayoutType::PositionTexcoord
+            grassData,
+            geometry.grass
+        );
+
+        createRawMesh(
+            glassData,
+            geometry.glass
         );
     };
 
@@ -114,7 +127,10 @@ Renderer(Camera* cam,
 
         glm::mat4 model = glm::mat4(1.0f);
 
-        drawModel(lightingShader,
+        if (lightingShader == nullptr)
+            return;
+
+        drawModel(*lightingShader,
             frameData,
             settings,
             lightingData,
@@ -133,20 +149,24 @@ Renderer(Camera* cam,
         destroyRawMesh(lightCubeData);
         destroyRawMesh(floorData);
         destroyRawMesh(noLightFloorData);
-        destroyRawMesh(cubeData);   
+        destroyRawMesh(cubeData); 
+        destroyRawMesh(grassData);
+        destroyRawMesh(glassData);  
     };
 
 private:
     Camera* camera;
     Model* assimpModel;
-    Shader& lightingShader;
-    Shader& lightCubeShader;
+    Shader* lightingShader;
+    Shader* lightCubeShader;
+    Shader* singleColorShader;
     DrawData lightingData;
     DrawData cubeData;
     DrawData lightCubeData; 
     DrawData floorData;
     DrawData noLightFloorData;
-    LightNumber lightNum;
+    DrawData glassData;
+    DrawData grassData;
 
     // 给VAO,VBO提供stride，提供给createRawMesh使用
     int getStride(VertexLayoutType layout)
@@ -237,8 +257,11 @@ private:
 
     // 根据DrawData中的信息创建VAO,VBO,EBO，并设置顶点属性指针，提供给构造函数使用。
     // 这里的size由外部传入：sizeof(xxx vertices)
-    void createRawMesh(DrawData& target, const float* vertices, size_t size, VertexLayoutType type)
+    void createRawMesh(DrawData& target, const RawMeshDesc& desc)
     {
+        const float* vertices = desc.vertices;
+        size_t size = desc.vertexSize;
+        VertexLayoutType type = desc.layoutType;
 
         if (vertices == nullptr || size == 0)
         {
@@ -276,7 +299,6 @@ private:
     {
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)frameData.bfwidth / (float)frameData.bfheight, 0.1f, 100.0f);
         glm::mat4 view = camera -> GetViewMatrix();
-        shader.use();
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
     }
@@ -285,7 +307,6 @@ private:
     void setupViewPos(Shader &shader)
     {
         glm::vec3 viewPos = camera -> Getposition();
-        shader.use();
         shader.setVec3("viewPos", viewPos);
     }
 
@@ -334,6 +355,9 @@ private:
         shader.setFloat("flashlight.linear",    0.09f);
         shader.setFloat("flashlight.quadratic", 0.032f);
 
+        shader.setFloat("flashlight.cutOff", glm::cos(glm::radians(12.5f)));
+        shader.setFloat("flashlight.outerCutOff", glm::cos(glm::radians(17.5f)));
+
         shader.setInt("flashlightOn", frameData.flashLightOn);
 
         // dir light
@@ -354,7 +378,7 @@ private:
         glBindVertexArray(0);
     }
         
-    void drawModel(Shader &shader,
+    void drawModel(Shader& shader,
                 const FrameData& frameData, 
                 const RenderSettings& settings, 
                 const DrawData& drawData,
@@ -383,15 +407,18 @@ private:
 
         void drawLightCube(const FrameData& frameData, const DrawData& drawData)
     {
-        lightCubeShader.use();
-        setupCameraData(lightCubeShader, frameData);
+        if (lightCubeShader == nullptr)
+            return;
 
-        for (int i = 0; i < frameData.lightPos.size(); i++)
+        lightCubeShader->use();
+        setupCameraData(*lightCubeShader, frameData);
+
+        for (int i = 0; i < (int)frameData.lightPos.size(); i++)
         {
             glm::mat4 Lightmodel = glm::mat4(1.0f);
             Lightmodel = glm::translate(Lightmodel, frameData.lightPos[i]);
             Lightmodel = glm::scale(Lightmodel, glm::vec3(0.2f)); 
-            lightCubeShader.setMat4("model", Lightmodel);
+            lightCubeShader->setMat4("model", Lightmodel);
             drawRaw(drawData);
         }
     }
