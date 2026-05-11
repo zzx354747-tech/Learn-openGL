@@ -14,6 +14,7 @@ bool gravePresslastFrame = false; // 上一帧是否按下了`键
 float currentFrame = 0.0f;
 float lastFrame = 0.0f;
 unsigned int fbo, texColorBuffer, rbo;
+int bfwidth, bfheight;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -75,15 +76,15 @@ void drawCubeScene(unsigned int cubeVAO, Shader& shader, const GLTexture& cubeTe
     glm::mat4 projection = glm::perspective
     (
         glm::radians(45.0f), // 视野角（FOV）
-        800.0f / 600.0f, // 宽高比
+        static_cast<float>(bfwidth) / static_cast<float>(bfheight), // 宽高比
         0.1f,  // 近裁剪面
         100.0f // 远裁剪面
     );
     shader.setMat4("projection", projection);
 
-     glm::mat4 model = glm::mat4(1.0f);
     for (unsigned int i = 0; i < 3; i++)
     {
+        glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, cubePositions[i]);
         shader.setMat4("model", model);
         cubeTexture.bind();
@@ -103,7 +104,7 @@ void drawPlaneScene(unsigned int planeVAO, Shader& shader, const GLTexture& floo
     glm::mat4 projection = glm::perspective
     (
         glm::radians(45.0f), // 视野角（FOV）
-        800.0f / 600.0f, // 宽高比
+        static_cast<float>(bfwidth) / static_cast<float>(bfheight), // 宽高比
         0.1f,  // 近裁剪面
         100.0f // 远裁剪面
     );
@@ -242,7 +243,6 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    int bfwidth, bfheight;
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
     glViewport(0, 0, bfwidth, bfheight);
 
@@ -251,18 +251,39 @@ int main()
 
     glGenTextures(1, &texColorBuffer);
     glBindTexture(GL_TEXTURE_2D, texColorBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bfwidth, bfheight, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texColorBuffer, 0);
 
     glGenRenderbuffers(1, &rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 800, 600);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, bfwidth, bfheight);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     unsigned int screenVAO, screenVBO;
+    glGenBuffers(1, &screenVBO);
+    glGenVertexArrays(1, &screenVAO);
+    glBindVertexArray(screenVAO);
+    float quadVertices[] = 
+    {
+        // positions   // texCoords
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+        1.0f,  1.0f,  1.0f, 1.0f
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     GLTexture cubeTexture("../textures/marble.jpg");
     GLTexture floorTexture("../textures/metal.png");
@@ -277,12 +298,29 @@ int main()
         lastFrame = currentFrame;
         processInput(window, deltaTime);
 
-        glEnable(GL_DEPTH_TEST);
+        glfwGetFramebufferSize(window, &bfwidth, &bfheight);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glViewport(0, 0, bfwidth, bfheight);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
 
         drawCubeScene(cubeVAO, sceneShader, cubeTexture, cubePositions);
         drawPlaneScene(planeVAO, sceneShader, floorTexture);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, bfwidth, bfheight);
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        screenShader.use();
+        screenShader.setInt("screenTexture", 0);
+        glBindVertexArray(screenVAO);
+        glDisable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, texColorBuffer);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
