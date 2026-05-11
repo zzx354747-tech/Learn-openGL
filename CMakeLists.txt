@@ -241,3 +241,26 @@ set_target_properties(newbackpack PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
 )
 
+# 添加可执行文件 - fbo_demo
+add_executable(fbo_demo
+    src/demo/Frabuffer.cpp
+    src/camera.cpp
+    src/stb_image_impl.cpp
+    ${GLAD_SOURCES}
+)
+
+# 链接库
+target_link_libraries(fbo_demo
+    glfw
+    assimp
+    z
+    "-framework OpenGL"
+    "-framework Cocoa"
+    "-framework IOKit"
+    "-framework CoreVideo"
+)
+
+# 设置输出目录
+set_target_properties(fbo_demo PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+)
