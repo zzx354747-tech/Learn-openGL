@@ -2,7 +2,7 @@
 #include "stb_image.h"
 #include "core/shader.h"
 #include "scene/camera.h"
-#include "rendering/Mesh.h"
+#include "rendering/assets/Mesh.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>

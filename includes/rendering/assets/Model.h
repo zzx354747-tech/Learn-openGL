@@ -11,7 +11,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "rendering/Mesh.h"
+#include "rendering/assets/Mesh.h"
 #include "core/shader.h"
 
 #include <string>

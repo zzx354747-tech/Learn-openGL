@@ -1,7 +1,7 @@
 #include "core/shader.h"
 #include "vector"
 #include "scene/camera.h"
-#include "rendering/Model.h"
+#include "rendering/assets/Model.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>

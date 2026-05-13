@@ -5,28 +5,72 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "rendering/texture.h"
+#include "rendering/assets/texture.h"
 #include "core/shader.h"
 #include "scene/camera.h"
+#include "rendering/assets/CubeMesh.h"
+#include "rendering/assets/PlaneMesh.h"
+#include "rendering/postprocess/framebuffer.h"
+#include "rendering/postprocess/Screenquad.h"
 
-class RenderD1
+class SceneRender
 {
 public:
-    RenderD1(Shader& shader,
-            Camera& camera)
-        : shader(shader), camera(camera)
-    {
+    SceneRender(Shader& shader,
+            Camera& camera,
+            CubeMesh& cubeMesh,     
+            PlaneMesh& planeMesh)   
+        : shader(shader), camera(camera), cubeMesh(cubeMesh), planeMesh(planeMesh)
+    {} 
 
+    void render(
+        int bfwidth, 
+        int bfheight, 
+        GLTexture& cubeTexture, 
+        GLTexture& floorTexture, 
+        Shader& screenShader, 
+        Screenquad& screenQuad, 
+        Framebuffer& framebuffer
+    )
+    {
+        framebuffer.bind();
+        glViewport(0, 0, bfwidth, bfheight);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        drawCubeScene(bfwidth, bfheight, cubeTexture);
+        drawPlaneScene(bfwidth, bfheight, floorTexture);
+
+        framebuffer.unbind();
+        glViewport(0, 0, bfwidth, bfheight);
+
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        screenShader.use();
+        screenShader.setInt("screenTexture", 0);
+        glDisable(GL_DEPTH_TEST);
+        // 绑定帧缓冲区的纹理
+        glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID());
+        screenQuad.draw();
     }
 
 private:
     Shader& shader;
     Camera& camera;
-    unsigned int cubeVAO, planeVAO;
+    CubeMesh& cubeMesh;
+    PlaneMesh& planeMesh;
+
+    glm::vec3 cubePositions[3] = 
+    {
+    glm::vec3(-1.0f, 0.0f, -1.0f), 
+    glm::vec3( 1.5f, 0.0f, -2.5f), 
+    glm::vec3( 3.8f, 0.0f, -0.8f)  
+    };
 
     void drawCubeScene(int bfwidth, 
         int bfheight, 
-        glm::vec3 cubePositions[],
         GLTexture& cubeTexture)
     {
         shader.use();
@@ -47,8 +91,7 @@ private:
             model = glm::translate(model, cubePositions[i]);
             shader.setMat4("model", model);
             cubeTexture.bind();
-            glBindVertexArray(cubeVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);  
+            cubeMesh.draw();
         }
     }
 
@@ -71,8 +114,7 @@ private:
         shader.setMat4("projection", projection);
 
         floorTexture.bind();
-        glBindVertexArray(planeVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        planeMesh.draw();
     }
 
 };

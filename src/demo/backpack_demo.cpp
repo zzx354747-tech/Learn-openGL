@@ -1,8 +1,8 @@
 #include "core/shader.h"
 #include "scene/camera.h"
-#include "rendering/Mesh.h"
-#include "rendering/Model.h"
-#include "rendering/Renderer.h"
+#include "rendering/assets/Mesh.h"
+#include "rendering/assets/Model.h"
+#include "rendering/core/Renderer.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
