@@ -10,6 +10,7 @@
 #include "scene/camera.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
+#include "rendering/assets/CubeMap.h"
 #include "rendering/postprocess/framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
 
@@ -41,6 +42,7 @@ public:
 
         drawCubeScene(bfwidth, bfheight, cubeTexture);
         drawPlaneScene(bfwidth, bfheight, floorTexture);
+        drawSkyboxScene(bfwidth, bfheight);
 
         framebuffer.unbind();
         glViewport(0, 0, bfwidth, bfheight);
@@ -56,11 +58,19 @@ public:
         screenQuad.draw();
     }
 
+    void setSkybox(Shader& skyboxShader, CubeMap& skybox)
+    {
+        this->skyboxShader = &skyboxShader;
+        this->skybox = &skybox;
+    }
+
 private:
     Shader& shader;
     Camera& camera;
     CubeMesh& cubeMesh;
     PlaneMesh& planeMesh;
+    Shader* skyboxShader = nullptr;
+    CubeMap* skybox = nullptr;
 
     glm::vec3 cubePositions[3] = 
     {
@@ -68,6 +78,37 @@ private:
     glm::vec3( 1.5f, 0.0f, -2.5f), 
     glm::vec3( 3.8f, 0.0f, -0.8f)  
     };
+
+    void drawSkyboxScene(int bfwidth, int bfheight)
+    {
+        if (!skyboxShader || !skybox)
+            return;
+
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+
+        skyboxShader->use();
+        glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+        skyboxShader->setMat4("view", view);
+        skyboxShader->setInt("skybox", 0);
+        glm::mat4 projection = glm::perspective
+        (
+            glm::radians(45.0f), // 视野角（FOV）
+            static_cast<float>(bfwidth) / static_cast<float>(bfheight), // 宽高比
+            0.1f,  // 近裁剪面
+            100.0f // 远裁剪面
+        );
+        skyboxShader->setMat4("projection", projection);
+
+        skybox->bind();
+        // 绘制天空盒
+         
+        cubeMesh.draw();
+
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE); 
+       
+    }
 
     void drawCubeScene(int bfwidth, 
         int bfheight, 

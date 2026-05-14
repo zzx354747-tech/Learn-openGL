@@ -11,6 +11,7 @@
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
+#include "rendering/assets/CubeMap.h"
 #include "rendering/core/SceneRender.h"
 
 Framebuffer* framebuffer = nullptr;
@@ -103,10 +104,21 @@ int main()
         return -1;
     }
 
+    std::vector<std::string> skyboxFaces
+    {
+        "../textures/skybox/right.jpg",
+        "../textures/skybox/left.jpg",
+        "../textures/skybox/top.jpg",
+        "../textures/skybox/bottom.jpg",
+        "../textures/skybox/front.jpg",
+        "../textures/skybox/back.jpg"
+    };
+
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
     GLTexture cubeTexture("../textures/marble.jpg");
     GLTexture floorTexture("../textures/metal.png");
+    CubeMap skybox(skyboxFaces);
 
     Screenquad screenQuad;
 
@@ -115,6 +127,7 @@ int main()
 
     Shader screenShader("../src/shader/pratice/framebuffer/screen.vs", "../src/shader/pratice/framebuffer/screen.fs");
     Shader sceneShader("../src/shader/pratice/framebuffer/scene.vs", "../src/shader/pratice/framebuffer/scene.fs");
+    Shader skyboxShader("../src/shader/pratice/skybox/skybox.vs", "../src/shader/pratice/skybox/skybox.fs");
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
@@ -125,6 +138,8 @@ int main()
         cubeMesh,
         planeMesh
     );
+
+    sceneRender.setSkybox(skyboxShader, skybox);
 
     while (!glfwWindowShouldClose(window))
     {
