@@ -19,16 +19,15 @@ class SceneRender
 public:
     SceneRender(Shader& shader,
             Camera& camera,
-            CubeMesh& cubeMesh,     
-            PlaneMesh& planeMesh)   
-        : shader(shader), camera(camera), cubeMesh(cubeMesh), planeMesh(planeMesh)
+            CubeMesh& cubeMesh  
+            )   
+        : shader(shader), camera(camera), cubeMesh(cubeMesh)
     {} 
 
     void render(
         int bfwidth, 
         int bfheight, 
         GLTexture& cubeTexture, 
-        GLTexture& floorTexture, 
         Shader& screenShader, 
         Screenquad& screenQuad, 
         Framebuffer& framebuffer
@@ -41,7 +40,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         drawCubeScene(bfwidth, bfheight, cubeTexture);
-        drawPlaneScene(bfwidth, bfheight, floorTexture);
+        drawPlaneScene(bfwidth, bfheight);
         drawSkyboxScene(bfwidth, bfheight);
 
         framebuffer.unbind();
@@ -54,6 +53,7 @@ public:
         screenShader.setInt("screenTexture", 0);
         glDisable(GL_DEPTH_TEST);
         // 绑定帧缓冲区的纹理
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID());
         screenQuad.draw();
     }
@@ -64,12 +64,23 @@ public:
         this->skybox = &skybox;
     }
 
+    void setPlaneShader(Shader& planeShader, PlaneMesh& planeMesh, GLTexture& floorTexture)
+    {
+        this->planeShader = &planeShader;
+        this->planeMesh = &planeMesh;
+        this->floorTexture = &floorTexture;
+        this->enableFloor = true;
+    }
+
 private:
     Shader& shader;
     Camera& camera;
     CubeMesh& cubeMesh;
-    PlaneMesh& planeMesh;
+    PlaneMesh* planeMesh = nullptr;
+    GLTexture* floorTexture = nullptr;
+    bool enableFloor = false;
     Shader* skyboxShader = nullptr;
+    Shader* planeShader = nullptr;
     CubeMap* skybox = nullptr;
 
     glm::vec3 cubePositions[3] = 
@@ -100,6 +111,7 @@ private:
         );
         skyboxShader->setMat4("projection", projection);
 
+        glActiveTexture(GL_TEXTURE0);
         skybox->bind();
         // 绘制天空盒
          
@@ -114,6 +126,8 @@ private:
         int bfheight, 
         GLTexture& cubeTexture)
     {
+        if (!skybox)
+            return;
         shader.use();
         glm::mat4 view = camera.GetViewMatrix();
         shader.setMat4("view", view);
@@ -125,26 +139,30 @@ private:
             100.0f // 远裁剪面
         );
         shader.setMat4("projection", projection);
+        shader.setVec3("cameraPos", camera.Getposition());
 
         for (unsigned int i = 0; i < 3; i++)
         {
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, cubePositions[i]);
             shader.setMat4("model", model);
-            cubeTexture.bind();
+            shader.setInt("texture1", 0);
+            glActiveTexture(GL_TEXTURE0);
+            skybox->bind();
             cubeMesh.draw();
         }
     }
 
     void drawPlaneScene(int bfwidth, 
-        int bfheight,
-        GLTexture& floorTexture)
+        int bfheight)
     {
-        shader.use();
+        if (!enableFloor || !planeShader || !planeMesh || !floorTexture)
+            return;
+        planeShader->use();
         glm::mat4 model = glm::mat4(1.0f);
-        shader.setMat4("model", model);
+        planeShader->setMat4("model", model);
         glm::mat4 view = camera.GetViewMatrix();
-        shader.setMat4("view", view);
+        planeShader->setMat4("view", view);
         glm::mat4 projection = glm::perspective
         (
             glm::radians(45.0f), // 视野角（FOV）
@@ -152,10 +170,12 @@ private:
             0.1f,  // 近裁剪面
             100.0f // 远裁剪面
         );
-        shader.setMat4("projection", projection);
+        planeShader->setMat4("projection", projection);
 
-        floorTexture.bind();
-        planeMesh.draw();
+        planeShader->setInt("texture1", 0);
+        glActiveTexture(GL_TEXTURE0);
+        floorTexture->bind();
+        planeMesh->draw();
     }
 
 };

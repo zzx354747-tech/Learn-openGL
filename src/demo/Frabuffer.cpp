@@ -12,6 +12,7 @@
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
 #include "rendering/assets/CubeMap.h"
+#include "rendering/assets/SkyboxMesh.h"
 #include "rendering/core/SceneRender.h"
 
 Framebuffer* framebuffer = nullptr;
@@ -127,6 +128,7 @@ int main()
 
     Shader screenShader("../src/shader/pratice/framebuffer/screen.vs", "../src/shader/pratice/framebuffer/screen.fs");
     Shader sceneShader("../src/shader/pratice/framebuffer/scene.vs", "../src/shader/pratice/framebuffer/scene.fs");
+    Shader planeShader("../src/shader/pratice/framebuffer/plane.vs", "../src/shader/pratice/framebuffer/plane.fs");
     Shader skyboxShader("../src/shader/pratice/skybox/skybox.vs", "../src/shader/pratice/skybox/skybox.fs");
 
     CubeMesh cubeMesh;
@@ -135,11 +137,11 @@ int main()
     SceneRender sceneRender(
         sceneShader,
         camera,
-        cubeMesh,
-        planeMesh
+        cubeMesh
     );
 
     sceneRender.setSkybox(skyboxShader, skybox);
+    sceneRender.setPlaneShader(planeShader, planeMesh, floorTexture);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -154,7 +156,6 @@ int main()
             bfwidth, 
             bfheight, 
             cubeTexture, 
-            floorTexture, 
             screenShader, 
             screenQuad, 
             fb
@@ -166,4 +167,3 @@ int main()
     glfwTerminate();
     return 0;
 }
-    
