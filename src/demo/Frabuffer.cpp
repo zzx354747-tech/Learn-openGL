@@ -1,3 +1,8 @@
+#include "imgui.h"
+#define IMGUI_IMPL_OPENGL_LOADER_GLAD
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -21,6 +26,7 @@ bool cursorLocked = true; // 光标是否被锁定
 bool gravePresslastFrame = false; // 上一帧是否按下了`键
 float currentFrame = 0.0f;
 float lastFrame = 0.0f;
+float swapWaitMs = 0.0f;
 unsigned int fbo;
 int bfwidth, bfheight;
 
@@ -105,6 +111,23 @@ int main()
         return -1;
     }
 
+    // 启用垂直同步
+    glfwSwapInterval(1); 
+
+    IMGUI_CHECKVERSION();
+    // 创建ImGui上下文
+    ImGui::CreateContext();
+    // 拿到ImGui的IO对象
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    // 防止编译器警告
+    (void)io;
+    // 默认暗色主题
+    ImGui::StyleColorsDark();
+    // 将ImGui绑定到GLFW
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    // imgui使用GLSL 330版shader来画ui
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+
     std::vector<std::string> skyboxFaces
     {
         "../textures/skybox/right.jpg",
@@ -135,6 +158,7 @@ int main()
     PlaneMesh planeMesh;
 
     SceneRender sceneRender(
+        screenShader
         sceneShader,
         camera,
         cubeMesh
@@ -145,9 +169,24 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        // 准备开始新一帧ui渲染
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         currentFrame = static_cast<float>(glfwGetTime());
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        float FPS = 1.0f / deltaTime;
+
+        // 绘制一个简单的窗口
+        ImGui::Begin("Framebuffer Demo");
+        ImGui::Text("welcome to framebuffer demo!");
+        ImGui::Text("FPS: %.2f", FPS);
+        ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
+        ImGui::End();
+
         processInput(window, deltaTime);
 
         glfwGetFramebufferSize(window, &bfwidth, &bfheight);
@@ -160,10 +199,21 @@ int main()
             screenQuad, 
             fb
         );
-    
+
+        // 渲染ImGui界面
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        double beforeSwap = glfwGetTime();
         glfwSwapBuffers(window);
+        double afterSwap = glfwGetTime();
+        swapWaitMs = static_cast<float>((afterSwap - beforeSwap) * 1000.0);
         glfwPollEvents();
 }
+    // 删除ImGui上下文
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     glfwTerminate();
     return 0;
 }

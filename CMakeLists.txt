@@ -24,6 +24,25 @@ set(GLAD_SOURCES
     ${CMAKE_SOURCE_DIR}/third_party/glad/src/gl.c
 )
 
+# ImGui 源文件
+set(IMGUI_SOURCES
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui_draw.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui_tables.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui_widgets.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui_demo.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/backends/imgui_impl_glfw.cpp
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/backends/imgui_impl_opengl3.cpp
+)
+
+# 创建 ImGui 库
+add_library(imgui STATIC ${IMGUI_SOURCES})
+target_include_directories(imgui PUBLIC
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master
+    ${CMAKE_SOURCE_DIR}/third_party/imgui-master/backends
+)
+target_link_libraries(imgui PUBLIC glfw)
+
 # 添加可执行文件 - 3Ddemo
 add_executable(3Ddemo
     src/demo/3Ddemo.cpp
@@ -251,6 +270,7 @@ add_executable(fbo_demo
 
 # 链接库
 target_link_libraries(fbo_demo
+    imgui
     glfw
     assimp
     z
