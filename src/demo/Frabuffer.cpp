@@ -16,6 +16,7 @@
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
+#include "rendering/assets/LightMesh.h"
 #include "rendering/assets/CubeMap.h"
 #include "rendering/assets/SkyboxMesh.h"
 #include "rendering/core/SceneRender.h"
@@ -150,22 +151,45 @@ int main()
     framebuffer = &fb;
 
     Shader screenShader("../src/shader/pratice/framebuffer/screen.vs", "../src/shader/pratice/framebuffer/screen.fs");
-    Shader sceneShader("../src/shader/pratice/framebuffer/scene.vs", "../src/shader/pratice/framebuffer/scene.fs");
-    Shader planeShader("../src/shader/pratice/framebuffer/plane.vs", "../src/shader/pratice/framebuffer/plane.fs");
-    Shader skyboxShader("../src/shader/pratice/skybox/skybox.vs", "../src/shader/pratice/skybox/skybox.fs");
+    Shader basicCubeShader("../src/shader/pratice/scenerender/basic_cube.vs", "../src/shader/pratice/scenerender/basic_cube.fs");
+    Shader basicPlaneShader("../src/shader/pratice/scenerender/basic_plane.vs", "../src/shader/pratice/scenerender/basic_plane.fs");
+    Shader lightingCubeShader("../src/shader/pratice/scenerender/lighting_cube.vs", "../src/shader/pratice/scenerender/lighting_cube.fs");
+    Shader lightingPlaneShader("../src/shader/pratice/scenerender/lighting_plane.vs", "../src/shader/pratice/scenerender/lighting_plane.fs");
+    Shader lightCubeShader("../src/shader/pratice/scenerender/light_cube.vs", "../src/shader/pratice/scenerender/light_cube.fs");
+    Shader cubemapShader("../src/shader/pratice/scenerender/cubemap.vs", "../src/shader/pratice/scenerender/cubemap.fs");
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
+    LightMesh lightMesh;
+    SkyboxMesh skyboxMesh;
 
-    SceneRender sceneRender(
-        screenShader
-        sceneShader,
-        camera,
-        cubeMesh
-    );
+    SceneRenderResources sceneResources;
+    sceneResources.basicCubeShader = &basicCubeShader;
+    sceneResources.basicPlaneShader = &basicPlaneShader;
+    sceneResources.lightingCubeShader = &lightingCubeShader;
+    sceneResources.lightingPlaneShader = &lightingPlaneShader;
+    sceneResources.lightCubeShader = &lightCubeShader;
+    sceneResources.reflectShader = &cubemapShader;
+    sceneResources.cubeMesh = &cubeMesh;
+    sceneResources.planeMesh = &planeMesh;
+    sceneResources.lightMesh = &lightMesh;
+    sceneResources.skyboxMesh = &skyboxMesh;
+    sceneResources.skybox = &skybox;
+    sceneResources.floorTexture = &floorTexture;
 
-    sceneRender.setSkybox(skyboxShader, skybox);
-    sceneRender.setPlaneShader(planeShader, planeMesh, floorTexture);
+    SceneRenderConfig sceneConfig;
+    sceneConfig.enableFloor = true;
+    sceneConfig.enableSkybox = true;
+    sceneConfig.enablePointLight = true;
+    sceneConfig.enableDirectionalLight = false;
+    sceneConfig.enableFlashlight = false;
+
+    SceneRenderState sceneState;
+    SceneRender sceneRender(sceneResources, sceneConfig, sceneState, camera);
+    RenderMode renderMode = RenderMode::Basic;
+    int renderModeIndex = 0;
+
+    SetupLightdata lightData;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -180,12 +204,62 @@ int main()
 
         float FPS = 1.0f / deltaTime;
 
-        // 绘制一个简单的窗口
         ImGui::Begin("Framebuffer Demo");
         ImGui::Text("welcome to framebuffer demo!");
         ImGui::Text("FPS: %.2f", FPS);
         ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
+        ImGui::Separator();
+        const char* renderModeNames[] = {"Basic", "Lighting", "Reflection"};
+        if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 3))
+        {
+            renderMode = static_cast<RenderMode>(renderModeIndex);
+        }
+        ImGui::Checkbox("Floor", &sceneConfig.enableFloor);
+        ImGui::Checkbox("Skybox", &sceneConfig.enableSkybox);
+        ImGui::Checkbox("Point Light", &sceneConfig.enablePointLight);
+        ImGui::Checkbox("Directional Light", &sceneConfig.enableDirectionalLight);
+        ImGui::Checkbox("Flashlight", &sceneConfig.enableFlashlight);
+
+        if (sceneConfig.enablePointLight)
+        {
+            ImGui::SeparatorText("Point Light Settings");
+
+            ImGui::ColorEdit3("Point Light Ambient", glm::value_ptr(lightData.Pambient));
+            ImGui::ColorEdit3("Point Light Diffuse", glm::value_ptr(lightData.Pdiffuse));
+            ImGui::ColorEdit3("Point Light Specular", glm::value_ptr(lightData.Pspecular));
+            ImGui::DragFloat("Point Light Constant", &lightData.Pconstant, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Point Light Linear", &lightData.Plinear, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Point Light Quadratic", &lightData.Pquadratic, 0.001f, 0.0f, 1.0f);
+        }
+
+        if (sceneConfig.enableDirectionalLight)
+        {
+            ImGui::SeparatorText("Directional Light Settings");
+
+            ImGui::ColorEdit3("Directional Light Ambient", glm::value_ptr(lightData.Dambient));
+            ImGui::ColorEdit3("Directional Light Diffuse", glm::value_ptr(lightData.Ddiffuse));
+            ImGui::ColorEdit3("Directional Light Specular", glm::value_ptr(lightData.Dspecular));
+        }
+
+        if (sceneConfig.enableFlashlight)
+        {
+            ImGui::SeparatorText("Flashlight Settings");
+
+            ImGui::ColorEdit3("Flashlight Ambient", glm::value_ptr(lightData.Fambient));
+            ImGui::ColorEdit3("Flashlight Diffuse", glm::value_ptr(lightData.Fdiffuse));
+            ImGui::ColorEdit3("Flashlight Specular", glm::value_ptr(lightData.Fspecular));
+            ImGui::DragFloat("Flashlight Constant", &lightData.Fconstant, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight Linear", &lightData.Flinear, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight Quadratic", &lightData.Fquadratic, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight CutOff", &lightData.cutOff, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight OuterCutOff", &lightData.outerCutOff, 0.001f, 0.0f, 1.0f);
+        }
+
         ImGui::End();
+
+        sceneRender.setRenderMode(renderMode);
+        sceneRender.setconfig(sceneConfig);
+        sceneRender.setLightData(lightData);
 
         processInput(window, deltaTime);
 
