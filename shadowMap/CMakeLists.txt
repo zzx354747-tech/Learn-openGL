@@ -265,8 +265,6 @@ add_executable(fbo_demo
     src/demo/Frabuffer.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
-    includes/rendering/Model/Model.cpp
-    includes/rendering/Model/Mesh.cpp
     ${GLAD_SOURCES}
 )
 

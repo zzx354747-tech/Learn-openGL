@@ -22,7 +22,6 @@
 #include "rendering/core/SceneDrawer.h"
 #include "rendering/postprocess/DirectionalShadowMap.h"
 
-
 struct SceneRenderResources
 {
     Shader* basicCubeShader = nullptr;
