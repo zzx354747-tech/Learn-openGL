@@ -1,8 +1,11 @@
 #version 330 core
 
-in vec3 FragPos;
-in vec3 Normal;
-in vec2 TexCoords;
+in VS_OUT {
+    vec3 FragPos;
+    vec3 Normal;
+    vec2 TexCoords;
+    vec4 FragPosLightSpace;
+} fs_in;
 
 out vec4 FragColor;
 
@@ -37,6 +40,9 @@ struct FlashLight {
 };
 
 uniform sampler2D texture1;
+// 接收阴影贴图
+uniform sampler2D shadowMap;
+
 uniform PointLight pointLight;
 uniform Sun sun;
 uniform FlashLight flashLight;
@@ -44,6 +50,25 @@ uniform vec3 viewPos;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    // 将片段位置从裁剪空间转换到[0,1]范围内，告诉去哪里采样阴影贴图
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+     // 处理视野外的片段，防止出现不正确的阴影
+    if (projCoords.z > 1.0)
+        return 0.0;
+
+    // 获取当前片段在阴影贴图中的深度
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    float currentDepth = projCoords.z;
+
+    // 计算阴影
+    float shadow = currentDepth - 0.005 > closestDepth ? 1.0 : 0.0;
+    return shadow;
+}
 
 vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor)
 {
@@ -70,6 +95,17 @@ vec3 calcSun(Sun light, vec3 normal, vec3 viewDir, vec3 baseColor)
     vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
     vec3 specular = light.specular * spec;
+
+    float shadowStrength = 0.8; // 阴影强度，可以根据需要调整
+
+    float shadow = ShadowCalculation(fs_in.FragPosLightSpace);
+
+    shadow *= shadowStrength; // 将阴影强度应用到阴影值上
+
+    // 将阴影应用到漫反射和镜面反射上
+    diffuse *= (1.0 - shadow);
+    specular *= (1.0 - shadow);
+    
     return ambient + diffuse + specular;
 }
 
@@ -93,17 +129,16 @@ vec3 calcFlashLight(FlashLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 
 void main()
 {
-    vec3 baseColor = texture(texture1, TexCoords).rgb;
-    vec3 normal = normalize(Normal);
-    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 baseColor = texture(texture1, fs_in.TexCoords).rgb;
+    vec3 normal = normalize(fs_in.Normal);
+    vec3 viewDir = normalize(viewPos - fs_in.FragPos);
 
     vec3 result = vec3(0.0);
     if (enablePointLight)
-        result += calcPointLight(pointLight, normal, FragPos, viewDir, baseColor);
+        result += calcPointLight(pointLight, normal, fs_in.FragPos, viewDir, baseColor);
     if (enableDirectionalLight)
         result += calcSun(sun, normal, viewDir, baseColor);
     if (enableFlashlight)
-        result += calcFlashLight(flashLight, normal, FragPos, viewDir, baseColor);
-
+        result += calcFlashLight(flashLight, normal, fs_in.FragPos, viewDir, baseColor);
     FragColor = vec4(result, 1.0);
 }

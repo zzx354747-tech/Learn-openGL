@@ -20,6 +20,9 @@
 #include "rendering/assets/CubeMap.h"
 #include "rendering/assets/SkyboxMesh.h"
 #include "rendering/core/SceneRender.h"
+#include "rendering/uniforms/LightUniformSetter.h"
+#include "rendering/core/SceneDrawer.h"
+#include "rendering/postprocess/DirectionalShadowMap.h"
 
 Framebuffer* framebuffer = nullptr;
 Camera camera;
@@ -141,8 +144,8 @@ int main()
 
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
-    GLTexture cubeTexture("../textures/marble.jpg");
-    GLTexture floorTexture("../textures/metal.png");
+    GLTexture cubeTexture("../textures/wooden_box.png");
+    GLTexture floorTexture("../textures/wooden_floor.png");
     CubeMap skybox(skyboxFaces);
 
     Screenquad screenQuad;
@@ -157,6 +160,8 @@ int main()
     Shader lightingPlaneShader("../src/shader/pratice/scenerender/lighting_plane.vs", "../src/shader/pratice/scenerender/lighting_plane.fs");
     Shader lightCubeShader("../src/shader/pratice/scenerender/light_cube.vs", "../src/shader/pratice/scenerender/light_cube.fs");
     Shader cubemapShader("../src/shader/pratice/scenerender/cubemap.vs", "../src/shader/pratice/scenerender/cubemap.fs");
+    Shader shadowDebugShader("../src/shader/pratice/scenerender/shadowMap/shadowDebug.vs", "../src/shader/pratice/scenerender/shadowMap/shadowDebug.fs");
+    Shader shadowMapShader("../src/shader/pratice/scenerender/shadowMap/shadowMap.vs", "../src/shader/pratice/scenerender/shadowMap/shadowMap.fs");
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
@@ -176,6 +181,8 @@ int main()
     sceneResources.skyboxMesh = &skyboxMesh;
     sceneResources.skybox = &skybox;
     sceneResources.floorTexture = &floorTexture;
+    sceneResources.shadowDebugShader = &shadowDebugShader;
+    sceneResources.shadowMapShader = &shadowMapShader;  
 
     SceneRenderConfig sceneConfig;
     sceneConfig.enableFloor = true;
@@ -185,11 +192,19 @@ int main()
     sceneConfig.enableFlashlight = false;
 
     SceneRenderState sceneState;
-    SceneRender sceneRender(sceneResources, sceneConfig, sceneState, camera);
+    SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState);
+
+    DirectionalShadowMap shadowDebug(*sceneResources.shadowDebugShader, sceneDrawer, 2048, 2048);
+    DirectionalShadowMap shadowMap(*sceneResources.shadowMapShader, sceneDrawer, 2048, 2048);
+
+    ShadowResources shadowResources;
+    shadowResources.shadowMap = &shadowMap;
+
+    SceneRender sceneRender(sceneResources, shadowResources, sceneConfig, sceneState, camera, sceneDrawer);
     RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
 
-    SetupLightdata lightData;
+    LightSettings lightSettings;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -209,8 +224,8 @@ int main()
         ImGui::Text("FPS: %.2f", FPS);
         ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
         ImGui::Separator();
-        const char* renderModeNames[] = {"Basic", "Lighting", "Reflection"};
-        if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 3))
+        const char* renderModeNames[] = {"Basic", "Lighting", "Reflection", "Shadow Debug"};
+        if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 4))
         {
             renderMode = static_cast<RenderMode>(renderModeIndex);
         }
@@ -224,42 +239,42 @@ int main()
         {
             ImGui::SeparatorText("Point Light Settings");
 
-            ImGui::ColorEdit3("Point Light Ambient", glm::value_ptr(lightData.Pambient));
-            ImGui::ColorEdit3("Point Light Diffuse", glm::value_ptr(lightData.Pdiffuse));
-            ImGui::ColorEdit3("Point Light Specular", glm::value_ptr(lightData.Pspecular));
-            ImGui::DragFloat("Point Light Constant", &lightData.Pconstant, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Point Light Linear", &lightData.Plinear, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Point Light Quadratic", &lightData.Pquadratic, 0.001f, 0.0f, 1.0f);
+            ImGui::ColorEdit3("Point Light Ambient", glm::value_ptr(lightSettings.pointAmbient));
+            ImGui::ColorEdit3("Point Light Diffuse", glm::value_ptr(lightSettings.pointDiffuse));
+            ImGui::ColorEdit3("Point Light Specular", glm::value_ptr(lightSettings.pointSpecular));
+            ImGui::DragFloat("Point Light Constant", &lightSettings.pointConstant, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Point Light Linear", &lightSettings.pointLinear, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Point Light Quadratic", &lightSettings.pointQuadratic, 0.001f, 0.0f, 1.0f);
         }
 
         if (sceneConfig.enableDirectionalLight)
         {
             ImGui::SeparatorText("Directional Light Settings");
 
-            ImGui::ColorEdit3("Directional Light Ambient", glm::value_ptr(lightData.Dambient));
-            ImGui::ColorEdit3("Directional Light Diffuse", glm::value_ptr(lightData.Ddiffuse));
-            ImGui::ColorEdit3("Directional Light Specular", glm::value_ptr(lightData.Dspecular));
+            ImGui::ColorEdit3("Directional Light Ambient", glm::value_ptr(lightSettings.sunAmbient));
+            ImGui::ColorEdit3("Directional Light Diffuse", glm::value_ptr(lightSettings.sunDiffuse));
+            ImGui::ColorEdit3("Directional Light Specular", glm::value_ptr(lightSettings.sunSpecular));
         }
 
         if (sceneConfig.enableFlashlight)
         {
             ImGui::SeparatorText("Flashlight Settings");
 
-            ImGui::ColorEdit3("Flashlight Ambient", glm::value_ptr(lightData.Fambient));
-            ImGui::ColorEdit3("Flashlight Diffuse", glm::value_ptr(lightData.Fdiffuse));
-            ImGui::ColorEdit3("Flashlight Specular", glm::value_ptr(lightData.Fspecular));
-            ImGui::DragFloat("Flashlight Constant", &lightData.Fconstant, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight Linear", &lightData.Flinear, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight Quadratic", &lightData.Fquadratic, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight CutOff", &lightData.cutOff, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight OuterCutOff", &lightData.outerCutOff, 0.001f, 0.0f, 1.0f);
+            ImGui::ColorEdit3("Flashlight Ambient", glm::value_ptr(lightSettings.flashAmbient));
+            ImGui::ColorEdit3("Flashlight Diffuse", glm::value_ptr(lightSettings.flashDiffuse));
+            ImGui::ColorEdit3("Flashlight Specular", glm::value_ptr(lightSettings.flashSpecular));
+            ImGui::DragFloat("Flashlight Constant", &lightSettings.flashConstant, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight Linear", &lightSettings.flashLinear, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight Quadratic", &lightSettings.flashQuadratic, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight CutOff", &lightSettings.flashCutOff, 0.001f, 0.0f, 1.0f);
+            ImGui::DragFloat("Flashlight OuterCutOff", &lightSettings.flashOuterCutOff, 0.001f, 0.0f, 1.0f);
         }
 
         ImGui::End();
 
         sceneRender.setRenderMode(renderMode);
         sceneRender.setconfig(sceneConfig);
-        sceneRender.setLightData(lightData);
+        sceneRender.setLightData(lightSettings);
 
         processInput(window, deltaTime);
 

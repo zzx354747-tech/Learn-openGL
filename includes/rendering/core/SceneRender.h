@@ -15,44 +15,12 @@
 #include "rendering/assets/CubeMap.h"
 #include "rendering/postprocess/framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
-
-struct SetupLightdata
-{
-    glm::vec3 Pposition = glm::vec3(1.2f, 1.0f, 2.0f);
-    glm::vec3 Pambient = glm::vec3(0.2f);
-    glm::vec3 Pdiffuse = glm::vec3(0.8f);
-    glm::vec3 Pspecular = glm::vec3(1.0f);
-
-    glm::vec3 Ddirection = glm::vec3(-0.2f, -1.0f, -0.3f);
-    glm::vec3 Dambient = glm::vec3(0.05f);
-    glm::vec3 Ddiffuse = glm::vec3(0.4f);
-    glm::vec3 Dspecular = glm::vec3(0.5f);
-
-    glm::vec3 Fambient = glm::vec3(0.0f);
-    glm::vec3 Fdiffuse = glm::vec3(1.0f);
-    glm::vec3 Fspecular = glm::vec3(1.0f);
-
-    float Pconstant = 1.0f;
-    float Plinear = 0.09f;
-    float Pquadratic = 0.032f;
-
-    float Fconstant = 1.0f; 
-    float Flinear = 0.09f;
-    float Fquadratic = 0.032f;
-
-    float cutOff = glm::cos(glm::radians(12.5f));
-    float outerCutOff = glm::cos(glm::radians(17.5f));
-
-};
-
-struct SceneRenderConfig
-{
-    bool enableFloor = false;
-    bool enableSkybox = false;
-    bool enableFlashlight = false;
-    bool enablePointLight = false;
-    bool enableDirectionalLight = false;
-};
+#include "rendering/uniforms/CameraUniformSetter.h"
+#include "rendering/uniforms/SkyboxCameraUniformSetter.h"
+#include "rendering/uniforms/LightUniformSetter.h"
+#include "rendering/core/SceneRenderTypes.h"
+#include "rendering/core/SceneDrawer.h"
+#include "rendering/postprocess/DirectionalShadowMap.h"
 
 struct SceneRenderResources
 {
@@ -62,6 +30,8 @@ struct SceneRenderResources
     Shader* lightingPlaneShader = nullptr;
     Shader* lightCubeShader = nullptr;
     Shader* reflectShader = nullptr;
+    Shader* shadowDebugShader = nullptr;
+    Shader* shadowMapShader = nullptr;
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
@@ -72,24 +42,17 @@ struct SceneRenderResources
     GLTexture* floorTexture = nullptr;
 };
 
-struct SceneRenderState
+struct ShadowResources
 {
-    glm::vec3 cubePositions[3] = 
-    {
-        glm::vec3(-1.0f, 0.0f, -1.0f), 
-        glm::vec3( 1.5f, 0.0f, -2.5f), 
-        glm::vec3( 3.8f, 0.0f, -0.8f)  
-    };
-
-    glm::vec3 lightPositions = glm::vec3(1.2f, 1.0f, 2.0f);
-    glm::vec3 color = glm::vec3(1.0f);
+    DirectionalShadowMap* shadowMap = nullptr;
 };
 
 enum class RenderMode
 {
     Basic,
     Lighting,
-    Reflection
+    Reflection,
+    ShadowDebug,
 };
 
 class SceneRender
@@ -98,10 +61,17 @@ public:
     
     SceneRender(
         SceneRenderResources resources,
+        ShadowResources shadowResources,
         SceneRenderConfig config,
         SceneRenderState state,
-        Camera& camera
-    )        : resources(resources), config(config), state(state), camera(camera)
+        Camera& camera,
+        SceneDrawer& drawer
+    )        : resources(resources), 
+        shadowResources(shadowResources),   
+        config(config), 
+        state(state), 
+        camera(camera), 
+        drawer(drawer)
     {
     }
 
@@ -114,6 +84,24 @@ public:
         Framebuffer& framebuffer
     )
     {
+        shadowResources.shadowMap->renderShadowMap();
+
+        if (renderMode == RenderMode::ShadowDebug && resources.shadowDebugShader)
+        {
+            glViewport(0, 0, bfwidth, bfheight);
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // 显示深度图的shader绑定生成深度图的texture
+            resources.shadowDebugShader->use();
+            resources.shadowDebugShader->setInt("depthMap", 0);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, shadowResources.shadowMap->getDepthMapTexture());
+            screenQuad.draw();
+            return;
+        }
+
         framebuffer.bind();
         glViewport(0, 0, bfwidth, bfheight);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -123,7 +111,7 @@ public:
         drawCubeScene(bfwidth, bfheight, cubeTexture);
         drawPlaneScene(bfwidth, bfheight);
         drawLightcube(bfwidth, bfheight);
-        drawSkyboxScene(bfwidth, bfheight);
+        renderSkyboxPass(bfwidth, bfheight);
 
         framebuffer.unbind();
         glViewport(0, 0, bfwidth, bfheight);
@@ -150,20 +138,31 @@ public:
         config = newConfig;
     }
 
-    void setLightData(SetupLightdata newData)
+    void setLightData(const LightSettings& newData)
     {
-        data = newData;
+        lightSettings = newData;
     }
 
 
 private:
     Camera& camera;
+    SceneDrawer& drawer;
     SceneRenderConfig config;
     SceneRenderResources resources;
+    ShadowResources shadowResources;
     SceneRenderState state;
-    SetupLightdata data;
-
+    LightSettings lightSettings;
     RenderMode renderMode = RenderMode::Basic;
+
+    void setupShadowUniforms(Shader& shader)
+    {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, shadowResources.shadowMap->getDepthMapTexture());
+
+        shader.setInt("shadowMap", 1);
+
+        ShadowMapUniformSetter::apply(shader);
+    }
 
     Shader* getCubeShader() const
     {
@@ -177,7 +176,7 @@ private:
         
             case RenderMode::Reflection:
             return resources.reflectShader;
-        
+            
             default:
             return nullptr;
         }
@@ -201,151 +200,61 @@ private:
         }
     }
 
-    bool bindCubeTexture(Shader& shader, GLTexture& cubeTexture) const
+    void bindCubeTexture(Shader& shader, GLTexture& cubeTexture)
     {
         if (renderMode == RenderMode::Reflection)
         {
-            if (!resources.skybox)
-                return false;
             glActiveTexture(GL_TEXTURE0);
             shader.setBool("isSkybox", false);
             shader.setInt("skybox", 0);
             shader.setVec3("cameraPos", camera.Getposition());
             resources.skybox->bind();
-            return true;
         }
         else
         {
             glActiveTexture(GL_TEXTURE0);
             shader.setInt("texture1", 0);
             cubeTexture.bind();
-            return true;
         }
     }
 
-    void drawCube(Shader& shader)
+    void bindPlaneTexture(Shader& shader, GLTexture& floorTexture) const
     {
-        for (unsigned int i = 0; i < 3; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, state.cubePositions[i]);
-            float angle = 20.0f * i; 
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            shader.setMat4("model", model);
-            resources.cubeMesh->draw();
-        }
-    }
-
-    bool bindPlaneTexture(Shader& shader, GLTexture& floorTexture) const
-    {
-        if (!config.enableFloor || !resources.floorTexture)
-            return false;
         glActiveTexture(GL_TEXTURE0);
         shader.setInt("texture1", 0);
         floorTexture.bind();
-        return true;
     }
 
-    void drawPlane(Shader& shader)
+    void bindSkyboxTexture(Shader& shader) const
     {
-        glm::mat4 model = glm::mat4(1.0f);
-        shader.setMat4("model", model);
-        resources.planeMesh->draw();
-    }
-
-    bool bindSkyboxTexture(Shader& shader) const
-    {
-        if (!config.enableSkybox || !resources.skybox)
-            return false;
         glActiveTexture(GL_TEXTURE0);
         shader.setInt("skybox", 0);
         resources.skybox->bind();
-        return true;
     }
 
-    void drawSkybox(Shader& shader, int bfwidth, int bfheight)
+    void renderSkyboxPass(int bfwidth, int bfheight)
     {
+        if (!resources.skyboxMesh||
+            !resources.skybox||
+            !config.enableSkybox||
+            !resources.reflectShader)
+            return;
+
+        Shader& shader = *resources.reflectShader;
         shader.use();
 
-        if (!bindSkyboxTexture(shader))
-            return;
+        bindSkyboxTexture(shader);
 
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
 
-        setupSkyboxCamera(shader, bfwidth, bfheight);
+        SkyboxCameraUniformSetter::apply(shader, camera, bfwidth, bfheight);
 
         shader.setBool("isSkybox", true);
         resources.skyboxMesh->draw();
 
         glDepthFunc(GL_LESS);
         glDepthMask(GL_TRUE); 
-    }
-            
-
-    void setupCamera(Shader &shader, int bfwidth, int bfheight)
-    {
-        glm::mat4 view = camera.GetViewMatrix();
-        shader.setMat4("view", view);
-        glm::mat4 projection = glm::perspective
-        (
-            glm::radians(45.0f), // 视野角（FOV）
-            static_cast<float>(bfwidth) / static_cast<float>(bfheight), // 宽高比
-            0.1f,  // 近裁剪面
-            100.0f // 远裁剪面
-        );
-        shader.setMat4("projection", projection);
-    }
-
-    void setupSkyboxCamera(Shader &shader, int bfwidth, int bfheight)
-    {
-        glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-        shader.setMat4("view", view);
-        glm::mat4 projection = glm::perspective
-        (
-            glm::radians(45.0f), // 视野角（FOV）
-            static_cast<float>(bfwidth) / static_cast<float>(bfheight), // 宽高比
-            0.1f,  // 近裁剪面
-            100.0f // 远裁剪面
-        );
-        shader.setMat4("projection", projection);
-    }
-
-    void setupPointLight(Shader& shader)
-    {
-        shader.setVec3("pointLight.position", state.lightPositions);
-        shader.setVec3("pointLight.ambient", data.Pambient);
-        shader.setVec3("pointLight.diffuse", data.Pdiffuse);
-        shader.setVec3("pointLight.specular", data.Pspecular);
-
-        shader.setFloat("pointLight.constant", data.Pconstant);
-        shader.setFloat("pointLight.linear", data.Plinear);
-        shader.setFloat("pointLight.quadratic", data.Pquadratic);
-    }
-
-    void setupFlashLight(Shader& shader)
-    {
-        shader.setVec3("flashLight.position", camera.Getposition());
-        shader.setVec3("flashLight.direction", camera.GetFront());
-
-        shader.setVec3("flashLight.ambient", data.Fambient);
-        shader.setVec3("flashLight.diffuse", data.Fdiffuse);
-        shader.setVec3("flashLight.specular", data.Fspecular);
-
-        shader.setFloat("flashLight.constant", data.Fconstant);
-        shader.setFloat("flashLight.linear", data.Flinear);
-        shader.setFloat("flashLight.quadratic", data.Fquadratic);
-
-        shader.setFloat("flashLight.cutOff", data.cutOff);
-        shader.setFloat("flashLight.outerCutOff", data.outerCutOff);
-    }
-
-    void setupDirectionalLight(Shader& shader)
-    {
-        shader.setVec3("sun.direction", data.Ddirection);
-        shader.setVec3("sun.ambient", data.Dambient);
-        shader.setVec3("sun.diffuse", data.Ddiffuse);
-        shader.setVec3("sun.specular", data.Dspecular);
     }
 
     void setupCubeLighting(Shader& shader)
@@ -355,25 +264,7 @@ private:
         shader.setBool("enableDirectionalLight", config.enableDirectionalLight);
         shader.setBool("enableFlashlight", config.enableFlashlight);
 
-        if (config.enablePointLight)
-            setupPointLight(shader);
-
-        if (config.enableDirectionalLight)
-            setupDirectionalLight(shader);
-
-        if (config.enableFlashlight)
-            setupFlashLight(shader);
-    }
-
-    void drawSkyboxScene(int bfwidth, int bfheight)
-    {
-        if (!config.enableSkybox || 
-            !resources.reflectShader || 
-            !resources.skybox ||
-            !resources.skyboxMesh)
-            return;
-
-            drawSkybox(*resources.reflectShader, bfwidth, bfheight);
+        LightUniformSetter::apply(shader, lightSettings, config, state, camera);
     }
 
     void drawLightcube(int bfwidth, int bfheight)
@@ -388,7 +279,7 @@ private:
         model = glm::scale(model, glm::vec3(0.2f)); // 将灯光立方体缩小
         resources.lightCubeShader->setMat4("model", model);
 
-        setupCamera(*resources.lightCubeShader, bfwidth, bfheight);
+        CameraUniformSetter::apply(*resources.lightCubeShader, camera, bfwidth, bfheight);
 
         resources.lightMesh->draw();
     }
@@ -406,14 +297,18 @@ private:
         if (renderMode == RenderMode::Lighting)
         {
             setupCubeLighting(*shader);
+            setupShadowUniforms(*resources.lightingCubeShader);
         }
 
-        setupCamera(*shader, bfwidth, bfheight);
+        CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
 
-        if (!bindCubeTexture(*shader, cubeTexture))
+        
+        if (renderMode == RenderMode::Reflection && !resources.skybox)
             return;
 
-        drawCube(*shader);
+        bindCubeTexture(*shader, cubeTexture);
+
+        drawer.drawCubes(*shader);
     }
 
     void drawPlaneScene(int bfwidth, 
@@ -432,14 +327,14 @@ private:
         if (renderMode == RenderMode::Lighting)
         {
             setupCubeLighting(*shader);
+            setupShadowUniforms(*resources.lightingPlaneShader);
         }
 
-        setupCamera(*shader, bfwidth, bfheight);
+        CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
 
-        if (!bindPlaneTexture(*shader, *resources.floorTexture))
-            return;
+        bindPlaneTexture(*shader, *resources.floorTexture);
 
-        drawPlane(*shader);
+        drawer.drawPlane(*shader);
     }
 
 };

@@ -53,6 +53,9 @@ private:
             else if (nrChannels == 4)
                 format = GL_RGBA;
 
+            // 对齐要求，确保每行数据的起始地址是4字节对齐的
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            
             glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
             glGenerateMipmap(GL_TEXTURE_2D);
         }
