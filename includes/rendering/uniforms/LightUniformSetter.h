@@ -1,6 +1,6 @@
 #pragma once
-#include "core/shader.h"
-#include "scene/camera.h"
+#include "core/Shader.h"
+#include "scene/Camera.h"
 #include "rendering/core/SceneRenderTypes.h"
 
 struct LightSettings

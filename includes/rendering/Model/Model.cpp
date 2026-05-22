@@ -1,8 +1,18 @@
 #include "Model.h"
 #include "stb_image.h"
 
+// processNode递归便利节点
+// processMesh遍历节点中的mesh
+// loadMaterialTextures遍历材质的所有纹理，加载到纹理数组里
+
+// Model构造函数,负责加载模型，里面包含processNode,processMesh,loadMaterialTextures整个流程
+
 void Model::loadModel(const std::string& path)
 {
+    boundsMin = glm::vec3(0.0f);
+    boundsMax = glm::vec3(0.0f);
+    hasBounds = false;
+
     // 创建Assimp导入器实例
     Assimp::Importer importer;
 
@@ -29,6 +39,7 @@ void Model::loadModel(const std::string& path)
 }
 
     // 第二个参数: processNode可以读取scene,但不能修改scene
+    // 递归处理节点和子节点
 void Model::processNode(aiNode* node, const aiScene* scene)
 {
     // 处理当前节点的所有网格
@@ -49,6 +60,7 @@ void Model::processNode(aiNode* node, const aiScene* scene)
     }
 }
 
+// 遍历节点中的mesh
 Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 {
     std::vector<vertex> vertices;
@@ -65,6 +77,18 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
             mesh->mVertices[i].y,
             mesh->mVertices[i].z
         );
+
+        if (!hasBounds)
+        {
+            boundsMin = v.position;
+            boundsMax = v.position;
+            hasBounds = true;
+        }
+        else
+        {
+            boundsMin = glm::min(boundsMin, v.position);
+            boundsMax = glm::max(boundsMax, v.position);
+        }
 
         if (mesh->HasNormals())
         {
@@ -101,6 +125,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
         }
     }
 
+    // 处理材质数据
     if (mesh->mMaterialIndex >= 0)
     {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
@@ -133,6 +158,9 @@ void Model::draw(Shader& shader)
     }
 }
 
+// 返回textureID
+// 纹理在scene -> mTextures数组里， 所以需要scene指针来访问
+// 处理单个纹理
 unsigned int TextureFromFile(const char* path, const std::string& directory, const aiScene* scene)
 {
     std::string filename = std::string(path);
@@ -253,6 +281,7 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
     return textureID;
 }
 
+// 遍历材质的所有纹理，加载到纹理数组里
 std::vector<texture> Model::loadMaterialTextures(
     aiMaterial* mat,
     aiTextureType type,

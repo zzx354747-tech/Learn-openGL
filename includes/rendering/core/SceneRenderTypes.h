@@ -22,3 +22,11 @@ struct SceneRenderState
     glm::vec3 lightPositions = glm::vec3(1.2f, 1.0f, 2.0f);
     glm::vec3 color = glm::vec3(1.0f);
 };
+
+enum class RenderMode
+{
+    Basic,
+    Lighting,
+    Reflection,
+    ShadowDebug,
+};

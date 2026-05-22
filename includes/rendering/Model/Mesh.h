@@ -4,7 +4,7 @@
 #include <string>
 #include <glad/gl.h>
 #include <glm/glm.hpp>
-#include "core/shader.h"
+#include "core/Shader.h"
 
 struct vertex
 {

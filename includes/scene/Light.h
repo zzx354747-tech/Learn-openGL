@@ -2,8 +2,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "core/shader.h"
-#include "camera.h"
+#include "core/Shader.h"
+#include "Camera.h"
 
 
 struct MaterialData
@@ -45,4 +45,3 @@ struct FlashLightData
     float cutOff;
     float outerCutOff;
 };
-

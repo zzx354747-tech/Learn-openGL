@@ -1,7 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include "core/shader.h"
-#include "scene/camera.h"
+#include "core/Shader.h"
+#include "scene/Camera.h"
 #include "rendering/assets/Mesh.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>

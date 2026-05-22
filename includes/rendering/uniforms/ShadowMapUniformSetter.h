@@ -2,8 +2,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glad/gl.h>
-#include "core/shader.h"
-#include "scene/camera.h"
+#include "core/Shader.h"
+#include "scene/Camera.h"
 
 class ShadowMapUniformSetter
 {

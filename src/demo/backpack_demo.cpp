@@ -1,5 +1,5 @@
-#include "core/shader.h"
-#include "scene/camera.h"
+#include "core/Shader.h"
+#include "scene/Camera.h"
 #include "rendering/assets/Mesh.h"
 #include "rendering/assets/Model.h"
 #include "rendering/core/Renderer.h"

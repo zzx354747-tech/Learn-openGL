@@ -9,10 +9,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include "core/shader.h"
-#include "scene/camera.h"
-#include "rendering/assets/texture.h"
-#include "rendering/postprocess/framebuffer.h"
+#include "core/Shader.h"
+#include "scene/Camera.h"
+#include "rendering/assets/Texture.h"
+#include "rendering/postprocess/Framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
@@ -23,6 +23,9 @@
 #include "rendering/uniforms/LightUniformSetter.h"
 #include "rendering/core/SceneDrawer.h"
 #include "rendering/postprocess/DirectionalShadowMap.h"
+#include "rendering/Model/Mesh.h"
+#include "rendering/Model/Model.h"
+#include "rendering/core/SceneRenderResources.h"
 
 Framebuffer* framebuffer = nullptr;
 Camera camera;
@@ -162,27 +165,31 @@ int main()
     Shader cubemapShader("../src/shader/pratice/scenerender/cubemap.vs", "../src/shader/pratice/scenerender/cubemap.fs");
     Shader shadowDebugShader("../src/shader/pratice/scenerender/shadowMap/shadowDebug.vs", "../src/shader/pratice/scenerender/shadowMap/shadowDebug.fs");
     Shader shadowMapShader("../src/shader/pratice/scenerender/shadowMap/shadowMap.vs", "../src/shader/pratice/scenerender/shadowMap/shadowMap.fs");
+    Shader modelShader("../src/shader/pratice/scenerender/model.vs", "../src/shader/pratice/scenerender/model.fs");
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
     LightMesh lightMesh;
     SkyboxMesh skyboxMesh;
+    Model rock_1k ("../3D_Model/rock_1k.glb");
 
-    SceneRenderResources sceneResources;
-    sceneResources.basicCubeShader = &basicCubeShader;
-    sceneResources.basicPlaneShader = &basicPlaneShader;
-    sceneResources.lightingCubeShader = &lightingCubeShader;
-    sceneResources.lightingPlaneShader = &lightingPlaneShader;
-    sceneResources.lightCubeShader = &lightCubeShader;
-    sceneResources.reflectShader = &cubemapShader;
-    sceneResources.cubeMesh = &cubeMesh;
-    sceneResources.planeMesh = &planeMesh;
-    sceneResources.lightMesh = &lightMesh;
-    sceneResources.skyboxMesh = &skyboxMesh;
-    sceneResources.skybox = &skybox;
-    sceneResources.floorTexture = &floorTexture;
-    sceneResources.shadowDebugShader = &shadowDebugShader;
-    sceneResources.shadowMapShader = &shadowMapShader;  
+    SceneRenderResources1 sceneResources1;
+    sceneResources1.basicCubeShader = &basicCubeShader;
+    sceneResources1.basicPlaneShader = &basicPlaneShader;
+    sceneResources1.lightingCubeShader = &lightingCubeShader;
+    sceneResources1.lightingPlaneShader = &lightingPlaneShader;
+    sceneResources1.lightCubeShader = &lightCubeShader;
+    sceneResources1.reflectShader = &cubemapShader;
+    sceneResources1.modelShader = &modelShader;
+    sceneResources1.shadowDebugShader = &shadowDebugShader;
+    sceneResources1.shadowMapShader = &shadowMapShader;
+    sceneResources1.cubeMesh = &cubeMesh;
+    sceneResources1.planeMesh = &planeMesh;
+    sceneResources1.lightMesh = &lightMesh;
+    sceneResources1.skyboxMesh = &skyboxMesh;
+    sceneResources1.skybox = &skybox;
+    sceneResources1.floorTexture = &floorTexture;
+    sceneResources1.model = &rock_1k;
 
     SceneRenderConfig sceneConfig;
     sceneConfig.enableFloor = true;
@@ -192,15 +199,15 @@ int main()
     sceneConfig.enableFlashlight = false;
 
     SceneRenderState sceneState;
-    SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState);
+    SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState, &rock_1k);
 
-    DirectionalShadowMap shadowDebug(*sceneResources.shadowDebugShader, sceneDrawer, 2048, 2048);
-    DirectionalShadowMap shadowMap(*sceneResources.shadowMapShader, sceneDrawer, 2048, 2048);
+    DirectionalShadowMap shadowDebug(*sceneResources1.shadowDebugShader, sceneDrawer, 2048, 2048);
+    DirectionalShadowMap shadowMap(*sceneResources1.shadowMapShader, sceneDrawer, 2048, 2048);
 
-    ShadowResources shadowResources;
-    shadowResources.shadowMap = &shadowMap;
+    ShadowResources1 shadowResources1;
+    shadowResources1.shadowMap = &shadowMap;
 
-    SceneRender sceneRender(sceneResources, shadowResources, sceneConfig, sceneState, camera, sceneDrawer);
+    SceneRender sceneRender(sceneResources1, shadowResources1, sceneConfig, sceneState, camera, sceneDrawer);
     RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
 

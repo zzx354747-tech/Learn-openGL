@@ -1,6 +1,6 @@
-#include "core/shader.h"
+#include "core/Shader.h"
 #include "vector"
-#include "scene/camera.h"
+#include "scene/Camera.h"
 #include "rendering/assets/Model.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

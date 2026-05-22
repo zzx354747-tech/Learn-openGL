@@ -4,10 +4,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include "core/shader.h"
-#include "scene/camera.h"
-#include "rendering/core/render_demo.h"
-#include "rendering/assets/texture.h"
+#include "core/Shader.h"
+#include "scene/Camera.h"
+#include "rendering/core/Render_demo.h"
+#include "rendering/assets/Texture.h"
 
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定

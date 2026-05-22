@@ -267,6 +267,8 @@ add_executable(fbo_demo
     src/stb_image_impl.cpp
     includes/rendering/Model/Model.cpp
     includes/rendering/Model/Mesh.cpp
+    includes/rendering/passes/SkyboxPass.cpp
+    includes/rendering/passes/LightVisualPass.cpp
     ${GLAD_SOURCES}
 )
 

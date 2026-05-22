@@ -1,7 +1,7 @@
 #pragma once
 #include <glad/gl.h>
 #include <iostream>
-#include "core/shader.h"
+#include "core/Shader.h"
 #include "rendering/uniforms/ShadowMapUniformSetter.h"
 #include "rendering/core/SceneDrawer.h"
 

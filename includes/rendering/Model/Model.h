@@ -18,11 +18,19 @@ public:
     }
 
     void draw(Shader& shader);  
+    glm::vec3 getBoundsMin() const { return boundsMin; }
+    glm::vec3 getBoundsMax() const { return boundsMax; }
+    glm::vec3 getBoundsCenter() const { return (boundsMin + boundsMax) * 0.5f; }
+    glm::vec3 getBoundsSize() const { return boundsMax - boundsMin; }
+    bool hasValidBounds() const { return hasBounds; }
 
 private:
     std::vector<Mesh> meshes;
     // 用来保存模型所在目录
     std::string directory;
+    glm::vec3 boundsMin = glm::vec3(0.0f);
+    glm::vec3 boundsMax = glm::vec3(0.0f);
+    bool hasBounds = false;
 
     std::vector<texture> loadMaterialTextures(
     aiMaterial* mat,
