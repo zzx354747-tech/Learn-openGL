@@ -1,16 +1,11 @@
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "rendering/assets/Mesh.h"
-#include "rendering/assets/Model.h"
 #include "rendering/core/Renderer.h"
+#include "stb_image.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <vector>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <iostream>
 
 Camera camera;
 FrameData frameData;

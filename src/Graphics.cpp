@@ -1,7 +1,4 @@
 #include "utils/Graphics.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 CubeAttribute SetcubeAttribute;
 
@@ -98,5 +95,4 @@ void setCubePosition(glm::vec3 *cubePositions)
     cubePositions[8] = glm::vec3( 1.5f,  0.2f, -1.5f); 
     cubePositions[9] = glm::vec3(-1.3f,  1.0f, -1.5f);
 };
-
 

@@ -1,10 +1,9 @@
 #include "core/Shader.h"
 #include "vector"
 #include "scene/Camera.h"
-#include "rendering/assets/Model.h"
+#include "rendering/Model/Model.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 enum class VertexLayoutType
 {
@@ -396,7 +395,7 @@ private:
 
         if (settings.enableAssimp)
         {
-            assimpModel -> Draw(shader);
+            assimpModel -> draw(shader);
         }
         else 
         {

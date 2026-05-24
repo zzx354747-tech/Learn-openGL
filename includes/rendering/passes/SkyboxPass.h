@@ -5,8 +5,8 @@ class SkyboxPass
 {
 public:
     static void renderSkyboxPass( 
-        Camera& camera, 
-        SceneRenderResources1& resources, 
+        Camera& camera,
+        SceneRenderResources& resources,
         SceneRenderConfig& config,
         int bfwidth, 
         int bfheight);

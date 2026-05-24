@@ -1,6 +1,14 @@
 #pragma once
 #include <glm/glm.hpp>
 
+enum class RenderMode
+{
+    Basic,
+    Lighting,
+    Reflection,
+    ShadowDebug,
+};
+
 struct SceneRenderConfig
 {
     bool enableFloor = false;
@@ -8,6 +16,8 @@ struct SceneRenderConfig
     bool enableFlashlight = false;
     bool enablePointLight = false;
     bool enableDirectionalLight = false;
+
+    RenderMode renderMode = RenderMode::Basic;
 };
 
 struct SceneRenderState
@@ -21,12 +31,4 @@ struct SceneRenderState
 
     glm::vec3 lightPositions = glm::vec3(1.2f, 1.0f, 2.0f);
     glm::vec3 color = glm::vec3(1.0f);
-};
-
-enum class RenderMode
-{
-    Basic,
-    Lighting,
-    Reflection,
-    ShadowDebug,
 };

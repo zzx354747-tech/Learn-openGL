@@ -2,7 +2,7 @@
 
 void SkyboxPass::renderSkyboxPass(
     Camera& camera, 
-    SceneRenderResources1& resources, 
+    SceneRenderResources& resources,
     SceneRenderConfig& config,
     int bfwidth, 
     int bfheight)
@@ -37,4 +37,3 @@ void SkyboxPass::bindSkyboxTexture(CubeMap* skybox)
     glActiveTexture(GL_TEXTURE0);
     skybox->bind();
 }
-

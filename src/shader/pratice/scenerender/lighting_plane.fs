@@ -43,6 +43,9 @@ struct FlashLight {
 uniform sampler2D texture1;
 // 接收阴影贴图
 uniform sampler2D shadowMap;
+uniform samplerCube depthCubeMap;
+
+uniform float farPlane;
 
 uniform PointLight pointLight;
 uniform Sun sun;
@@ -51,6 +54,45 @@ uniform vec3 viewPos;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
+
+float PointShadowCalculation(vec3 fragPos)
+{
+    vec3 fragToLight = fragPos - pointLight.position;
+    float currentDepth = length(fragToLight);
+
+    float shadow = 0.0;
+    float bias = 0.03;
+
+    int samples = 20;
+    float viewDistance = length(viewPos - fragPos);
+    float diskRadius = (1.0 + viewDistance / farPlane) / 25.0;
+
+    vec3 sampleOffsetDirections[20] = vec3[]
+    (
+        vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
+        vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+        vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+        vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+        vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+    );
+
+    for (int i = 0; i < samples; ++i)
+    {
+        float closestDepth = texture(
+            depthCubeMap,
+            fragToLight + sampleOffsetDirections[i] * diskRadius
+        ).r;
+
+        closestDepth *= farPlane;
+
+        if (currentDepth - bias > closestDepth)
+            shadow += 1.0;
+    }
+
+    shadow /= float(samples);
+
+    return shadow;
+}
 
 float ShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -75,11 +117,29 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 {
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 reflectDir = reflect(-lightDir, normal);
+
     float diff = max(dot(normal, lightDir), 0.0);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16.0);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+
     float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
-    return light.ambient * baseColor + (light.diffuse * diff * baseColor + light.specular * spec) * attenuation;
+    float attenuation = 1.0 / (
+        light.constant +
+        light.linear * distance +
+        light.quadratic * distance * distance
+    );
+
+    vec3 ambient = light.ambient * baseColor;
+    vec3 diffuse = light.diffuse * diff * baseColor;
+    vec3 specular = light.specular * spec;
+
+    float shadowStrength = 0.8;
+    float shadow = PointShadowCalculation(fragPos);
+    shadow *= shadowStrength;
+
+    diffuse *= (1.0 - shadow);
+    specular *= (1.0 - shadow);
+
+    return ambient + (diffuse + specular) * attenuation;
 }
 
 vec3 calcSun(Sun light, vec3 normal, vec3 viewDir, vec3 baseColor)

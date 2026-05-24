@@ -3,6 +3,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include <cmath>
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -26,6 +27,7 @@
 #include "rendering/Model/Mesh.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
+#include "rendering/passes/SceneObjectPass.h"
 
 Framebuffer* framebuffer = nullptr;
 Camera camera;
@@ -156,16 +158,61 @@ int main()
     Framebuffer fb(bfwidth, bfheight);
     framebuffer = &fb;
 
-    Shader screenShader("../src/shader/pratice/framebuffer/screen.vs", "../src/shader/pratice/framebuffer/screen.fs");
-    Shader basicCubeShader("../src/shader/pratice/scenerender/basic_cube.vs", "../src/shader/pratice/scenerender/basic_cube.fs");
-    Shader basicPlaneShader("../src/shader/pratice/scenerender/basic_plane.vs", "../src/shader/pratice/scenerender/basic_plane.fs");
-    Shader lightingCubeShader("../src/shader/pratice/scenerender/lighting_cube.vs", "../src/shader/pratice/scenerender/lighting_cube.fs");
-    Shader lightingPlaneShader("../src/shader/pratice/scenerender/lighting_plane.vs", "../src/shader/pratice/scenerender/lighting_plane.fs");
-    Shader lightCubeShader("../src/shader/pratice/scenerender/light_cube.vs", "../src/shader/pratice/scenerender/light_cube.fs");
-    Shader cubemapShader("../src/shader/pratice/scenerender/cubemap.vs", "../src/shader/pratice/scenerender/cubemap.fs");
-    Shader shadowDebugShader("../src/shader/pratice/scenerender/shadowMap/shadowDebug.vs", "../src/shader/pratice/scenerender/shadowMap/shadowDebug.fs");
-    Shader shadowMapShader("../src/shader/pratice/scenerender/shadowMap/shadowMap.vs", "../src/shader/pratice/scenerender/shadowMap/shadowMap.fs");
-    Shader modelShader("../src/shader/pratice/scenerender/model.vs", "../src/shader/pratice/scenerender/model.fs");
+   Shader screenShader(
+    "../src/shader/pratice/framebuffer/screen.vs",
+    "../src/shader/pratice/framebuffer/screen.fs"
+);
+
+Shader basicCubeShader(
+    "../src/shader/pratice/scenerender/basic_cube.vs",
+    "../src/shader/pratice/scenerender/basic_cube.fs"
+);
+
+Shader basicPlaneShader(
+    "../src/shader/pratice/scenerender/basic_plane.vs",
+    "../src/shader/pratice/scenerender/basic_plane.fs"
+);
+
+Shader lightingCubeShader(
+    "../src/shader/pratice/scenerender/lighting_cube.vs",
+    "../src/shader/pratice/scenerender/lighting_cube.fs"
+);
+
+Shader lightingPlaneShader(
+    "../src/shader/pratice/scenerender/lighting_plane.vs",
+    "../src/shader/pratice/scenerender/lighting_plane.fs"
+);
+
+Shader lightCubeShader(
+    "../src/shader/pratice/scenerender/light_cube.vs",
+    "../src/shader/pratice/scenerender/light_cube.fs"
+);
+
+Shader cubemapShader(
+    "../src/shader/pratice/scenerender/cubemap.vs",
+    "../src/shader/pratice/scenerender/cubemap.fs"
+);
+
+Shader shadowDebugShader(
+    "../src/shader/pratice/scenerender/shadowMap/shadowDebug.vs",
+    "../src/shader/pratice/scenerender/shadowMap/shadowDebug.fs"
+);
+
+Shader shadowMapShader(
+    "../src/shader/pratice/scenerender/shadowMap/shadowMap.vs",
+    "../src/shader/pratice/scenerender/shadowMap/shadowMap.fs"
+);
+
+Shader pointShadowMapShader(
+    "../src/shader/pratice/scenerender/shadowMap/pointShadow.vs",
+    "../src/shader/pratice/scenerender/shadowMap/geometry.gs",
+    "../src/shader/pratice/scenerender/shadowMap/pointShadow.fs"
+);
+
+Shader modelShader(
+    "../src/shader/pratice/scenerender/model.vs",
+    "../src/shader/pratice/scenerender/model.fs"
+);
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
@@ -173,23 +220,25 @@ int main()
     SkyboxMesh skyboxMesh;
     Model rock_1k ("../3D_Model/rock_1k.glb");
 
-    SceneRenderResources1 sceneResources1;
-    sceneResources1.basicCubeShader = &basicCubeShader;
-    sceneResources1.basicPlaneShader = &basicPlaneShader;
-    sceneResources1.lightingCubeShader = &lightingCubeShader;
-    sceneResources1.lightingPlaneShader = &lightingPlaneShader;
-    sceneResources1.lightCubeShader = &lightCubeShader;
-    sceneResources1.reflectShader = &cubemapShader;
-    sceneResources1.modelShader = &modelShader;
-    sceneResources1.shadowDebugShader = &shadowDebugShader;
-    sceneResources1.shadowMapShader = &shadowMapShader;
-    sceneResources1.cubeMesh = &cubeMesh;
-    sceneResources1.planeMesh = &planeMesh;
-    sceneResources1.lightMesh = &lightMesh;
-    sceneResources1.skyboxMesh = &skyboxMesh;
-    sceneResources1.skybox = &skybox;
-    sceneResources1.floorTexture = &floorTexture;
-    sceneResources1.model = &rock_1k;
+    SceneRenderResources sceneResources;
+    sceneResources.basicCubeShader = &basicCubeShader;
+    sceneResources.basicPlaneShader = &basicPlaneShader;
+    sceneResources.lightingCubeShader = &lightingCubeShader;
+    sceneResources.lightingPlaneShader = &lightingPlaneShader;
+    sceneResources.lightCubeShader = &lightCubeShader;
+    sceneResources.reflectShader = &cubemapShader;
+    sceneResources.modelShader = &modelShader;
+    sceneResources.shadowDebugShader = &shadowDebugShader;
+    sceneResources.shadowMapShader = &shadowMapShader;
+    sceneResources.pointShadowMapShader = &pointShadowMapShader;
+    sceneResources.cubeMesh = &cubeMesh;
+    sceneResources.planeMesh = &planeMesh;
+    sceneResources.lightMesh = &lightMesh;
+    sceneResources.skyboxMesh = &skyboxMesh;
+    sceneResources.skybox = &skybox;
+    sceneResources.floorTexture = &floorTexture;
+    sceneResources.cubeTexture = &cubeTexture;
+    sceneResources.model = &rock_1k;
 
     SceneRenderConfig sceneConfig;
     sceneConfig.enableFloor = true;
@@ -201,17 +250,30 @@ int main()
     SceneRenderState sceneState;
     SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState, &rock_1k);
 
-    DirectionalShadowMap shadowDebug(*sceneResources1.shadowDebugShader, sceneDrawer, 2048, 2048);
-    DirectionalShadowMap shadowMap(*sceneResources1.shadowMapShader, sceneDrawer, 2048, 2048);
+    DirectionalShadowMap shadowDebug(*sceneResources.shadowDebugShader, sceneDrawer, 4096, 4096);
+    DirectionalShadowMap shadowMap(*sceneResources.shadowMapShader, sceneDrawer, 4096, 4096);
+    PointShadowMap pointShadowMap(1024, 1024, 1.0f, 25.0f);
+    PointShadowPass pointShadowPass(pointShadowMap, *sceneResources.pointShadowMapShader, sceneDrawer);
 
-    ShadowResources1 shadowResources1;
-    shadowResources1.shadowMap = &shadowMap;
+    ShadowResources shadowResources;
+    shadowResources.shadowMap = &shadowMap;
+    shadowResources.pointShadowMap = &pointShadowMap;
 
-    SceneRender sceneRender(sceneResources1, shadowResources1, sceneConfig, sceneState, camera, sceneDrawer);
+    LightSettings lightSettings;
+
     RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
 
-    LightSettings lightSettings;
+    SceneObjectPass objectPass(sceneResources,
+        shadowResources,
+        sceneConfig,
+        sceneState,
+        renderMode,
+        lightSettings,
+        camera,
+        sceneDrawer);
+
+    SceneRender sceneRender(camera, objectPass, shadowResources, sceneResources, sceneConfig, sceneState, lightSettings, pointShadowPass);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -224,6 +286,13 @@ int main()
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        float lightTime = currentFrame * 0.35f;
+        sceneState.lightPositions = glm::vec3(
+            std::cos(lightTime) * 3.0f,
+            1.5f + std::sin(currentFrame * 1.3f) * 0.5f,
+            std::sin(lightTime) * 3.0f - 1.0f
+        );
+
         float FPS = 1.0f / deltaTime;
 
         ImGui::Begin("Framebuffer Demo");
@@ -234,7 +303,7 @@ int main()
         const char* renderModeNames[] = {"Basic", "Lighting", "Reflection", "Shadow Debug"};
         if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 4))
         {
-            renderMode = static_cast<RenderMode>(renderModeIndex);
+            sceneConfig.renderMode = static_cast<RenderMode>(renderModeIndex);
         }
         ImGui::Checkbox("Floor", &sceneConfig.enableFloor);
         ImGui::Checkbox("Skybox", &sceneConfig.enableSkybox);
@@ -279,10 +348,6 @@ int main()
 
         ImGui::End();
 
-        sceneRender.setRenderMode(renderMode);
-        sceneRender.setconfig(sceneConfig);
-        sceneRender.setLightData(lightSettings);
-
         processInput(window, deltaTime);
 
         glfwGetFramebufferSize(window, &bfwidth, &bfheight);
@@ -290,7 +355,6 @@ int main()
         sceneRender.render(
             bfwidth, 
             bfheight, 
-            cubeTexture, 
             screenShader, 
             screenQuad, 
             fb

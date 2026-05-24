@@ -3,7 +3,7 @@
 
 void lightVisualPass::renderLightVisualPass(
     Camera& camera, 
-    SceneRenderResources1& resources, 
+    SceneRenderResources& resources,
     SceneRenderState state,
     SceneRenderConfig& config,
     int bfwidth, 

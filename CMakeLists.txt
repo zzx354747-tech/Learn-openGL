@@ -269,6 +269,8 @@ add_executable(fbo_demo
     includes/rendering/Model/Mesh.cpp
     includes/rendering/passes/SkyboxPass.cpp
     includes/rendering/passes/LightVisualPass.cpp
+    includes/rendering/passes/SceneObjectPass.cpp
+    includes/rendering/passes/ShadowPass/PointShadowPass.cpp
     ${GLAD_SOURCES}
 )
 

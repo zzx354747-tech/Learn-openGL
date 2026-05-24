@@ -1,10 +1,4 @@
 #include "utils/uni_light.h"
-#include "core/Shader.h"
-#include "scene/Camera.h"
-#include "scene/Light.h"
-#include <glm/glm.hpp> 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 void setUniLight(
     Shader &Shader,

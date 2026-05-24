@@ -8,95 +8,198 @@
 #include <sstream>
 #include <iostream>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 class Shader {
 public:
     //程序ID
     unsigned int ID;
     //构造函数读取并构建着色器（构造函数即调用时就执行）
+
     Shader(const char* vertexPath, const char* fragmentPath)
     {
         std::string vertexCode;
         std::string fragmentCode;
-        //创建文件流对象（用于读取文件）
+
         std::ifstream vShaderFile;
         std::ifstream fShaderFile;
-        //保证ifstream对象可以抛出异常
+
         vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-        try 
+
+        try
         {
-            //打开文件
             vShaderFile.open(vertexPath);
             fShaderFile.open(fragmentPath);
-            //定义数据流对象（用于存储读取的文件内容）
-            std::stringstream vShaderstream, fShaderstream;
-            //读取文件的缓冲内容到数据流中
-            vShaderstream << vShaderFile.rdbuf();
-            fShaderstream << fShaderFile.rdbuf();
-            //关闭文件处理器
+
+            std::stringstream vShaderStream;
+            std::stringstream fShaderStream;
+
+            vShaderStream << vShaderFile.rdbuf();
+            fShaderStream << fShaderFile.rdbuf();
+
             vShaderFile.close();
             fShaderFile.close();
-            //转换数据流为字符串
-            vertexCode = vShaderstream.str();
-            fragmentCode = fShaderstream.str();
+
+            vertexCode = vShaderStream.str();
+            fragmentCode = fShaderStream.str();
         }
-        //捕获异常
         catch (std::ifstream::failure& e)
         {
             std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
         }
-            //将string转换为char*
-            const char* vShaderCode = vertexCode.c_str();
-            const char* fShaderCode = fragmentCode.c_str();
-        //编译着色器
-        unsigned int vertex, fragment;
+
+        const char* vShaderCode = vertexCode.c_str();
+        const char* fShaderCode = fragmentCode.c_str();
+
+        unsigned int vertex;
+        unsigned int fragment;
+
         int success;
         char infoLog[512];
-        //创建顶点着色器
+
         vertex = glCreateShader(GL_VERTEX_SHADER);
-        //将着色器源码附加到着色器对象
         glShaderSource(vertex, 1, &vShaderCode, NULL);
-        //编译着色器
         glCompileShader(vertex);
-        //检查编译是否成功
+
         glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
-        if (!success)        {
+        if (!success)
+        {
             glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout
+                << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
+                << infoLog
+                << std::endl;
         }
-        //创建片段着色器
+
         fragment = glCreateShader(GL_FRAGMENT_SHADER);
-        //将着色器源码附加到着色器对象
         glShaderSource(fragment, 1, &fShaderCode, NULL);
-        //编译着色器
         glCompileShader(fragment);
-        //检查编译是否成功
+
         glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
-        if (!success)        {
+        if (!success)
+        {
             glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            std::cout
+                << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
+                << infoLog
+                << std::endl;
         }
-        //创建程序对象
+
         ID = glCreateProgram();
-        //将着色器对象附加到程序对象上
+
         glAttachShader(ID, vertex);
         glAttachShader(ID, fragment);
-        //链接程序对象
+
         glLinkProgram(ID);
-        //检查链接是否成功
+
         glGetProgramiv(ID, GL_LINK_STATUS, &success);
-        if (!success)        {
+        if (!success)
+        {
             glGetProgramInfoLog(ID, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+            std::cout
+                << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
+                << infoLog
+                << std::endl;
         }
-        //删除着色器对象（已链接到程序对象上，不再需要）
+
         glDeleteShader(vertex);
         glDeleteShader(fragment);
     }
-    
+
+    Shader(const char* vertexPath, const char* geometryPath, const char* fragmentPath)
+    {
+        std::string vertexCode;
+        std::string geometryCode;
+        std::string fragmentCode;
+
+        std::ifstream vShaderFile;
+        std::ifstream gShaderFile;
+        std::ifstream fShaderFile;
+
+        vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        gShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+        try
+        {
+            vShaderFile.open(vertexPath);
+            gShaderFile.open(geometryPath);
+            fShaderFile.open(fragmentPath);
+
+            std::stringstream vShaderStream, gShaderStream, fShaderStream;
+
+            vShaderStream << vShaderFile.rdbuf();
+            gShaderStream << gShaderFile.rdbuf();
+            fShaderStream << fShaderFile.rdbuf();
+
+            vShaderFile.close();
+            gShaderFile.close();
+            fShaderFile.close();
+
+            vertexCode = vShaderStream.str();
+            geometryCode = gShaderStream.str();
+            fragmentCode = fShaderStream.str();
+        }
+        catch (std::ifstream::failure& e)
+        {
+            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ" << std::endl;
+        }
+
+        const char* vShaderCode = vertexCode.c_str();
+        const char* gShaderCode = geometryCode.c_str();
+        const char* fShaderCode = fragmentCode.c_str();
+
+        unsigned int vertex, geometry, fragment;
+        int success;
+        char infoLog[512];
+
+        vertex = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertex, 1, &vShaderCode, NULL);
+        glCompileShader(vertex);
+        glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+
+        geometry = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometry, 1, &gShaderCode, NULL);
+        glCompileShader(geometry);
+        glGetShaderiv(geometry, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(geometry, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+
+        fragment = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment, 1, &fShaderCode, NULL);
+        glCompileShader(fragment);
+        glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+
+        ID = glCreateProgram();
+        glAttachShader(ID, vertex);
+        glAttachShader(ID, geometry);
+        glAttachShader(ID, fragment);
+        glLinkProgram(ID);
+
+        glGetProgramiv(ID, GL_LINK_STATUS, &success);
+        if (!success)
+        {
+            glGetProgramInfoLog(ID, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        }
+
+        glDeleteShader(vertex);
+        glDeleteShader(geometry);
+        glDeleteShader(fragment);
+    }
     //使用/激活程序
     void use()
     { 
