@@ -1,7 +1,9 @@
 #include "rendering/passes/SceneObjectPass.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
+#include "rendering/uniforms/LightUniformSetter.h"
 #include "rendering/uniforms/ShadowMapBinder.h"
 #include "rendering/uniforms/PointShadowUniformSetters.h"
+#include "rendering/uniforms/SpotShadowUniformSetter.h"
 
 void SceneObjectPass::renderCube(int bfwidth, int bfheight)
 {
@@ -14,12 +16,9 @@ void SceneObjectPass::renderCube(int bfwidth, int bfheight)
         if (config.renderMode == RenderMode::Lighting)
         {
             setupObjectLighting(*shader);
-            ShadowMapBinder::apply(*shader, shadowResources);
-            
-            if (config.enablePointLight)
-            {
-                setupPointShadow(*shader);
-            }
+            ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix);
+            setupPointShadow(*shader);
+            setupSpotShadow(*shader);
         }
 
         CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
@@ -48,12 +47,9 @@ void SceneObjectPass::renderPlane(int bfwidth, int bfheight)
         if (config.renderMode == RenderMode::Lighting)
         {
             setupObjectLighting(*shader);
-            ShadowMapBinder::apply(*shader, shadowResources);
-
-            if (config.enablePointLight)
-            {
-                setupPointShadow(*shader);
-            }
+            ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix);
+            setupPointShadow(*shader);
+            setupSpotShadow(*shader);
         }
 
         CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
@@ -70,47 +66,55 @@ void SceneObjectPass::renderModel(Model& model, int bfwidth, int bfheight)
     if (!shader)
         return;
 
+    if (config.renderMode == RenderMode::Reflection && !resources.skybox)
+        return;
+
     shader->use();
     
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        if (model.hasValidBounds())
-        {
-            glm::vec3 boundsCenter = model.getBoundsCenter();
-            glm::vec3 boundsSize = model.getBoundsSize();
-            float maxExtent = glm::max(boundsSize.x, glm::max(boundsSize.y, boundsSize.z));
-            float scale = maxExtent > 0.0f ? 10.0f / maxExtent : 1.0f;
-            float floorY = -0.5f;
-            glm::vec3 targetCenter(
-                0.0f,
-                floorY + boundsSize.y * scale * 0.5f,
-                -2.0f
-            );
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+    if (model.hasValidBounds())
+    {
+        glm::vec3 boundsCenter = model.getBoundsCenter();
+        glm::vec3 boundsSize = model.getBoundsSize();
+        float maxExtent = glm::max(boundsSize.x, glm::max(boundsSize.y, boundsSize.z));
+        float scale = maxExtent > 0.0f ? 10.0f / maxExtent : 1.0f;
+        float floorY = -0.5f;
+        glm::vec3 targetCenter(
+            0.0f,
+            floorY + boundsSize.y * scale * 0.5f,
+            -2.0f
+        );
 
-            modelMatrix = glm::translate(modelMatrix, targetCenter);
-            modelMatrix = glm::scale(modelMatrix, glm::vec3(scale));
-            modelMatrix = glm::translate(modelMatrix, -boundsCenter);
-        }
-        shader->setMat4("model", modelMatrix);
+        modelMatrix = glm::translate(modelMatrix, targetCenter);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(scale));
+        modelMatrix = glm::translate(modelMatrix, -boundsCenter);
+    }
+    shader->setMat4("model", modelMatrix);
 
-        CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+
+    if (config.renderMode == RenderMode::Reflection)
+    {
+        shader->setBool("isSkybox", false);
+        shader->setInt("skybox", 0);
+        shader->setVec3("cameraPos", camera.Getposition());
+        resources.skybox->bind();
+    }
+
+    if (config.renderMode == RenderMode::Lighting)
+    {
         shader->setInt("shadowMap", 10);
         shader->setInt("depthCubeMap", 11);
+        setupObjectLighting(*shader);
+        // 使用更高的纹理单元，避免同一个shader内sampler纹理单元冲突
+        ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix, 10);
+        // 点光源阴影贴图绑定到更高的纹理单元，避免与其他贴图单元冲突
+        setupPointShadow(*shader, 11);
+        // 聚光灯阴影贴图绑定到更高的纹理单元，避免与其他贴图单元冲突
+        setupSpotShadow(*shader, 12);
+    }
 
-        if (config.renderMode == RenderMode::Lighting)
-        {
-            setupObjectLighting(*shader);
-            // 使用更高的纹理单元，而是避免同一个shader内sampler纹理单元冲突
-            ShadowMapBinder::apply(*shader, shadowResources, 10);
-
-            if (config.enablePointLight)
-            {
-                // 点光源阴影贴图绑定到更高的纹理单元，避免与其他贴图单元冲突
-                setupPointShadow(*shader, 11);
-            }
-        }
-
-        // 绘制模型
-        model.draw(*shader);
+    model.draw(*shader);
 }
 
 void SceneObjectPass::bindCubeTexture(Shader& shader, GLTexture& cubeTexture)
@@ -151,9 +155,6 @@ void SceneObjectPass::setupObjectLighting(Shader& shader)
 // 设置第二次渲染时的点光源阴影贴图和相关uniform
 void SceneObjectPass::setupPointShadow(Shader& shader, unsigned int textureUnit)
 {
-    if (!config.enablePointLight)
-        return;
-
     if (!shadowResources.pointShadowMap)
         return;
         
@@ -161,6 +162,17 @@ void SceneObjectPass::setupPointShadow(Shader& shader, unsigned int textureUnit)
             *shadowResources.pointShadowMap, 
             state.lightPositions,
             textureUnit);
+}
+
+void SceneObjectPass::setupSpotShadow(Shader& shader, unsigned int textureUnit)
+{
+    if (!shadowResources.spotShadowMap)
+        return;
+
+    SpotShadowUniformSetter::apply(shader, 
+        *shadowResources.spotShadowMap,
+        state.spotLightSpaceMatrix,
+        textureUnit);
 }
 
 Shader* SceneObjectPass::getPlaneShader()
@@ -172,6 +184,9 @@ Shader* SceneObjectPass::getPlaneShader()
 
             case RenderMode::Lighting:
             return resources.lightingPlaneShader;
+
+            case RenderMode::Reflection:
+            return resources.basicPlaneShader;
 
             default:
             return nullptr;
@@ -198,5 +213,18 @@ Shader* SceneObjectPass::getCubeShader()
 
 Shader* SceneObjectPass::getModelShader()
 {
-    return resources.modelShader;
+    switch (config.renderMode)
+    {
+        case RenderMode::Basic:
+            return resources.basicModelShader;
+
+        case RenderMode::Lighting:
+            return resources.lightingModelShader;
+
+        case RenderMode::Reflection:
+            return resources.reflectModelShader;
+
+        default:
+            return nullptr;
+    }
 }

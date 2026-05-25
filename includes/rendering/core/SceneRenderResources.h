@@ -10,11 +10,12 @@
 #include "rendering/assets/Texture.h"
 #include "rendering/postprocess/DirectionalShadowMap.h"
 #include "rendering/postprocess/PointShadowMap.h"
+#include "rendering/postprocess/SpotShadowMap.h"
 #include "rendering/core/SceneRenderTypes.h"
 
 struct SceneRenderResources
 {
-   Shader* basicCubeShader = nullptr;
+    Shader* basicCubeShader = nullptr;
     Shader* basicPlaneShader = nullptr;
     Shader* lightingCubeShader = nullptr;
     Shader* lightingPlaneShader = nullptr;
@@ -23,7 +24,9 @@ struct SceneRenderResources
     Shader* shadowDebugShader = nullptr;
     Shader* shadowMapShader = nullptr;
     Shader* pointShadowMapShader = nullptr;
-    Shader* modelShader = nullptr;
+    Shader* basicModelShader = nullptr;
+    Shader* lightingModelShader = nullptr;
+    Shader* reflectModelShader = nullptr;
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
@@ -41,4 +44,5 @@ struct ShadowResources
 {
     DirectionalShadowMap* shadowMap = nullptr;
     PointShadowMap* pointShadowMap = nullptr;
+    SpotShadowMap* spotShadowMap = nullptr;
 };

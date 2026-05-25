@@ -5,6 +5,7 @@ in VS_OUT {
     vec3 Normal;
     vec2 TexCoords;
     vec4 FragPosLightSpace;
+    vec4 FragPosSpotLightSpace;
 } fs_in;
 
 
@@ -44,6 +45,7 @@ uniform sampler2D texture1;
 // 接收阴影贴图
 uniform sampler2D shadowMap;
 uniform samplerCube depthCubeMap;
+uniform sampler2D spotShadowMap;
 
 uniform float farPlane;
 
@@ -54,6 +56,52 @@ uniform vec3 viewPos;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
+
+float SpotShadowCalculation(vec4 fragPosLightSpace)
+{
+    vec3 projCoords =
+        fragPosLightSpace.xyz /
+        fragPosLightSpace.w;
+
+    projCoords =
+        projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0)
+        return 0.0;
+
+    float currentDepth =
+        projCoords.z;
+
+    float shadow = 0.0;
+
+    float bias = 0.005;
+
+    vec2 texelSize =
+        1.0 /
+        textureSize(spotShadowMap, 0);
+
+    for (int x = -1; x <= 1; ++x)
+    {
+        for (int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth =
+                texture(
+                    spotShadowMap,
+                    projCoords.xy +
+                    vec2(x, y) * texelSize
+                ).r;
+
+            shadow +=
+                currentDepth - bias > pcfDepth
+                ? 1.0
+                : 0.0;
+        }
+    }
+
+    shadow /= 9.0;
+
+    return shadow;
+}
 
 float PointShadowCalculation(vec3 fragPos)
 {
@@ -162,18 +210,74 @@ vec3 calcSun(Sun light, vec3 normal, vec3 viewDir, vec3 baseColor)
     return light.ambient * baseColor + light.diffuse * diff * baseColor + light.specular * spec;
 }
 
-vec3 calcFlashLight(FlashLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor)
+vec3 calcFlashLight(
+    FlashLight light,
+    vec3 normal,
+    vec3 fragPos,
+    vec3 viewDir,
+    vec3 baseColor)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 reflectDir = reflect(-lightDir, normal);
-    float diff = max(dot(normal, lightDir), 0.0);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16.0);
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
-    float theta = dot(lightDir, normalize(-light.direction));
-    float epsilon = light.cutOff - light.outerCutOff;
-    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-    return light.ambient * baseColor + (light.diffuse * diff * baseColor + light.specular * spec) * attenuation * intensity;
+
+    float diff =
+        max(dot(normal, lightDir), 0.0);
+
+    float spec =
+        pow(
+            max(dot(viewDir, reflectDir), 0.0),
+            16.0
+        );
+
+    float distance =
+        length(light.position - fragPos);
+
+    float attenuation =
+        1.0 /
+        (
+            light.constant +
+            light.linear * distance +
+            light.quadratic * distance * distance
+        );
+
+    float theta =
+        dot(lightDir, normalize(-light.direction));
+
+    float epsilon =
+        light.cutOff -
+        light.outerCutOff;
+
+    float intensity =
+        clamp(
+            (theta - light.outerCutOff) / epsilon,
+            0.0,
+            1.0
+        );
+
+    float shadow =
+        SpotShadowCalculation(
+            fs_in.FragPosSpotLightSpace
+        );
+
+    float shadowStrength = 0.8;
+    shadow *= shadowStrength;
+
+    vec3 ambient =
+        light.ambient * baseColor;
+
+    vec3 diffuse =
+        light.diffuse * diff * baseColor;
+
+    vec3 specular =
+        light.specular * spec;
+
+    diffuse *= (1.0 - shadow);
+    specular *= (1.0 - shadow);
+
+    return ambient +
+           (diffuse + specular)
+           * attenuation
+           * intensity;
 }
 
 void main()

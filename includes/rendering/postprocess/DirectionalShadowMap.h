@@ -1,52 +1,27 @@
 #pragma once
 #include <glad/gl.h>
 #include <iostream>
-#include "core/Shader.h"
-#include "rendering/uniforms/ShadowMapUniformSetter.h"
-#include "rendering/core/SceneDrawer.h"
 
-// 这个类负责第一阶段的渲染
 class DirectionalShadowMap
 {
 public:
-    DirectionalShadowMap(Shader& shadowMapShader, 
-        SceneDrawer& drawer,
-        int width, 
+    DirectionalShadowMap(
+        int width,
         int height)
-
-        : ShadowMapShader(shadowMapShader), 
-        drawer(drawer),
-        width(width), 
+        : width(width),
         height(height)
-
     {
         initShadowMap();
     }
 
-    // 给第一阶段渲染准备的函数，渲染场景的深度信息到深度纹理中
-    void renderShadowMap()
-    {
-        ShadowMapShader.use();
-        ShadowMapUniformSetter::apply(ShadowMapShader);
-
-        // 开启深度测试，防止某个pass关闭了深度测试导致这里出现问题
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-
-        glViewport(0, 0, width, height);
-        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        drawer.drawScene(ShadowMapShader);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-
-    // 获取深度纹理的ID，以便在其他地方绑定使用
     unsigned int getDepthMapTexture() const
     {
         return depthMap;
     }
+
+    unsigned int getFBO() const { return depthMapFBO; }
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
 
     DirectionalShadowMap(const DirectionalShadowMap&) = delete;
     DirectionalShadowMap& operator=(const DirectionalShadowMap&) = delete;
@@ -58,8 +33,6 @@ public:
     }
 
 private:
-    Shader& ShadowMapShader;
-    SceneDrawer& drawer;
     int width;
     int height;
     unsigned int depthMapFBO = 0;

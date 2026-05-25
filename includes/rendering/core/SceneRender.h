@@ -4,12 +4,14 @@
 #include "scene/Camera.h"
 #include "rendering/postprocess/Framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
-#include "rendering/uniforms/LightUniformSetter.h"
+#include "rendering/assets/LightSettings.h"
 #include "rendering/core/SceneRenderResources.h"
 #include "rendering/passes/SkyboxPass.h"
 #include "rendering/passes/LightVisualPass.h"
 #include "rendering/passes/SceneObjectPass.h"
+#include "rendering/passes/ShadowPass/DirectionalShadowPass.h"
 #include "rendering/passes/ShadowPass/PointShadowPass.h"
+#include "rendering/passes/ShadowPass/SpotShadowPass.h"
 
 class SceneRender
 {
@@ -22,7 +24,9 @@ public:
         SceneRenderConfig& config,
         SceneRenderState& state,
         LightSettings& lightSettings,
-        PointShadowPass& pointShadowPass
+        DirectionalShadowPass& directionalShadowPass,
+        PointShadowPass& pointShadowPass,
+        SpotShadowPass& spotShadowPass
     )        : camera(camera),
         objectPass(objectPass),
         shadowResources(shadowResources),
@@ -30,7 +34,9 @@ public:
         config(config), 
         state(state),
         lightSettings(lightSettings),
-        pointShadowPass(pointShadowPass)
+        directionalShadowPass(directionalShadowPass),
+        pointShadowPass(pointShadowPass),
+        spotShadowPass(spotShadowPass)
     {
     }
 
@@ -43,8 +49,9 @@ public:
     )
     {
         // 阴影图生成阶段
-        shadowResources.shadowMap->renderShadowMap();
+        directionalShadowPass.render();
         pointShadowPass.render(state.lightPositions);
+        spotShadowPass.render();
 
         if (config.renderMode == RenderMode::ShadowDebug && resources.shadowDebugShader)
         {
@@ -67,7 +74,9 @@ private:
     SceneRenderResources& resources;
     LightSettings& lightSettings;
     SceneObjectPass& objectPass;
+    DirectionalShadowPass& directionalShadowPass;
     PointShadowPass& pointShadowPass;
+    SpotShadowPass& spotShadowPass;
 
     void renderShadowDebugPass(int bfwidth, int bfheight, Screenquad& screenquad)
     {
@@ -101,7 +110,7 @@ private:
         objectPass.renderPlane(bfwidth, bfheight);
         lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
 
-        if (resources.model && resources.modelShader)
+        if (resources.model)
         {
             objectPass.renderModel(*resources.model, bfwidth, bfheight);
         }

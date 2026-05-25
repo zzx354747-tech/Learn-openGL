@@ -18,12 +18,17 @@
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
 #include "rendering/assets/LightMesh.h"
+#include "rendering/assets/LightSettings.h"
 #include "rendering/assets/CubeMap.h"
 #include "rendering/assets/SkyboxMesh.h"
 #include "rendering/core/SceneRender.h"
-#include "rendering/uniforms/LightUniformSetter.h"
 #include "rendering/core/SceneDrawer.h"
 #include "rendering/postprocess/DirectionalShadowMap.h"
+#include "rendering/postprocess/PointShadowMap.h"
+#include "rendering/postprocess/SpotShadowMap.h"
+#include "rendering/passes/ShadowPass/DirectionalShadowPass.h"
+#include "rendering/passes/ShadowPass/PointShadowPass.h"
+#include "rendering/passes/ShadowPass/SpotShadowPass.h"
 #include "rendering/Model/Mesh.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
@@ -209,7 +214,12 @@ Shader pointShadowMapShader(
     "../src/shader/pratice/scenerender/shadowMap/pointShadow.fs"
 );
 
-Shader modelShader(
+Shader basicModelShader(
+    "../src/shader/pratice/scenerender/basic_model.vs",
+    "../src/shader/pratice/scenerender/basic_model.fs"
+);
+
+Shader lightingModelShader(
     "../src/shader/pratice/scenerender/model.vs",
     "../src/shader/pratice/scenerender/model.fs"
 );
@@ -227,10 +237,12 @@ Shader modelShader(
     sceneResources.lightingPlaneShader = &lightingPlaneShader;
     sceneResources.lightCubeShader = &lightCubeShader;
     sceneResources.reflectShader = &cubemapShader;
-    sceneResources.modelShader = &modelShader;
     sceneResources.shadowDebugShader = &shadowDebugShader;
     sceneResources.shadowMapShader = &shadowMapShader;
     sceneResources.pointShadowMapShader = &pointShadowMapShader;
+    sceneResources.basicModelShader = &basicModelShader;
+    sceneResources.lightingModelShader = &lightingModelShader;
+    sceneResources.reflectModelShader = &cubemapShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
     sceneResources.lightMesh = &lightMesh;
@@ -250,16 +262,30 @@ Shader modelShader(
     SceneRenderState sceneState;
     SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState, &rock_1k);
 
-    DirectionalShadowMap shadowDebug(*sceneResources.shadowDebugShader, sceneDrawer, 4096, 4096);
-    DirectionalShadowMap shadowMap(*sceneResources.shadowMapShader, sceneDrawer, 4096, 4096);
+    DirectionalShadowMap shadowDebug(4096, 4096);
+    DirectionalShadowMap shadowMap(4096, 4096);
     PointShadowMap pointShadowMap(1024, 1024, 1.0f, 25.0f);
     PointShadowPass pointShadowPass(pointShadowMap, *sceneResources.pointShadowMapShader, sceneDrawer);
+    SpotShadowMap spotShadowMap(1024, 1024, 1.0f, 25.0f);
+    LightSettings lightSettings;
+    DirectionalShadowPass directionalShadowPass(
+        shadowMap,
+        *sceneResources.shadowMapShader,
+        sceneDrawer,
+        sceneState,
+        lightSettings);
+    SpotShadowPass spotShadowPass(
+        spotShadowMap,
+        *sceneResources.shadowMapShader,
+        sceneDrawer,
+        camera,
+        sceneState,
+        lightSettings);
 
     ShadowResources shadowResources;
     shadowResources.shadowMap = &shadowMap;
     shadowResources.pointShadowMap = &pointShadowMap;
-
-    LightSettings lightSettings;
+    shadowResources.spotShadowMap = &spotShadowMap;
 
     RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
@@ -273,7 +299,16 @@ Shader modelShader(
         camera,
         sceneDrawer);
 
-    SceneRender sceneRender(camera, objectPass, shadowResources, sceneResources, sceneConfig, sceneState, lightSettings, pointShadowPass);
+    SceneRender sceneRender(camera, 
+        objectPass, 
+        shadowResources, 
+        sceneResources, 
+        sceneConfig, 
+        sceneState, 
+        lightSettings, 
+        directionalShadowPass,
+        pointShadowPass, 
+        spotShadowPass);
 
     while (!glfwWindowShouldClose(window))
     {

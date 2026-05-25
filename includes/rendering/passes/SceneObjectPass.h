@@ -2,10 +2,10 @@
 #include "core/Shader.h"
 #include "scene/Camera.h"
 #include "rendering/assets/Texture.h"
+#include "rendering/assets/LightSettings.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
 #include "rendering/core/SceneRenderTypes.h"
-#include "rendering/uniforms/LightUniformSetter.h"
 #include "rendering/core/SceneDrawer.h"
 
 class SceneObjectPass
@@ -51,6 +51,7 @@ private:
 
     void setupObjectLighting(Shader& shader);
     void setupPointShadow(Shader& shader, unsigned int textureUnit = 2);
+    void setupSpotShadow(Shader& shader, unsigned int textureUnit = 3);
 
     Shader* getCubeShader();
     Shader* getPlaneShader();
