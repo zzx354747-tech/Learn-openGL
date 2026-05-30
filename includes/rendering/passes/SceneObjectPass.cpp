@@ -9,7 +9,7 @@ void SceneObjectPass::renderCube(int bfwidth, int bfheight)
 {
     Shader* shader = getCubeShader();
         
-        if (!shader || !resources.cubeMesh || !resources.cubeTexture)
+        if (!shader || !resources.cubeMesh || !resources.cubeDiffuseTexture)
             return;
         shader->use();
 
@@ -27,7 +27,8 @@ void SceneObjectPass::renderCube(int bfwidth, int bfheight)
         if (config.renderMode == RenderMode::Reflection && !resources.skybox)
             return;
 
-        bindCubeTexture(*shader, *resources.cubeTexture);
+        bindCubeDiffuseTexture(*shader, *resources.cubeDiffuseTexture);
+        bindCubeNormalTexture(*shader, *resources.cubeNormalTexture);
 
         drawer.drawCubes(*shader);
 }
@@ -117,7 +118,7 @@ void SceneObjectPass::renderModel(Model& model, int bfwidth, int bfheight)
     model.draw(*shader);
 }
 
-void SceneObjectPass::bindCubeTexture(Shader& shader, GLTexture& cubeTexture)
+void SceneObjectPass::bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture)
 {
    if (config.renderMode == RenderMode::Reflection)
         {
@@ -133,6 +134,14 @@ void SceneObjectPass::bindCubeTexture(Shader& shader, GLTexture& cubeTexture)
             shader.setInt("texture1", 0);
             cubeTexture.bind();
         }
+}
+
+void SceneObjectPass::bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture)
+{
+    glActiveTexture(GL_TEXTURE1);
+    shader.setInt("normalMap", 1);
+    shader.setBool("enableNormalMapping", true);
+    cubeTexture.bind(1);
 }
 
 void SceneObjectPass::bindPlaneTexture(Shader& shader, GLTexture& floorTexture)

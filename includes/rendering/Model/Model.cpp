@@ -17,11 +17,12 @@ void Model::loadModel(const std::string& path)
     Assimp::Importer importer;
 
     const aiScene* scene = importer.ReadFile(path,
-        aiProcess_Triangulate | 
+        aiProcess_Triangulate |
         // 如果没有法线数据，自动生成
         aiProcess_GenSmoothNormals |
         // 反转y轴的纹理坐标，因为OpenGL的纹理坐标原点在左下角，而许多模型文件的纹理坐标原点在左上角
-        aiProcess_FlipUVs);
+        aiProcess_FlipUVs |
+        aiProcess_CalcTangentSpace);
 
         // 检查导入是否成功
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -70,7 +71,7 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
     // 1. 处理顶点数据
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
-        vertex v;
+        vertex v{};
 
         v.position = glm::vec3(
             mesh->mVertices[i].x,
@@ -111,6 +112,26 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
             v.texCoords = glm::vec2(0.0f, 0.0f);
         }
 
+        if (mesh->HasTangentsAndBitangents())
+        {
+            v.tangent = glm::vec3(
+                mesh->mTangents[i].x,
+                mesh->mTangents[i].y,
+                mesh->mTangents[i].z
+            );
+
+            v.bitangent = glm::vec3(
+                mesh->mBitangents[i].x,
+                mesh->mBitangents[i].y,
+                mesh->mBitangents[i].z
+            );
+        }
+        else
+        {
+            v.tangent = glm::vec3(0.0f);
+            v.bitangent = glm::vec3(0.0f);
+        }
+
         vertices.push_back(v);
     }
 
@@ -145,6 +166,22 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
             scene
         );
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+
+        std::vector<texture> normalMaps = loadMaterialTextures(
+            material,
+            aiTextureType_NORMALS,
+            "texture_normal",
+            scene
+        );
+        textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+
+        std::vector<texture> heightMaps = loadMaterialTextures(
+            material,
+            aiTextureType_HEIGHT,
+            "texture_normal",
+            scene
+        );
+        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
     }
 
     return Mesh(vertices, indices, textures);

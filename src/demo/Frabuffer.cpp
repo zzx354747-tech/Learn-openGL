@@ -154,7 +154,8 @@ int main()
 
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
-    GLTexture cubeTexture("../textures/wooden_box.png");
+    GLTexture cubeDiffuseTexture("../textures/Bdiffuse.PNG");
+    GLTexture cubeNormalTexture("../textures/Bnormal.PNG");
     GLTexture floorTexture("../textures/wooden_floor.png");
     CubeMap skybox(skyboxFaces);
 
@@ -249,7 +250,8 @@ Shader lightingModelShader(
     sceneResources.skyboxMesh = &skyboxMesh;
     sceneResources.skybox = &skybox;
     sceneResources.floorTexture = &floorTexture;
-    sceneResources.cubeTexture = &cubeTexture;
+    sceneResources.cubeDiffuseTexture = &cubeDiffuseTexture;
+    sceneResources.cubeNormalTexture = &cubeNormalTexture;
     sceneResources.model = &rock_1k;
 
     SceneRenderConfig sceneConfig;
@@ -289,6 +291,7 @@ Shader lightingModelShader(
 
     RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
+    bool gammaCorrection = false;
 
     SceneObjectPass objectPass(sceneResources,
         shadowResources,
@@ -345,6 +348,7 @@ Shader lightingModelShader(
         ImGui::Checkbox("Point Light", &sceneConfig.enablePointLight);
         ImGui::Checkbox("Directional Light", &sceneConfig.enableDirectionalLight);
         ImGui::Checkbox("Flashlight", &sceneConfig.enableFlashlight);
+        ImGui::Checkbox("Gamma Correction", &gammaCorrection);
 
         if (sceneConfig.enablePointLight)
         {
@@ -382,6 +386,15 @@ Shader lightingModelShader(
         }
 
         ImGui::End();
+
+        lightingModelShader.use();
+        lightingModelShader.setBool("uGammaCorrection", gammaCorrection);
+
+        lightCubeShader.use();
+        lightCubeShader.setBool("uGammaCorrection", gammaCorrection);
+
+        lightingPlaneShader.use();
+        lightingPlaneShader.setBool("uGammaCorrection", gammaCorrection);
 
         processInput(window, deltaTime);
 

@@ -3,6 +3,7 @@
 in VS_OUT {
     vec3 FragPos;
     vec3 Normal;
+    mat3 TBN;
     vec2 TexCoords;
     vec4 FragPosLightSpace;
     vec4 FragPosSpotLightSpace;
@@ -42,6 +43,7 @@ struct FlashLight {
 
 uniform sampler2D texture_diffuse1;
 uniform sampler2D texture_specular1;
+uniform sampler2D texture_normal1;
 // 接收阴影贴图
 uniform sampler2D shadowMap;
 uniform samplerCube depthCubeMap;
@@ -56,6 +58,9 @@ uniform vec3 viewPos;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
+uniform bool hasNormalMap;
+
+uniform bool uGammaCorrection;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -284,12 +289,29 @@ vec3 calcFlashLight(FlashLight light,
         * intensity;
 }
 
+vec3 getNormal()
+{
+    if (hasNormalMap)
+    {
+        vec3 normal = texture(texture_normal1, fs_in.TexCoords).rgb;
+        normal = normal * 2.0 - 1.0;
+        return normalize(fs_in.TBN * normal);
+    }
+
+    return normalize(fs_in.Normal);
+}
+
 void main()
 {
     vec3 diffuseTex = texture(texture_diffuse1, fs_in.TexCoords).rgb;
     vec3 specularTex = texture(texture_specular1, fs_in.TexCoords).rgb;
-    vec3 normal = normalize(fs_in.Normal);
+    vec3 normal = getNormal();
     vec3 viewDir = normalize(viewPos - fs_in.FragPos);
+
+    if (uGammaCorrection)
+    {
+        diffuseTex = pow(diffuseTex, vec3(2.2));
+    }
 
     vec3 result = vec3(0.0);
     if (enablePointLight)
@@ -315,5 +337,11 @@ void main()
                 diffuseTex, 
                 specularTex);
 
+    if (uGammaCorrection)
+    {
+        result = pow(result, vec3(1.0 / 2.2));
+    }
+
     FragColor = vec4(result, 1.0);
+
 }

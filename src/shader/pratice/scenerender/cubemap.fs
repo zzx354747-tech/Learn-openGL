@@ -9,6 +9,7 @@ out vec4 FragColor;
 uniform samplerCube skybox;
 uniform vec3 cameraPos;
 uniform bool isSkybox;
+uniform bool uGammaCorrection;
 
 void main()
 {

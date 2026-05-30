@@ -6,6 +6,7 @@ in VS_OUT {
     vec2 TexCoords;
     vec4 FragPosLightSpace;
     vec4 FragPosSpotLightSpace;
+    mat3 TBN;
 } fs_in;
 
 out vec4 FragColor;
@@ -41,6 +42,7 @@ struct FlashLight {
 };
 
 uniform sampler2D texture1;
+uniform sampler2D normalMap;
 // 接收阴影贴图
 uniform sampler2D shadowMap;
 uniform samplerCube depthCubeMap;
@@ -55,6 +57,9 @@ uniform vec3 viewPos;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
+uniform bool enableNormalMapping;
+
+uniform bool uGammaCorrection;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -263,11 +268,28 @@ vec3 calcFlashLight(FlashLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
         * intensity;
 }
 
+vec3 getNormal()
+{
+    if (enableNormalMapping)
+    {
+       vec3 normal = texture(normalMap, fs_in.TexCoords).rgb;
+       normal = normal * 2.0 - 1.0;
+       return normalize(fs_in.TBN * normal);
+    }
+    
+    return normalize(fs_in.Normal);
+}
+
 void main()
 {
     vec3 baseColor = texture(texture1, fs_in.TexCoords).rgb;
-    vec3 normal = normalize(fs_in.Normal);
+    vec3 normal = getNormal();
     vec3 viewDir = normalize(viewPos - fs_in.FragPos);
+
+    if (uGammaCorrection)
+    {
+        baseColor = pow(baseColor, vec3(2.2));
+    }
 
     vec3 result = vec3(0.0);
     if (enablePointLight)
@@ -276,5 +298,11 @@ void main()
         result += calcSun(sun, normal, viewDir, baseColor);
     if (enableFlashlight)
         result += calcFlashLight(flashLight, normal, fs_in.FragPos, viewDir, baseColor);
+
+    if (uGammaCorrection)
+    {
+        result = pow(result, vec3(1.0 / 2.2));
+    }
+
     FragColor = vec4(result, 1.0);
 }

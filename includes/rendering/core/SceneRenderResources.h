@@ -37,7 +37,8 @@ struct SceneRenderResources
     CubeMap* skybox = nullptr;
 
     GLTexture* floorTexture = nullptr;
-    GLTexture* cubeTexture = nullptr;
+    GLTexture* cubeDiffuseTexture = nullptr;
+    GLTexture* cubeNormalTexture = nullptr;
 };
 
 struct ShadowResources

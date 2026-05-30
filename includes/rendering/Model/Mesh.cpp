@@ -23,6 +23,28 @@ void Mesh::setupMesh()
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, texCoords));
 
+    // tangent
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(
+        3,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        sizeof(vertex),
+        (void*)offsetof(vertex, tangent)
+    );
+
+    // bitangent
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(
+        4,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        sizeof(vertex),
+        (void*)offsetof(vertex, bitangent)
+    );
+
     glBindVertexArray(0);
 }
 
@@ -30,6 +52,8 @@ void Mesh::draw(Shader& shader)
 {
     unsigned int diffuseNr = 1;
     unsigned int specularNr = 1;
+    unsigned int normalNr = 1;
+    bool hasNormalMap = false;
 
     for (unsigned int i = 0; i < textures.size(); i++)
     {
@@ -46,11 +70,18 @@ void Mesh::draw(Shader& shader)
         {
             number = std::to_string(specularNr++);
         }
+        else if (name == "texture_normal")
+        {
+            number = std::to_string(normalNr++);
+            hasNormalMap = true;
+        }
 
         shader.setInt(name + number, i);
 
         glBindTexture(GL_TEXTURE_2D, textures[i].id);
     }
+
+    shader.setBool("hasNormalMap", hasNormalMap);
 
     glBindVertexArray(VAO);
 

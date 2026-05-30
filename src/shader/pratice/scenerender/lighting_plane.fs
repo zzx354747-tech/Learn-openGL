@@ -57,6 +57,8 @@ uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 
+uniform bool uGammaCorrection;
+
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
     vec3 projCoords =
@@ -285,6 +287,12 @@ void main()
     vec3 baseColor = texture(texture1, fs_in.TexCoords).rgb;
     vec3 normal = normalize(fs_in.Normal);
     vec3 viewDir = normalize(viewPos - fs_in.FragPos);
+
+    if (uGammaCorrection)
+    {
+        baseColor = pow(baseColor, vec3(2.2));
+    }
+
     vec3 result = vec3(0.0);
     if (enablePointLight)
         result += calcPointLight(pointLight, normal, fs_in.FragPos, viewDir, baseColor);
@@ -292,5 +300,11 @@ void main()
         result += calcSun(sun, normal, viewDir, baseColor);
     if (enableFlashlight)
         result += calcFlashLight(flashLight, normal, fs_in.FragPos, viewDir, baseColor);
+
+    if (uGammaCorrection)
+    {
+        result = pow(result, vec3(1.0 / 2.2));
+    }
+
     FragColor = vec4(result, 1.0);
 }

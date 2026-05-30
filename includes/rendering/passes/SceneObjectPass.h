@@ -46,7 +46,8 @@ private:
     Camera& camera;
     SceneDrawer& drawer;
 
-    void bindCubeTexture(Shader& shader, GLTexture& cubeTexture);
+    void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
+    void bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture);
     void bindPlaneTexture(Shader& shader, GLTexture& floorTexture);
 
     void setupObjectLighting(Shader& shader);
