@@ -43,12 +43,16 @@ struct FlashLight {
 
 uniform sampler2D texture1;
 uniform sampler2D normalMap;
+uniform sampler2D depthMap;
 // 接收阴影贴图
 uniform sampler2D shadowMap;
 uniform samplerCube depthCubeMap;
 uniform sampler2D spotShadowMap;
 
 uniform float farPlane;
+uniform float heightScale;
+
+uniform int numLayers;
 
 uniform PointLight pointLight;
 uniform Sun sun;
@@ -58,8 +62,42 @@ uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool enableNormalMapping;
+uniform bool enableParallaxMapping;
 
 uniform bool uGammaCorrection;
+
+vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
+{
+    // 计算步长
+    float layerDepth = 1.0 / float(numLayers);
+    // 计算单层uv偏移量
+    vec2 deltaTexCoords = viewDir.xy / viewDir.z * heightScale / float(numLayers);
+
+    // 初始化当前层的深度
+    float currentLayerDepth = 0.0;
+    // 初始化偏移前的纹理坐标
+    vec2 currentTexCoords = texCoords;
+    // 获取当前层的深度值
+    float currentDepthMapValue = texture(depthMap, currentTexCoords).r;
+
+    while (currentLayerDepth < currentDepthMapValue)
+    {
+        // 更新当前层uv
+        currentTexCoords -= deltaTexCoords;
+        // 更新当前层深度值
+        currentDepthMapValue = texture(depthMap, currentTexCoords).r;
+        // 更新当前层深度
+        currentLayerDepth += layerDepth;
+    }
+
+    // 线性插值，获得更精确的纹理坐标
+    vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+    float afterDepth = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = texture(depthMap, prevTexCoords).r - (currentLayerDepth - layerDepth);
+    float weight = afterDepth / (afterDepth - beforeDepth);
+
+    return prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+}
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -268,11 +306,11 @@ vec3 calcFlashLight(FlashLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
         * intensity;
 }
 
-vec3 getNormal()
+vec3 getNormal(vec2 texCoords)
 {
     if (enableNormalMapping)
     {
-       vec3 normal = texture(normalMap, fs_in.TexCoords).rgb;
+       vec3 normal = texture(normalMap, texCoords).rgb;
        normal = normal * 2.0 - 1.0;
        return normalize(fs_in.TBN * normal);
     }
@@ -282,8 +320,18 @@ vec3 getNormal()
 
 void main()
 {
-    vec3 baseColor = texture(texture1, fs_in.TexCoords).rgb;
-    vec3 normal = getNormal();
+    vec2 texCoords = fs_in.TexCoords;
+    vec3 viewWorldDir = normalize(viewPos - fs_in.FragPos);
+
+    vec3 viewDirTangent = normalize(transpose(fs_in.TBN) * viewWorldDir);
+    
+    if (enableParallaxMapping)
+    {
+        texCoords = parallaxMapping(fs_in.TexCoords, viewDirTangent);
+    }
+
+    vec3 baseColor = texture(texture1, texCoords).rgb;
+    vec3 normal = getNormal(texCoords);
     vec3 viewDir = normalize(viewPos - fs_in.FragPos);
 
     if (uGammaCorrection)

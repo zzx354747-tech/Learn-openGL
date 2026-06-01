@@ -27,11 +27,15 @@ void main()
     vec4 worldPos = model * vec4(aPos, 1.0);
 
     mat3 normalMatrix = transpose(inverse(mat3(model)));
+    // 将切线空间的T、B、N转换到世界空间
     vec3 T = normalize(normalMatrix * aTangent);
     vec3 B = normalize(normalMatrix * aBitangent);
     vec3 N = normalize(normalMatrix * aNormal);
     
+    // 去除T基底的N分量，使T垂直于N
+    // 误差主要来源于线性插值，我们不对N作处理，一是因为要选它当基底，而是因为错了也没关系
     T = normalize(T - dot(T, N) * N);
+    // B由叉乘得到，保证了T、B、N三者的正交性
     B = cross(N, T);
 
     vs_out.TBN = mat3(T, B, N);

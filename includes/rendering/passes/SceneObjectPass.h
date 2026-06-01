@@ -48,6 +48,7 @@ private:
 
     void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
     void bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture);
+    void bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTexture);
     void bindPlaneTexture(Shader& shader, GLTexture& floorTexture);
 
     void setupObjectLighting(Shader& shader);

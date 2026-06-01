@@ -22,6 +22,7 @@ public:
     void drawScene(Shader& shader)
     {
         drawCubes(shader);
+        drawSecondCubes(shader);
         drawPlane(shader);
         drawModel(shader);
     }
@@ -35,6 +36,28 @@ public:
         {
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, state->cubePositions[i]);
+
+            float angle = 20.0f * i;
+            model = glm::rotate(
+                model,
+                glm::radians(angle),
+                glm::vec3(1.0f, 0.3f, 0.5f)
+            );
+
+            shader.setMat4("model", model);
+            cubeMesh->draw();
+        }
+    }
+
+    void drawSecondCubes(Shader& shader)
+    {
+        if (!cubeMesh || !state)
+            return;
+
+        for (unsigned int i = 0; i < 3; i++)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, state->secondCubePositions[i] + glm::vec3(0.0f, 1.0f, 0.0f));
 
             float angle = 20.0f * i;
             model = glm::rotate(

@@ -154,9 +154,14 @@ int main()
 
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
-    GLTexture cubeDiffuseTexture("../textures/Bdiffuse.PNG");
-    GLTexture cubeNormalTexture("../textures/Bnormal.PNG");
+    GLTexture cubeDiffuseTexture("../textures/bricks2.jpg");
+    GLTexture cubeNormalTexture("../textures/bricks2_normal.jpg");
+    GLTexture cubeParallaxTexture("../textures/bricks2_disp.jpg");
+    GLTexture secondCubeDiffuseTexture("../textures/toy/toy_box_diffuse.png");
+    GLTexture secondCubeNormalTexture("../textures/toy/toy_box_normal.png");
+    GLTexture secondCubeParallaxTexture("../textures/toy/toy_box_disp.png");
     GLTexture floorTexture("../textures/wooden_floor.png");
+
     CubeMap skybox(skyboxFaces);
 
     Screenquad screenQuad;
@@ -252,6 +257,10 @@ Shader lightingModelShader(
     sceneResources.floorTexture = &floorTexture;
     sceneResources.cubeDiffuseTexture = &cubeDiffuseTexture;
     sceneResources.cubeNormalTexture = &cubeNormalTexture;
+    sceneResources.cubeParallaxTexture = &cubeParallaxTexture;
+    sceneResources.secondCubeDiffuseTexture = &secondCubeDiffuseTexture;
+    sceneResources.secondCubeNormalTexture = &secondCubeNormalTexture;
+    sceneResources.secondCubeParallaxTexture = &secondCubeParallaxTexture;
     sceneResources.model = &rock_1k;
 
     SceneRenderConfig sceneConfig;
@@ -260,6 +269,10 @@ Shader lightingModelShader(
     sceneConfig.enablePointLight = true;
     sceneConfig.enableDirectionalLight = false;
     sceneConfig.enableFlashlight = false;
+    sceneConfig.enableGammaCorrection = false;
+    sceneConfig.enableNormalMapping = true;
+    sceneConfig.enableParallaxMapping = true;
+    sceneConfig.parallaxHeightScale = 0.03f;
 
     SceneRenderState sceneState;
     SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState, &rock_1k);
@@ -291,7 +304,6 @@ Shader lightingModelShader(
 
     RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
-    bool gammaCorrection = false;
 
     SceneObjectPass objectPass(sceneResources,
         shadowResources,
@@ -348,7 +360,11 @@ Shader lightingModelShader(
         ImGui::Checkbox("Point Light", &sceneConfig.enablePointLight);
         ImGui::Checkbox("Directional Light", &sceneConfig.enableDirectionalLight);
         ImGui::Checkbox("Flashlight", &sceneConfig.enableFlashlight);
-        ImGui::Checkbox("Gamma Correction", &gammaCorrection);
+        ImGui::Checkbox("Gamma Correction", &sceneConfig.enableGammaCorrection);
+        ImGui::Checkbox("Normal Mapping", &sceneConfig.enableNormalMapping);
+        ImGui::Checkbox("Parallax Mapping", &sceneConfig.enableParallaxMapping);
+        ImGui::SliderFloat("Parallax Height Scale", &sceneConfig.parallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::SliderInt("Number of Layers", &sceneConfig.numLayers, 1, 64);
 
         if (sceneConfig.enablePointLight)
         {
@@ -388,13 +404,13 @@ Shader lightingModelShader(
         ImGui::End();
 
         lightingModelShader.use();
-        lightingModelShader.setBool("uGammaCorrection", gammaCorrection);
+        lightingModelShader.setBool("uGammaCorrection", sceneConfig.enableGammaCorrection);
 
         lightCubeShader.use();
-        lightCubeShader.setBool("uGammaCorrection", gammaCorrection);
+        lightCubeShader.setBool("uGammaCorrection", sceneConfig.enableGammaCorrection);
 
         lightingPlaneShader.use();
-        lightingPlaneShader.setBool("uGammaCorrection", gammaCorrection);
+        lightingPlaneShader.setBool("uGammaCorrection", sceneConfig.enableGammaCorrection);
 
         processInput(window, deltaTime);
 

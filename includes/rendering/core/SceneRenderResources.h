@@ -39,6 +39,10 @@ struct SceneRenderResources
     GLTexture* floorTexture = nullptr;
     GLTexture* cubeDiffuseTexture = nullptr;
     GLTexture* cubeNormalTexture = nullptr;
+    GLTexture* cubeParallaxTexture = nullptr;
+    GLTexture* secondCubeDiffuseTexture = nullptr;
+    GLTexture* secondCubeNormalTexture = nullptr;
+    GLTexture* secondCubeParallaxTexture = nullptr;
 };
 
 struct ShadowResources

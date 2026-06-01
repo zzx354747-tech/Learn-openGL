@@ -16,9 +16,9 @@ void SceneObjectPass::renderCube(int bfwidth, int bfheight)
         if (config.renderMode == RenderMode::Lighting)
         {
             setupObjectLighting(*shader);
-            ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix);
-            setupPointShadow(*shader);
-            setupSpotShadow(*shader);
+            ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix, 10);
+            setupPointShadow(*shader, 11);
+            setupSpotShadow(*shader, 12);
         }
 
         CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
@@ -29,8 +29,15 @@ void SceneObjectPass::renderCube(int bfwidth, int bfheight)
 
         bindCubeDiffuseTexture(*shader, *resources.cubeDiffuseTexture);
         bindCubeNormalTexture(*shader, *resources.cubeNormalTexture);
+        bindCubeParallaxTexture(*shader, *resources.cubeParallaxTexture);   
 
         drawer.drawCubes(*shader);
+
+        bindCubeDiffuseTexture(*shader, *resources.secondCubeDiffuseTexture);
+        bindCubeNormalTexture(*shader, *resources.secondCubeNormalTexture);
+        bindCubeParallaxTexture(*shader, *resources.secondCubeParallaxTexture);
+
+        drawer.drawSecondCubes(*shader);
 }
 
 void SceneObjectPass::renderPlane(int bfwidth, int bfheight)
@@ -140,8 +147,18 @@ void SceneObjectPass::bindCubeNormalTexture(Shader& shader, GLTexture& cubeTextu
 {
     glActiveTexture(GL_TEXTURE1);
     shader.setInt("normalMap", 1);
-    shader.setBool("enableNormalMapping", true);
+    shader.setBool("enableNormalMapping", config.enableNormalMapping);
     cubeTexture.bind(1);
+}
+
+void SceneObjectPass::bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTexture)
+{
+    glActiveTexture(GL_TEXTURE2);
+    shader.setInt("depthMap", 2);
+    shader.setFloat("heightScale", config.parallaxHeightScale);
+    shader.setInt("numLayers", config.numLayers);
+    shader.setBool("enableParallaxMapping", config.enableParallaxMapping);
+    cubeTexture.bind(2);
 }
 
 void SceneObjectPass::bindPlaneTexture(Shader& shader, GLTexture& floorTexture)
