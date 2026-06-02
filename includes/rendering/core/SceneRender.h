@@ -61,6 +61,11 @@ public:
 
         // 离屏渲染阶段
         renderFrameBufferPass(bfwidth, bfheight, framebuffer);
+        
+        if (config.enableBloom && resources.pingpongFBO && resources.blurShader)
+        {
+            renderBlurPass(framebuffer, *resources.pingpongFBO, *resources.blurShader, screenQuad);
+        }
 
         // 屏幕渲染阶段
         renderScreenPass(bfwidth, bfheight, screenShader, screenQuad, framebuffer);
@@ -120,26 +125,70 @@ private:
         framebuffer.unbind();
     }
 
-    void renderScreenPass(int bfwidth,
-        int bfheight,
-        Shader& screenShader,
-        Screenquad& screenQuad,
-        Framebuffer& framebuffer)
+    void renderScreenPass(int bfwidth, int bfheight,
+    Shader& screenShader,
+    Screenquad& screenQuad,
+    Framebuffer& framebuffer)
     {
         glViewport(0, 0, bfwidth, bfheight);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+        glDisable(GL_DEPTH_TEST);
 
         screenShader.use();
         screenShader.setInt("screenTexture", 0);
+        screenShader.setInt("bloomBlur", 1);
         screenShader.setFloat("exposure", config.exposure);
         screenShader.setBool("enableHdr", config.enableHDR);
         screenShader.setBool("enableGamma", config.enableGammaCorrection);
-        
-        glDisable(GL_DEPTH_TEST);
-        // 绑定帧缓冲区的纹理
+        screenShader.setBool("enableBloom", config.enableBloom);
+        screenShader.setFloat("bloomStrength", config.bloomStrength);
+
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID());
+        glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID(0));
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(
+            GL_TEXTURE_2D,
+            (config.enableBloom && resources.pingpongFBO)
+                ? resources.pingpongFBO->getTextureID(1)
+                : 0);
+
         screenQuad.draw();
+    }
+
+    void renderBlurPass(
+        Framebuffer& framebuffer,
+        PingPongFramebuffer& pingpong,
+        Shader& blurShader,
+        Screenquad& screenQuad,
+        int amount = 20)  // 模糊次数，必须是偶数
+    {
+        bool horizontal = true;
+        bool firstIteration = true;
+
+        glDisable(GL_DEPTH_TEST);
+        blurShader.use();
+        blurShader.setInt("image", 0);
+
+        for (int i = 0; i < amount; ++i)
+        {
+            pingpong.bind(horizontal ? 0 : 1);
+
+            blurShader.setBool("horizontal", horizontal);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D,
+                firstIteration
+                    ? framebuffer.getTextureID(1)  // 第一次从高亮纹理读
+                    : pingpong.getTextureID(horizontal ? 1 : 0)  // 之后从上一次结果读
+            );
+
+            screenQuad.draw();
+
+            horizontal = !horizontal;
+            firstIteration = false;
+        }
+
+        pingpong.unbind();
     }
 };

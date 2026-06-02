@@ -14,6 +14,7 @@
 #include "scene/Camera.h"
 #include "rendering/assets/Texture.h"
 #include "rendering/postprocess/Framebuffer.h"
+#include "rendering/postprocess/PingPong_Framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
@@ -35,6 +36,7 @@
 #include "rendering/passes/SceneObjectPass.h"
 
 Framebuffer* framebuffer = nullptr;
+PingPongFramebuffer* pingpongFramebuffer = nullptr;
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定
 bool gravePresslastFrame = false; // 上一帧是否按下了`键
@@ -51,6 +53,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     if (framebuffer)
     {
         framebuffer->resize(width, height);
+    }
+    if (pingpongFramebuffer)
+    {
+        pingpongFramebuffer->resize(width, height);
     }
 };
 
@@ -169,6 +175,8 @@ int main()
 
     Framebuffer fb(bfwidth, bfheight);
     framebuffer = &fb;
+    PingPongFramebuffer pingpongFBO(bfwidth, bfheight);
+    pingpongFramebuffer = &pingpongFBO;
 
    Shader screenShader(
     "../src/shader/pratice/framebuffer/screen.vs",
@@ -226,10 +234,15 @@ Shader basicModelShader(
     "../src/shader/pratice/scenerender/basic_model.fs"
 );
 
-Shader lightingModelShader(
-    "../src/shader/pratice/scenerender/model.vs",
-    "../src/shader/pratice/scenerender/model.fs"
-);
+    Shader lightingModelShader(
+        "../src/shader/pratice/scenerender/model.vs",
+        "../src/shader/pratice/scenerender/model.fs"
+    );
+
+    Shader blurShader(
+        "../src/shader/pratice/framebuffer/blur.vs",
+        "../src/shader/pratice/framebuffer/blur.fs"
+    );
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
@@ -250,11 +263,13 @@ Shader lightingModelShader(
     sceneResources.basicModelShader = &basicModelShader;
     sceneResources.lightingModelShader = &lightingModelShader;
     sceneResources.reflectModelShader = &cubemapShader;
+    sceneResources.blurShader = &blurShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
     sceneResources.lightMesh = &lightMesh;
     sceneResources.skyboxMesh = &skyboxMesh;
     sceneResources.skybox = &skybox;
+    sceneResources.pingpongFBO = &pingpongFBO;
     sceneResources.floorTexture = &floorTexture;
     sceneResources.cubeDiffuseTexture = &cubeDiffuseTexture;
     sceneResources.cubeNormalTexture = &cubeNormalTexture;
@@ -271,6 +286,7 @@ Shader lightingModelShader(
     sceneConfig.enableDirectionalLight = false;
     sceneConfig.enableFlashlight = false;
     sceneConfig.enableGammaCorrection = false;
+    sceneConfig.enableBloom = false;
     sceneConfig.enableNormalMapping = true;
     sceneConfig.enableParallaxMapping = true;
     sceneConfig.parallaxHeightScale = 0.03f;
@@ -363,10 +379,13 @@ Shader lightingModelShader(
         ImGui::Checkbox("Flashlight", &sceneConfig.enableFlashlight);
         ImGui::Checkbox("Gamma Correction", &sceneConfig.enableGammaCorrection);
         ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
+        ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
         ImGui::Checkbox("Normal Mapping", &sceneConfig.enableNormalMapping);
         ImGui::Checkbox("Parallax Mapping", &sceneConfig.enableParallaxMapping);
         ImGui::SliderFloat("Parallax Height Scale", &sceneConfig.parallaxHeightScale, 0.0f, 0.1f, "%.3f");
         ImGui::SliderFloat("Exposure", &sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
+        ImGui::SliderFloat("Bloom Strength", &sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
+        ImGui::SliderFloat("Bloom Threshold", &sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
         ImGui::SliderInt("Number of Layers", &sceneConfig.numLayers, 1, 64);
 
         if (sceneConfig.enablePointLight)

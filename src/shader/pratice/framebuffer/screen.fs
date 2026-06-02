@@ -1,26 +1,35 @@
 #version 330 core
 
+out vec4 FragColor;
 in vec2 TexCoords;
 
-out vec4 FragColor;
-
 uniform sampler2D screenTexture;
+uniform sampler2D bloomBlur;
+
 uniform float exposure;
 uniform bool enableHdr;
 uniform bool enableGamma;
+uniform bool enableBloom;
+uniform float bloomStrength;
 
 void main()
 {
+    vec3 hdrColor = texture(screenTexture, TexCoords).rgb;
+    vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
 
-    vec3 color = texture(screenTexture, TexCoords).rgb;
+    // Bloom 叠加
+    if (enableBloom)
+        hdrColor += bloomColor * bloomStrength;
+
+    vec3 result = hdrColor;
+
+    // Tone mapping
     if (enableHdr)
-    {
-        color = vec3(1.0) - exp(-color * exposure);
-    }
+        result = vec3(1.0) - exp(-result * exposure);
+
+    // Gamma correction
     if (enableGamma)
-    {
-        color = pow(color, vec3(1.0/2.2));
-    }
-    
-    FragColor = vec4(color, 1.0);
+        result = pow(result, vec3(1.0 / 2.2));
+
+    FragColor = vec4(result, 1.0);
 }

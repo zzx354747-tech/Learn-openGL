@@ -193,6 +193,8 @@ add_executable(backpack_demo
     src/demo/backpack_demo.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
+    includes/rendering/Model/Model.cpp
+    includes/rendering/Model/Mesh.cpp
     ${GLAD_SOURCES}
 )
 
@@ -241,6 +243,8 @@ add_executable(newbackpack
     src/demo/newbackpack.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
+    includes/rendering/Model/Model.cpp
+    includes/rendering/Model/Mesh.cpp
     ${GLAD_SOURCES}
 )
 

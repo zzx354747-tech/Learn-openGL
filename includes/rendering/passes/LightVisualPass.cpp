@@ -1,6 +1,24 @@
 #include "LightVisualPass.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
 
+namespace
+{
+    void drawLightCube(
+        Shader& shader,
+        LightMesh& lightMesh,
+        const glm::vec3& position,
+        const glm::vec3& color,
+        float scale)
+    {
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, position);
+        model = glm::scale(model, glm::vec3(scale));
+        shader.setMat4("model", model);
+        shader.setVec3("lightColor", color);
+        lightMesh.draw();
+    }
+}
+
 void lightVisualPass::renderLightVisualPass(
     Camera& camera, 
     SceneRenderResources& resources,
@@ -8,17 +26,20 @@ void lightVisualPass::renderLightVisualPass(
     SceneRenderConfig& config,
     int bfwidth, 
     int bfheight)
-{
-    if (!resources.lightCubeShader || 
-            !resources.lightMesh||
-            !config.enablePointLight)
+    {
+        if (!resources.lightCubeShader || 
+            !resources.lightMesh)
             return;
         resources.lightCubeShader->use();
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, state.lightPositions);
-        model = glm::scale(model, glm::vec3(0.2f)); // 将灯光立方体缩小
-        resources.lightCubeShader->setMat4("model", model);
         CameraUniformSetter::apply(*resources.lightCubeShader, camera, bfwidth, bfheight);
 
-        resources.lightMesh->draw();
-}
+        if (config.enablePointLight)
+        {
+            drawLightCube(
+                *resources.lightCubeShader,
+                *resources.lightMesh,
+                state.lightPositions,
+                glm::vec3(6.0f),
+                0.2f);
+        }
+    }

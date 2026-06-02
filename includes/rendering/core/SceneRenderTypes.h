@@ -18,11 +18,14 @@ struct SceneRenderConfig
     bool enableDirectionalLight = false;
     bool enableGammaCorrection = false;
     bool enableHDR = false;
+    bool enableBloom = false;
     bool enableNormalMapping = false;
     bool enableParallaxMapping = false;
     float parallaxHeightScale = 0.03f;
     int numLayers = 32;
     float exposure = 1.0f;
+    float bloomStrength = 0.6f;
+    float bloomThreshold = 0.7f;
 
     RenderMode renderMode = RenderMode::Basic;
 };

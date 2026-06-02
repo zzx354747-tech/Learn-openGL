@@ -11,6 +11,7 @@
 #include "rendering/postprocess/DirectionalShadowMap.h"
 #include "rendering/postprocess/PointShadowMap.h"
 #include "rendering/postprocess/SpotShadowMap.h"
+#include "rendering/postprocess/PingPong_Framebuffer.h"
 #include "rendering/core/SceneRenderTypes.h"
 
 struct SceneRenderResources
@@ -27,6 +28,7 @@ struct SceneRenderResources
     Shader* basicModelShader = nullptr;
     Shader* lightingModelShader = nullptr;
     Shader* reflectModelShader = nullptr;
+    Shader* blurShader = nullptr;
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
@@ -35,6 +37,7 @@ struct SceneRenderResources
     Model* model = nullptr;
 
     CubeMap* skybox = nullptr;
+    PingPongFramebuffer* pingpongFBO = nullptr;
 
     GLTexture* floorTexture = nullptr;
     GLTexture* cubeDiffuseTexture = nullptr;

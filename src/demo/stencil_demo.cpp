@@ -1,4 +1,6 @@
 #include <iostream>
+#include <map>
+#include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -173,14 +175,14 @@ int main()
     glm::vec3( 3.8f, 0.0f, -0.8f)  
     };
 
-    vector<glm::vec3> vegetation;
+    std::vector<glm::vec3> vegetation;
     vegetation.push_back(glm::vec3(-1.5f,  0.0f, -0.48f));
     vegetation.push_back(glm::vec3( 1.5f,  0.0f,  0.51f));
     vegetation.push_back(glm::vec3( 0.0f,  0.0f,  0.7f));
     vegetation.push_back(glm::vec3(-0.3f,  0.0f, -2.3f));
     vegetation.push_back(glm::vec3( 0.5f,  0.0f, -0.6f));
 
-    vector<glm::vec3> transparentObjects;
+    std::vector<glm::vec3> transparentObjects;
     transparentObjects.push_back(glm::vec3(-1.5f, 0.0f, -0.18f));
     transparentObjects.push_back(glm::vec3( 1.5f, 0.0f,  0.81f));
     transparentObjects.push_back(glm::vec3( 0.0f, 0.0f,  1.0f));

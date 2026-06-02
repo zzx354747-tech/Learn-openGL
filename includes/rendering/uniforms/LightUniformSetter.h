@@ -32,7 +32,6 @@ public:
     }
 
 private:
-
     static void setupPointLight(
         Shader& shader,
         const SceneRenderState& state,

@@ -174,6 +174,7 @@ void SceneObjectPass::setupObjectLighting(Shader& shader)
     shader.setBool("enablePointLight", config.enablePointLight);
     shader.setBool("enableDirectionalLight", config.enableDirectionalLight);
     shader.setBool("enableFlashlight", config.enableFlashlight);
+    shader.setFloat("bloomThreshold", config.bloomThreshold);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
 }

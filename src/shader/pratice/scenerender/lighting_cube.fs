@@ -9,7 +9,8 @@ in VS_OUT {
     mat3 TBN;
 } fs_in;
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 struct PointLight {
     vec3 position;
@@ -63,6 +64,7 @@ uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool enableNormalMapping;
 uniform bool enableParallaxMapping;
+uniform float bloomThreshold;
 
 vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
 {
@@ -343,4 +345,11 @@ void main()
         result += calcFlashLight(flashLight, normal, fs_in.FragPos, viewDir, baseColor);
 
     FragColor = vec4(result, 1.0);
+
+    // ...
+    float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
+    if (brightness > bloomThreshold)
+        BrightColor = vec4(result, 1.0);
+    else
+        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
