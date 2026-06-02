@@ -56,20 +56,21 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void processInput(GLFWwindow* window, float deltaTime)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        camera.ProcessKeyboard(UP, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        camera.ProcessKeyboard(DOWN, deltaTime);
+    if (cursorLocked)
+    {
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, true);
+
+        camera.ProcessSmoothKeyboard(
+            glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS,
+            glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS,
+            glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS,
+            glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS,
+            glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS,
+            glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS,
+            deltaTime
+        );
+    }   
 
     if (glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT) == GLFW_PRESS && !gravePresslastFrame)
     {
@@ -361,9 +362,11 @@ Shader lightingModelShader(
         ImGui::Checkbox("Directional Light", &sceneConfig.enableDirectionalLight);
         ImGui::Checkbox("Flashlight", &sceneConfig.enableFlashlight);
         ImGui::Checkbox("Gamma Correction", &sceneConfig.enableGammaCorrection);
+        ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
         ImGui::Checkbox("Normal Mapping", &sceneConfig.enableNormalMapping);
         ImGui::Checkbox("Parallax Mapping", &sceneConfig.enableParallaxMapping);
         ImGui::SliderFloat("Parallax Height Scale", &sceneConfig.parallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::SliderFloat("Exposure", &sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
         ImGui::SliderInt("Number of Layers", &sceneConfig.numLayers, 1, 64);
 
         if (sceneConfig.enablePointLight)
@@ -402,15 +405,6 @@ Shader lightingModelShader(
         }
 
         ImGui::End();
-
-        lightingModelShader.use();
-        lightingModelShader.setBool("uGammaCorrection", sceneConfig.enableGammaCorrection);
-
-        lightCubeShader.use();
-        lightCubeShader.setBool("uGammaCorrection", sceneConfig.enableGammaCorrection);
-
-        lightingPlaneShader.use();
-        lightingPlaneShader.setBool("uGammaCorrection", sceneConfig.enableGammaCorrection);
 
         processInput(window, deltaTime);
 

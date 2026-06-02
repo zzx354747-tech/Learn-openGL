@@ -132,6 +132,10 @@ private:
 
         screenShader.use();
         screenShader.setInt("screenTexture", 0);
+        screenShader.setFloat("exposure", config.exposure);
+        screenShader.setBool("enableHdr", config.enableHDR);
+        screenShader.setBool("enableGamma", config.enableGammaCorrection);
+        
         glDisable(GL_DEPTH_TEST);
         // 绑定帧缓冲区的纹理
         glActiveTexture(GL_TEXTURE0);

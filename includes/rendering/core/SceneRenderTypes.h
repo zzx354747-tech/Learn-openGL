@@ -17,10 +17,12 @@ struct SceneRenderConfig
     bool enablePointLight = false;
     bool enableDirectionalLight = false;
     bool enableGammaCorrection = false;
+    bool enableHDR = false;
     bool enableNormalMapping = false;
     bool enableParallaxMapping = false;
     float parallaxHeightScale = 0.03f;
     int numLayers = 32;
+    float exposure = 1.0f;
 
     RenderMode renderMode = RenderMode::Basic;
 };

@@ -16,7 +16,7 @@ public:
         // 创建一个这帧所包含的所有画面的纹理
         glTexImage2D(GL_TEXTURE_2D, 
             0, 
-            GL_RGB, 
+            GL_RGBA16F, 
             width, 
             height, 
             0, 

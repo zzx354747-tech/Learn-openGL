@@ -21,6 +21,7 @@ Camera::Camera(
     LastY(lastY),
     MouseSensitivity(sensitivity),
     MovementSpeed(speed),
+    MovementVelocity(0.0f),
     firstMouse(true)
 {
     updateCameraVectors();
@@ -50,6 +51,59 @@ void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
         Position += WorldUp * velocity;
     if (direction == DOWN)
         Position -= WorldUp * velocity;
+}
+
+void Camera::ProcessSmoothKeyboard(
+    bool forward,
+    bool backward,
+    bool left,
+    bool right,
+    bool up,
+    bool down,
+    float deltaTime
+)
+{
+    glm::vec3 flatFront = glm::normalize(glm::vec3(Front.x, 0.0f, Front.z));
+    if (glm::length(flatFront) < 0.001f)
+        flatFront = glm::vec3(0.0f, 0.0f, 1.0f);
+
+    glm::vec3 flatRight = glm::normalize(glm::cross(flatFront, WorldUp));
+
+    glm::vec3 inputDirection(0.0f);
+    if (forward)
+        inputDirection += flatFront;
+    if (backward)
+        inputDirection -= flatFront;
+    if (left)
+        inputDirection -= flatRight;
+    if (right)
+        inputDirection += flatRight;
+    if (up)
+        inputDirection += WorldUp;
+    if (down)
+        inputDirection -= WorldUp;
+
+    if (glm::length(inputDirection) > 0.001f)
+        inputDirection = glm::normalize(inputDirection);
+
+    const float maxSpeed = MovementSpeed * 0.75f;
+    const float acceleration = maxSpeed / 1.1f;
+    const float deceleration = maxSpeed / 0.35f;
+    glm::vec3 targetVelocity = inputDirection * maxSpeed;
+    glm::vec3 velocityDelta = targetVelocity - MovementVelocity;
+    float maxVelocityChange = (glm::length(inputDirection) > 0.001f ? acceleration : deceleration) * deltaTime;
+
+    float deltaLength = glm::length(velocityDelta);
+    if (deltaLength <= maxVelocityChange || deltaLength < 0.0001f)
+    {
+        MovementVelocity = targetVelocity;
+    }
+    else
+    {
+        MovementVelocity += velocityDelta / deltaLength * maxVelocityChange;
+    }
+
+    Position += MovementVelocity * deltaTime;
 }
 
 void Camera::ProcessMouseMovement(float xpos, float ypos)

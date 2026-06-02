@@ -30,11 +30,20 @@ public:
 
 //对外接口
 glm::mat4 GetViewMatrix() const;
-glm::vec3 Getposition () const { return Position;}
-glm::vec3 GetFront() const { return Front; }
-void ProcessKeyboard(Camera_Movement direction, float deltaTime);
-void ProcessMouseMovement(float xpos, float ypos);
-void Resetmouse();
+	glm::vec3 Getposition () const { return Position;}
+	glm::vec3 GetFront() const { return Front; }
+	void ProcessKeyboard(Camera_Movement direction, float deltaTime);
+	void ProcessSmoothKeyboard(
+		bool forward,
+		bool backward,
+		bool left,
+		bool right,
+		bool up,
+		bool down,
+		float deltaTime
+	);
+	void ProcessMouseMovement(float xpos, float ypos);
+	void Resetmouse();
 
 private:
     glm::vec3 Position;
@@ -44,10 +53,11 @@ private:
     glm::vec3 WorldUp;  
     float Yaw;
     float Pitch;
-    float MovementSpeed;
-    float MouseSensitivity;
-    float LastX;
-    float LastY;
+	float MovementSpeed;
+	float MouseSensitivity;
+	glm::vec3 MovementVelocity;
+	float LastX;
+	float LastY;
     bool firstMouse;
     void updateCameraVectors();
 };

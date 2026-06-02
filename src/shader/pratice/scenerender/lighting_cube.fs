@@ -64,8 +64,6 @@ uniform bool enableFlashlight;
 uniform bool enableNormalMapping;
 uniform bool enableParallaxMapping;
 
-uniform bool uGammaCorrection;
-
 vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
 {
     // 计算步长
@@ -334,10 +332,7 @@ void main()
     vec3 normal = getNormal(texCoords);
     vec3 viewDir = normalize(viewPos - fs_in.FragPos);
 
-    if (uGammaCorrection)
-    {
-        baseColor = pow(baseColor, vec3(2.2));
-    }
+    baseColor = pow(baseColor, vec3(2.2));
 
     vec3 result = vec3(0.0);
     if (enablePointLight)
@@ -346,11 +341,6 @@ void main()
         result += calcSun(sun, normal, viewDir, baseColor);
     if (enableFlashlight)
         result += calcFlashLight(flashLight, normal, fs_in.FragPos, viewDir, baseColor);
-
-    if (uGammaCorrection)
-    {
-        result = pow(result, vec3(1.0 / 2.2));
-    }
 
     FragColor = vec4(result, 1.0);
 }

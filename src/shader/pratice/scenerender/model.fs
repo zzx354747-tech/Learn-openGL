@@ -60,8 +60,6 @@ uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool hasNormalMap;
 
-uniform bool uGammaCorrection;
-
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
     vec3 projCoords =
@@ -308,10 +306,8 @@ void main()
     vec3 normal = getNormal();
     vec3 viewDir = normalize(viewPos - fs_in.FragPos);
 
-    if (uGammaCorrection)
-    {
-        diffuseTex = pow(diffuseTex, vec3(2.2));
-    }
+    diffuseTex = pow(diffuseTex, vec3(2.2));
+    specularTex = pow(specularTex, vec3(2.2));
 
     vec3 result = vec3(0.0);
     if (enablePointLight)
@@ -336,11 +332,6 @@ void main()
                 viewDir, 
                 diffuseTex, 
                 specularTex);
-
-    if (uGammaCorrection)
-    {
-        result = pow(result, vec3(1.0 / 2.2));
-    }
 
     FragColor = vec4(result, 1.0);
 
