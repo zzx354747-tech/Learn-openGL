@@ -1,0 +1,97 @@
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+external-controller: 127.0.0.1:9090
+
+dns:
+  enable: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - "*.lan"
+    - localhost.ptlogin2.qq.com
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  fallback:
+    - https://1.1.1.1/dns-query
+    - https://dns.google/dns-query
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+
+proxies:
+  - name: "CF-VLESS"
+    type: vless
+    server: 104.26.9.1
+    port: 443
+    uuid: 1657dc53-9e22-43e8-b046-df66e09266d0
+    tls: true
+    udp: true
+    network: ws
+    ws-opts:
+      path: /graphics-data
+      headers:
+        Host: vps.graphics-node.xyz
+    servername: vps.graphics-node.xyz
+    client-fingerprint: chrome
+    alpn:
+      - http/1.1
+    skip-cert-verify: false
+
+  - name: "Kookeey-美国静态IP"
+    type: socks5
+    server: us467.kookeey.info
+    port: 20301
+    username: "9df33fd0"
+    password: "50fec93d"
+    udp: true
+
+proxy-groups:
+  - name: 🚀 代理模式
+    type: select
+    proxies:
+      - CF-VLESS
+      - 链式代理-CF版
+      - DIRECT
+
+  - name: 链式代理-CF版
+    type: relay
+    proxies:
+      - CF-VLESS
+      - Kookeey-美国静态IP
+
+rule-providers:
+  reject:
+    type: http
+    behavior: domain
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt"
+    path: ./ruleset/reject.yaml
+    interval: 86400
+  direct:
+    type: http
+    behavior: domain
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
+    path: ./ruleset/direct.yaml
+    interval: 86400
+  proxy:
+    type: http
+    behavior: domain
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
+    path: ./ruleset/proxy.yaml
+    interval: 86400
+  cncidr:
+    type: http
+    behavior: ipcidr
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt"
+    path: ./ruleset/cncidr.yaml
+    interval: 86400
+
+rules:
+  - RULE-SET,reject,REJECT
+  - RULE-SET,direct,DIRECT
+  - RULE-SET,proxy,🚀 代理模式
+  - RULE-SET,cncidr,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,🚀 代理模式

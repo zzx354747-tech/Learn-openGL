@@ -113,7 +113,7 @@ public:
                 GL_RENDERBUFFER, 
                 rboDepth);
 
-            // 声明两个附件都被激活
+            // 显示声明调用drawbuffers,以及声明drawbuffer列表
             GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
             glDrawBuffers(2, attachments);
 

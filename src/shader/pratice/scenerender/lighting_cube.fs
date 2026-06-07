@@ -9,6 +9,7 @@ in VS_OUT {
     mat3 TBN;
 } fs_in;
 
+// 声明编号0和1，会用来在drawbuffer列表中查询对应颜色附件的地址
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 
@@ -346,8 +347,9 @@ void main()
 
     FragColor = vec4(result, 1.0);
 
-    // ...
+    // 按人眼对三个颜色的敏感度计算亮度，如果亮度超过阈值，就把它写入BrightColor，否则写入黑色
     float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
+    
     if (brightness > bloomThreshold)
         BrightColor = vec4(result, 1.0);
     else

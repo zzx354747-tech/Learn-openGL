@@ -125,6 +125,51 @@ private:
         framebuffer.unbind();
     }
 
+     // 这个渲染流程只处理高亮场景的两个fbo
+    void renderBlurPass(
+        Framebuffer& framebuffer,
+        PingPongFramebuffer& pingpong,
+        Shader& blurShader,
+        Screenquad& screenQuad,
+        int amount = 20)  // 模糊次数，必须是偶数
+    {
+        bool horizontal = true;
+        bool firstIteration = true;
+
+        glDisable(GL_DEPTH_TEST);
+        blurShader.use();
+        blurShader.setInt("image", 0);
+
+        for (int i = 0; i < amount; ++i)
+        {
+            // 决定绑定到哪个fbo
+            pingpong.bind(horizontal ? 0 : 1);
+
+            // horizontal为true时，shader会在水平方向模糊，false时在垂直方向模糊
+            // 动态变化，所以写成uniform
+            blurShader.setBool("horizontal", horizontal);
+
+            glActiveTexture(GL_TEXTURE0);
+            // 决定纹理从哪个fbo读
+            glBindTexture(GL_TEXTURE_2D,
+                firstIteration
+                    ? framebuffer.getTextureID(1)  // 第一次从高亮纹理读
+                    : pingpong.getTextureID(horizontal ? 1 : 0)  // 之后从上一次结果读
+            );
+
+            // 多次draw，但是blur着色器不涉及光照计算，性能开销可以接受
+            screenQuad.draw();
+
+            // 切换模糊方向
+            horizontal = !horizontal;
+            // 标记第一次迭代已经完成，之后的迭代都从pingpong的结果读
+            firstIteration = false;
+        }
+
+        pingpong.unbind();
+    }
+
+    // 叠加三个
     void renderScreenPass(int bfwidth, int bfheight,
     Shader& screenShader,
     Screenquad& screenQuad,
@@ -156,39 +201,4 @@ private:
         screenQuad.draw();
     }
 
-    void renderBlurPass(
-        Framebuffer& framebuffer,
-        PingPongFramebuffer& pingpong,
-        Shader& blurShader,
-        Screenquad& screenQuad,
-        int amount = 20)  // 模糊次数，必须是偶数
-    {
-        bool horizontal = true;
-        bool firstIteration = true;
-
-        glDisable(GL_DEPTH_TEST);
-        blurShader.use();
-        blurShader.setInt("image", 0);
-
-        for (int i = 0; i < amount; ++i)
-        {
-            pingpong.bind(horizontal ? 0 : 1);
-
-            blurShader.setBool("horizontal", horizontal);
-
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D,
-                firstIteration
-                    ? framebuffer.getTextureID(1)  // 第一次从高亮纹理读
-                    : pingpong.getTextureID(horizontal ? 1 : 0)  // 之后从上一次结果读
-            );
-
-            screenQuad.draw();
-
-            horizontal = !horizontal;
-            firstIteration = false;
-        }
-
-        pingpong.unbind();
-    }
 };
