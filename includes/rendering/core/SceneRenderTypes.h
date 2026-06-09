@@ -23,6 +23,7 @@ struct SceneRenderConfig
     bool enableParallaxMapping = false;
     float parallaxHeightScale = 0.03f;
     int numLayers = 32;
+    int numBlurPasses = 10;
     float exposure = 1.0f;
     float bloomStrength = 0.6f;
     float bloomThreshold = 0.7f;

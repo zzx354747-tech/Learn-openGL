@@ -2,7 +2,7 @@
 #include <glad/gl.h>
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "rendering/postprocess/Framebuffer.h"
+#include "rendering/postprocess/HDR_Framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/LightSettings.h"
 #include "rendering/core/SceneRenderResources.h"
@@ -60,11 +60,11 @@ public:
         }
 
         // 离屏渲染阶段
-        renderFrameBufferPass(bfwidth, bfheight, framebuffer);
+        renderHDRFrameBufferPass(bfwidth, bfheight, framebuffer);
         
         if (config.enableBloom && resources.pingpongFBO && resources.blurShader)
         {
-            renderBlurPass(framebuffer, *resources.pingpongFBO, *resources.blurShader, screenQuad);
+            renderBlurPass(framebuffer, *resources.pingpongFBO, *resources.blurShader, screenQuad, config.numBlurPasses);
         }
 
         // 屏幕渲染阶段
@@ -101,7 +101,7 @@ private:
         screenquad.draw();
     }
 
-    void renderFrameBufferPass(int bfwidth,
+    void renderHDRFrameBufferPass(int bfwidth,
         int bfheight, 
         Framebuffer& framebuffer)
     {
@@ -131,7 +131,7 @@ private:
         PingPongFramebuffer& pingpong,
         Shader& blurShader,
         Screenquad& screenQuad,
-        int amount = 20)  // 模糊次数，必须是偶数
+        int amount)  // 模糊次数，必须是偶数
     {
         bool horizontal = true;
         bool firstIteration = true;
@@ -191,12 +191,12 @@ private:
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID(0));
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(
-            GL_TEXTURE_2D,
-            (config.enableBloom && resources.pingpongFBO)
-                ? resources.pingpongFBO->getTextureID(1)
-                : 0);
+
+        if (config.enableBloom && resources.pingpongFBO)
+        {
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, resources.pingpongFBO->getTextureID(1));
+        }
 
         screenQuad.draw();
     }

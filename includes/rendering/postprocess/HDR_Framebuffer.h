@@ -99,6 +99,7 @@ public:
                     0);
             }
 
+            // 开启深度测试后，openGL会自动把每个片段的深度值写入
             // 生成渲染缓冲对象
             glGenRenderbuffers(1, &rboDepth);
             glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);

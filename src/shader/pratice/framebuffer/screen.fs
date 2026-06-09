@@ -15,11 +15,13 @@ uniform float bloomStrength;
 void main()
 {
     vec3 hdrColor = texture(screenTexture, TexCoords).rgb;
-    vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
-
+    
     // Bloom 叠加
     if (enableBloom)
+    {
+        vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
         hdrColor += bloomColor * bloomStrength;
+    }
 
     vec3 result = hdrColor;
 

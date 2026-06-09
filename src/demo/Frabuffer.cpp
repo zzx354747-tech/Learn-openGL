@@ -13,7 +13,7 @@
 #include "core/Shader.h"
 #include "scene/Camera.h"
 #include "rendering/assets/Texture.h"
-#include "rendering/postprocess/Framebuffer.h"
+#include "rendering/postprocess/HDR_Framebuffer.h"
 #include "rendering/postprocess/PingPong_Framebuffer.h"
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/CubeMesh.h"
@@ -387,6 +387,7 @@ Shader basicModelShader(
         ImGui::SliderFloat("Bloom Strength", &sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
         ImGui::SliderFloat("Bloom Threshold", &sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
         ImGui::SliderInt("Number of Layers", &sceneConfig.numLayers, 1, 64);
+        ImGui::SliderInt("Number of Blur Passes", &sceneConfig.numBlurPasses, 1, 20);
 
         if (sceneConfig.enablePointLight)
         {
