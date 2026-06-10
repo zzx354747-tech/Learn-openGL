@@ -19,10 +19,19 @@ struct SceneRenderConfig
     bool enableGammaCorrection = false;
     bool enableHDR = false;
     bool enableBloom = false;
-    bool enableNormalMapping = false;
-    bool enableParallaxMapping = false;
-    float parallaxHeightScale = 0.03f;
-    int numLayers = 32;
+
+    // Cube
+    bool cubeEnableNormalMapping = false;
+    bool cubeEnableParallaxMapping = false;
+    float cubeParallaxHeightScale = 0.03f;
+    int cubeNumLayers = 32;
+
+    // Model
+    bool modelEnableNormalMapping = false;
+    bool modelEnableParallaxMapping = false;
+    float modelParallaxHeightScale = 0.03f;
+    int modelNumLayers = 32;
+
     int numBlurPasses = 10;
     float exposure = 1.0f;
     float bloomStrength = 0.6f;

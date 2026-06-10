@@ -1,36 +1,32 @@
 #pragma once
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "rendering/assets/Texture.h"
-#include "rendering/assets/LightSettings.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
 #include "rendering/core/SceneRenderTypes.h"
 #include "rendering/core/SceneDrawer.h"
+#include "rendering/postprocess/Gbuffer.h"
+#include "rendering/uniforms/CameraUniformSetter.h"
 
-class SceneObjectPass
+class GeometryPass
 {
-
 public:
-    SceneObjectPass(
+    GeometryPass(
         SceneRenderResources& resources,
-        ShadowResources& shadowResources,
         SceneRenderConfig& config,
         SceneRenderState& state,
-        RenderMode& renderMode,
-        LightSettings& lightSettings,
         Camera& camera,
-        SceneDrawer& drawer
+        SceneDrawer& drawer,
+        GBuffer& gBuffer
     ) : resources(resources),
-        shadowResources(shadowResources),
         config(config),
         state(state),
-        renderMode(renderMode),
-        lightSettings(lightSettings),
         camera(camera),
-        drawer(drawer)
-    {
-    }
+        drawer(drawer),
+        gBuffer(gBuffer)
+    {}
+
+    void render(int bfwidth, int bfheight);
 
     void renderCube(int bfwidth, int bfheight);
     void renderPlane(int bfwidth, int bfheight);
@@ -38,25 +34,20 @@ public:
 
 private:
     SceneRenderResources& resources;
-    ShadowResources& shadowResources;
     SceneRenderConfig& config;
     SceneRenderState& state;
-    RenderMode& renderMode;
-    LightSettings& lightSettings;
     Camera& camera;
     SceneDrawer& drawer;
+    GBuffer& gBuffer;
 
     void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
     void bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture);
     void bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTexture);
     void bindPlaneTexture(Shader& shader, GLTexture& floorTexture);
 
-    void setupObjectLighting(Shader& shader);
-    void setupPointShadow(Shader& shader, unsigned int textureUnit = 2);
-    void setupSpotShadow(Shader& shader, unsigned int textureUnit = 3);
+    void setupCubeMaterial(Shader& shader);
+    void setupPlaneMaterial(Shader& shader);
+    void setupModelMaterial(Shader& shader);
 
-    Shader* getCubeShader();
-    Shader* getPlaneShader();
-    Shader* getModelShader();
+    Shader* getGeometryShader();
 };
-    

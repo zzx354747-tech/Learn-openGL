@@ -117,7 +117,7 @@ private:
 
         if (resources.model)
         {
-            objectPass.renderModel(*resources.model, bfwidth, bfheight);
+            objectPass.renderModel(bfwidth, bfheight);
         }
 
         SkyboxPass::renderSkyboxPass(camera, resources, config, bfwidth, bfheight);
