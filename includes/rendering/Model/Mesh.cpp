@@ -55,6 +55,8 @@ void Mesh::draw(Shader& shader)
     unsigned int normalNr = 1;
     bool hasNormalMap = false;
 
+    shader.setBool("hasSpecularMap", false);
+
     for (unsigned int i = 0; i < textures.size(); i++)
     {
         glActiveTexture(GL_TEXTURE0 + i);
@@ -65,15 +67,28 @@ void Mesh::draw(Shader& shader)
         if (name == "texture_diffuse")
         {
             number = std::to_string(diffuseNr++);
+            if (number == "1")
+            {
+                shader.setInt("diffuseTexture", i);
+            }
         }
         else if (name == "texture_specular")
         {
             number = std::to_string(specularNr++);
+            if (number == "1")
+            {
+                shader.setInt("specularTexture", i);
+                shader.setBool("hasSpecularMap", true);
+            }
         }
         else if (name == "texture_normal")
         {
             number = std::to_string(normalNr++);
             hasNormalMap = true;
+            if (number == "1")
+            {
+                shader.setInt("normalTexture", i);
+            }
         }
 
         shader.setInt(name + number, i);

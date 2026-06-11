@@ -54,6 +54,11 @@ public:
         return colorBuffers[index];
     }
 
+    unsigned int getFBO() const 
+    {
+        return hdrFBO;
+    }
+
     ~Framebuffer()
     {
         glDeleteFramebuffers(1, &hdrFBO);

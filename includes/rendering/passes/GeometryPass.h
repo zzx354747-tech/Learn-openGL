@@ -28,10 +28,6 @@ public:
 
     void render(int bfwidth, int bfheight);
 
-    void renderCube(int bfwidth, int bfheight);
-    void renderPlane(int bfwidth, int bfheight);
-    void renderModel(int bfwidth, int bfheight);
-
 private:
     SceneRenderResources& resources;
     SceneRenderConfig& config;
@@ -39,6 +35,10 @@ private:
     Camera& camera;
     SceneDrawer& drawer;
     GBuffer& gBuffer;
+
+    void renderCube(int bfwidth, int bfheight);
+    void renderPlane(int bfwidth, int bfheight);
+    void renderModel(int bfwidth, int bfheight);
 
     void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
     void bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture);

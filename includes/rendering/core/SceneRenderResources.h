@@ -27,7 +27,6 @@ struct SceneRenderResources
     Shader* pointShadowMapShader = nullptr;
     Shader* basicModelShader = nullptr;
     Shader* lightingModelShader = nullptr;
-    Shader* reflectModelShader = nullptr;
     Shader* blurShader = nullptr;
     Shader* geometryShader = nullptr;
     Shader* lightingPassShader = nullptr;

@@ -3,6 +3,12 @@
 void GeometryPass::render(int bfwidth, int bfheight)
 {
     gBuffer.bind();
+
+    glViewport(0, 0, bfwidth, bfheight);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     renderCube(bfwidth, bfheight);
     renderPlane(bfwidth, bfheight);
     renderModel(bfwidth, bfheight);
@@ -93,12 +99,20 @@ void GeometryPass::bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTextur
     shader.setInt("parallaxTexture", 2);
 }  
 
+void GeometryPass::bindPlaneTexture(Shader& shader, GLTexture& floorTexture)
+{
+    floorTexture.bind(0);
+    shader.setInt("diffuseTexture", 0);
+}
+
 void GeometryPass::setupCubeMaterial(Shader& shader)
 {
     shader.setFloat("parallaxHeightScale", config.cubeParallaxHeightScale);
+    shader.setFloat("heightScale", config.cubeParallaxHeightScale);
     shader.setInt("numLayers", config.cubeNumLayers);
     shader.setBool("enableNormalMapping", config.cubeEnableNormalMapping);
     shader.setBool("enableParallaxMapping", config.cubeEnableParallaxMapping);
+    shader.setBool("hasSpecularMap", false);
     shader.setVec3("cameraPos", camera.Getposition());
 }
 
@@ -106,12 +120,14 @@ void GeometryPass::setupPlaneMaterial(Shader& shader)
 {
     shader.setBool("enableNormalMapping", false);
     shader.setBool("enableParallaxMapping", false);
+    shader.setBool("hasSpecularMap", false);
     shader.setVec3("cameraPos", camera.Getposition());
 }
 
 void GeometryPass::setupModelMaterial(Shader& shader)
 {
     shader.setFloat("parallaxHeightScale", config.modelParallaxHeightScale);
+    shader.setFloat("heightScale", config.modelParallaxHeightScale);
     shader.setInt("numLayers", config.modelNumLayers);
     shader.setBool("enableNormalMapping", config.modelEnableNormalMapping);
     shader.setBool("enableParallaxMapping", config.modelEnableParallaxMapping);

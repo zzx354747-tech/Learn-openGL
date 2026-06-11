@@ -5,7 +5,7 @@
 #include "rendering/uniforms/PointShadowUniformSetters.h"
 #include "rendering/uniforms/SpotShadowUniformSetter.h"
 
-void SceneObjectPass::renderCube(int bfwidth, int bfheight)
+void SceneObjectPass::renderNoLightingCube(int bfwidth, int bfheight)
 {
     Shader* shader = getCubeShader();
         
@@ -13,37 +13,25 @@ void SceneObjectPass::renderCube(int bfwidth, int bfheight)
             return;
         shader->use();
 
-        if (config.renderMode == RenderMode::Lighting)
-        {
-            setupObjectLighting(*shader);
-            ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix, 10);
-            setupPointShadow(*shader, 11);
-            setupSpotShadow(*shader, 12);
-        }
-
         CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
 
         
         if (config.renderMode == RenderMode::Reflection && !resources.skybox)
             return;
 
-        bindCubeDiffuseTexture(*shader, *resources.cubeDiffuseTexture);
-        bindCubeNormalTexture(*shader, *resources.cubeNormalTexture);
-        bindCubeParallaxTexture(*shader, *resources.cubeParallaxTexture);   
-
+        bindCubeTexture(*shader, *resources.cubeDiffuseTexture);
+       
         drawer.drawCubes(*shader);
 
-        bindCubeDiffuseTexture(*shader, *resources.secondCubeDiffuseTexture);
-        bindCubeNormalTexture(*shader, *resources.secondCubeNormalTexture);
-        bindCubeParallaxTexture(*shader, *resources.secondCubeParallaxTexture);
+        bindCubeTexture(*shader, *resources.secondCubeDiffuseTexture);
 
         drawer.drawSecondCubes(*shader);
 }
 
-void SceneObjectPass::renderPlane(int bfwidth, int bfheight)
+void SceneObjectPass::renderNoLightingPlane(int bfwidth, int bfheight)
 {
     Shader* shader = getPlaneShader();
-    
+
         if (!shader ||
             !resources.planeMesh||
             !resources.floorTexture||
@@ -52,14 +40,6 @@ void SceneObjectPass::renderPlane(int bfwidth, int bfheight)
 
         shader->use();
 
-        if (config.renderMode == RenderMode::Lighting)
-        {
-            setupObjectLighting(*shader);
-            ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix);
-            setupPointShadow(*shader);
-            setupSpotShadow(*shader);
-        }
-
         CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
 
         bindPlaneTexture(*shader, *resources.floorTexture);
@@ -67,7 +47,7 @@ void SceneObjectPass::renderPlane(int bfwidth, int bfheight)
         drawer.drawPlane(*shader);
 }
 
-void SceneObjectPass::renderModel(int bfwidth, int bfheight)
+void SceneObjectPass::renderNoLightingModel(int bfwidth, int bfheight)
 {
     Shader* shader = getModelShader();
 
@@ -89,23 +69,10 @@ void SceneObjectPass::renderModel(int bfwidth, int bfheight)
         resources.skybox->bind();
     }
 
-    if (config.renderMode == RenderMode::Lighting)
-    {
-        shader->setInt("shadowMap", 10);
-        shader->setInt("depthCubeMap", 11);
-        setupObjectLighting(*shader);
-        // 使用更高的纹理单元，避免同一个shader内sampler纹理单元冲突
-        ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix, 10);
-        // 点光源阴影贴图绑定到更高的纹理单元，避免与其他贴图单元冲突
-        setupPointShadow(*shader, 11);
-        // 聚光灯阴影贴图绑定到更高的纹理单元，避免与其他贴图单元冲突
-        setupSpotShadow(*shader, 12);
-    }
-
     drawer.drawModel(*shader);
 }
 
-void SceneObjectPass::bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture)
+void SceneObjectPass::bindCubeTexture(Shader& shader, GLTexture& cubeTexture)
 {
    if (config.renderMode == RenderMode::Reflection)
         {
@@ -123,63 +90,11 @@ void SceneObjectPass::bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeText
         }
 }
 
-void SceneObjectPass::bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture)
-{
-    glActiveTexture(GL_TEXTURE1);
-    shader.setInt("normalMap", 1);
-    shader.setBool("enableNormalMapping", config.cubeEnableNormalMapping);
-    cubeTexture.bind(1);
-}
-
-void SceneObjectPass::bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTexture)
-{
-    glActiveTexture(GL_TEXTURE2);
-    shader.setInt("depthMap", 2);
-    shader.setFloat("heightScale", config.cubeParallaxHeightScale);
-    shader.setInt("numLayers", config.cubeNumLayers);
-    shader.setBool("enableParallaxMapping", config.cubeEnableParallaxMapping);
-    cubeTexture.bind(2);
-}
-
 void SceneObjectPass::bindPlaneTexture(Shader& shader, GLTexture& floorTexture)
 {
     glActiveTexture(GL_TEXTURE0);
     shader.setInt("texture1", 0);
     floorTexture.bind();
-}
-
-void SceneObjectPass::setupObjectLighting(Shader& shader)
-{
-    shader.setVec3("viewPos", camera.Getposition());
-    shader.setBool("enablePointLight", config.enablePointLight);
-    shader.setBool("enableDirectionalLight", config.enableDirectionalLight);
-    shader.setBool("enableFlashlight", config.enableFlashlight);
-    shader.setFloat("bloomThreshold", config.bloomThreshold);
-
-    LightUniformSetter::apply(shader, lightSettings, config, state, camera);
-}
-
-// 设置第二次渲染时的点光源阴影贴图和相关uniform
-void SceneObjectPass::setupPointShadow(Shader& shader, unsigned int textureUnit)
-{
-    if (!shadowResources.pointShadowMap)
-        return;
-        
-        PointShadowUniformSetter::apply(shader, 
-            *shadowResources.pointShadowMap, 
-            state.lightPositions,
-            textureUnit);
-}
-
-void SceneObjectPass::setupSpotShadow(Shader& shader, unsigned int textureUnit)
-{
-    if (!shadowResources.spotShadowMap)
-        return;
-
-    SpotShadowUniformSetter::apply(shader, 
-        *shadowResources.spotShadowMap,
-        state.spotLightSpaceMatrix,
-        textureUnit);
 }
 
 Shader* SceneObjectPass::getPlaneShader()
@@ -190,7 +105,7 @@ Shader* SceneObjectPass::getPlaneShader()
             return  resources.basicPlaneShader;
 
             case RenderMode::Lighting:
-            return resources.lightingPlaneShader;
+            return nullptr;
 
             case RenderMode::Reflection:
             return resources.basicPlaneShader;
@@ -208,7 +123,7 @@ Shader* SceneObjectPass::getCubeShader()
             return  resources.basicCubeShader;
 
             case RenderMode::Lighting:
-            return resources.lightingCubeShader;
+            return nullptr;
         
             case RenderMode::Reflection:
             return resources.reflectShader;
@@ -226,10 +141,10 @@ Shader* SceneObjectPass::getModelShader()
             return resources.basicModelShader;
 
         case RenderMode::Lighting:
-            return resources.lightingModelShader;
+            return nullptr;
 
         case RenderMode::Reflection:
-            return resources.reflectModelShader;
+            return resources.basicModelShader;
 
         default:
             return nullptr;

@@ -179,7 +179,7 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     return shadow;
 }
 
-vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor)
+vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor, float specularStrength)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 reflectDir = reflect(-lightDir, normal);
@@ -196,7 +196,7 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
 
     vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
-    vec3 specular = light.specular * spec;
+    vec3 specular = light.specular * spec * specularStrength;
 
     float shadowStrength = 0.8;
     float shadow = PointShadowCalculation(fragPos);
@@ -212,6 +212,7 @@ vec3 calcSun(Sun light,
 vec3 normal, 
 vec3 viewDir, 
 vec3 baseColor,
+float specularStrength,
 vec4 FragPosLightSpace)
 {
     vec3 lightDir = normalize(-light.direction);
@@ -221,7 +222,7 @@ vec4 FragPosLightSpace)
 
     vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
-    vec3 specular = light.specular * spec;
+    vec3 specular = light.specular * spec * specularStrength;
 
     float shadowStrength = 0.8; // 阴影强度，可以根据需要调整
 
@@ -241,6 +242,7 @@ vec3 normal,
 vec3 fragPos, 
 vec3 viewDir, 
 vec3 baseColor,
+float specularStrength,
 vec4 FragPosSpotLightSpace)
 {
     vec3 lightDir = normalize(light.position - fragPos);
@@ -255,7 +257,7 @@ vec4 FragPosSpotLightSpace)
 
     vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
-    vec3 specular = light.specular * spec;
+    vec3 specular = light.specular * spec * specularStrength;
 
     float shadow =
         SpotShadowCalculation(
@@ -277,9 +279,10 @@ vec4 FragPosSpotLightSpace)
 
 void main()
 {
-    vec3 FragPos  = texture(gPosition, TexCoords).rgb;
-    vec3 Normal   = texture(gNormal, TexCoords).rgb;
+    vec3 FragPos = texture(gPosition, TexCoords).rgb;
+    vec3 Normal = normalize(texture(gNormal, TexCoords).rgb);
     vec3 baseColor = texture(gAlbedoSpec, TexCoords).rgb;
+    float specularStrength = texture(gAlbedoSpec, TexCoords).a;
 
     vec4 FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
     vec4 FragPosSpotLightSpace = spotLightSpaceMatrix * vec4(FragPos, 1.0);
@@ -293,13 +296,15 @@ void main()
                     Normal, 
                     FragPos, 
                     viewDir, 
-                    baseColor);
+                    baseColor,
+                    specularStrength);
 
     if (enableDirectionalLight)
         result += calcSun(sun, 
                     Normal, 
                     viewDir, 
                     baseColor,
+                    specularStrength,
                     FragPosLightSpace);
 
     if (enableFlashlight)
@@ -308,6 +313,7 @@ void main()
                     FragPos, 
                     viewDir,
                     baseColor,
+                    specularStrength,
                     FragPosSpotLightSpace); 
 
     FragColor = vec4(result, 1.0);

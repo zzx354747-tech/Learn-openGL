@@ -12,6 +12,9 @@
 #include "rendering/passes/ShadowPass/DirectionalShadowPass.h"
 #include "rendering/passes/ShadowPass/PointShadowPass.h"
 #include "rendering/passes/ShadowPass/SpotShadowPass.h"
+#include "rendering/passes/GeometryPass.h"
+#include "rendering/passes/LightingPass.h"
+#include "rendering/postprocess/Gbuffer.h"
 
 class SceneRender
 {
@@ -26,7 +29,10 @@ public:
         LightSettings& lightSettings,
         DirectionalShadowPass& directionalShadowPass,
         PointShadowPass& pointShadowPass,
-        SpotShadowPass& spotShadowPass
+        SpotShadowPass& spotShadowPass,
+        GeometryPass& geometryPass,
+        LightingPass& lightingPass,
+        GBuffer& gBuffer
     )        : camera(camera),
         objectPass(objectPass),
         shadowResources(shadowResources),
@@ -36,7 +42,10 @@ public:
         lightSettings(lightSettings),
         directionalShadowPass(directionalShadowPass),
         pointShadowPass(pointShadowPass),
-        spotShadowPass(spotShadowPass)
+        spotShadowPass(spotShadowPass),
+        geometryPass(geometryPass),
+        lightingPass(lightingPass),
+        gBuffer(gBuffer)
     {
     }
 
@@ -59,8 +68,16 @@ public:
             return;
         }
 
-        // 离屏渲染阶段
+        //Light模式下的延迟渲染阶段
+        if (config.renderMode == RenderMode::Lighting)
+        {
+            renderGboPass(bfwidth, bfheight, framebuffer, screenQuad);
+        }
+        else
+        {
+        // 非Lighting模式下的离屏渲染阶段
         renderHDRFrameBufferPass(bfwidth, bfheight, framebuffer);
+        }
         
         if (config.enableBloom && resources.pingpongFBO && resources.blurShader)
         {
@@ -82,6 +99,9 @@ private:
     DirectionalShadowPass& directionalShadowPass;
     PointShadowPass& pointShadowPass;
     SpotShadowPass& spotShadowPass;
+    GeometryPass& geometryPass;
+    LightingPass& lightingPass;
+    GBuffer& gBuffer;
 
     void renderShadowDebugPass(int bfwidth, int bfheight, Screenquad& screenquad)
     {
@@ -101,6 +121,21 @@ private:
         screenquad.draw();
     }
 
+    void renderGboPass(int bfwidth, int bfheight, Framebuffer& framebuffer, Screenquad& screenQuad)
+    {
+        geometryPass.render(bfwidth, bfheight);
+        gBuffer.blitDepthTo(framebuffer, bfwidth, bfheight);
+        lightingPass.render(framebuffer, screenQuad);
+
+        //lighting模式下的skybox,light render
+        framebuffer.bind();
+        glViewport(0, 0, bfwidth, bfheight);
+        glEnable(GL_DEPTH_TEST);
+        lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
+        SkyboxPass::renderSkyboxPass(camera, resources, config, bfwidth, bfheight);
+        framebuffer.unbind();
+    }
+
     void renderHDRFrameBufferPass(int bfwidth,
         int bfheight, 
         Framebuffer& framebuffer)
@@ -111,13 +146,13 @@ private:
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        objectPass.renderCube(bfwidth, bfheight);
-        objectPass.renderPlane(bfwidth, bfheight);
+        objectPass.renderNoLightingCube(bfwidth, bfheight);
+        objectPass.renderNoLightingPlane(bfwidth, bfheight);
         lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
 
         if (resources.model)
         {
-            objectPass.renderModel(bfwidth, bfheight);
+            objectPass.renderNoLightingModel(bfwidth, bfheight);
         }
 
         SkyboxPass::renderSkyboxPass(camera, resources, config, bfwidth, bfheight);

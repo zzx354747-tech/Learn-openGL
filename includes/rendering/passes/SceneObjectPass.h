@@ -17,7 +17,6 @@ public:
         ShadowResources& shadowResources,
         SceneRenderConfig& config,
         SceneRenderState& state,
-        RenderMode& renderMode,
         LightSettings& lightSettings,
         Camera& camera,
         SceneDrawer& drawer
@@ -25,35 +24,27 @@ public:
         shadowResources(shadowResources),
         config(config),
         state(state),
-        renderMode(renderMode),
         lightSettings(lightSettings),
         camera(camera),
         drawer(drawer)
     {
     }
 
-    void renderCube(int bfwidth, int bfheight);
-    void renderPlane(int bfwidth, int bfheight);
-    void renderModel(int bfwidth, int bfheight);
+    void renderNoLightingCube(int bfwidth, int bfheight);
+    void renderNoLightingPlane(int bfwidth, int bfheight);
+    void renderNoLightingModel(int bfwidth, int bfheight);
 
 private:
     SceneRenderResources& resources;
     ShadowResources& shadowResources;
     SceneRenderConfig& config;
     SceneRenderState& state;
-    RenderMode& renderMode;
     LightSettings& lightSettings;
     Camera& camera;
     SceneDrawer& drawer;
 
-    void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
-    void bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture);
-    void bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTexture);
+    void bindCubeTexture(Shader& shader, GLTexture& cubeTexture);
     void bindPlaneTexture(Shader& shader, GLTexture& floorTexture);
-
-    void setupObjectLighting(Shader& shader);
-    void setupPointShadow(Shader& shader, unsigned int textureUnit = 2);
-    void setupSpotShadow(Shader& shader, unsigned int textureUnit = 3);
 
     Shader* getCubeShader();
     Shader* getPlaneShader();

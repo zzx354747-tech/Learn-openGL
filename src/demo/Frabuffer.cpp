@@ -30,6 +30,9 @@
 #include "rendering/passes/ShadowPass/DirectionalShadowPass.h"
 #include "rendering/passes/ShadowPass/PointShadowPass.h"
 #include "rendering/passes/ShadowPass/SpotShadowPass.h"
+#include "rendering/passes/GeometryPass.h"
+#include "rendering/passes/LightingPass.h"
+#include "rendering/postprocess/Gbuffer.h"
 #include "rendering/Model/Mesh.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
@@ -37,6 +40,7 @@
 
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
+GBuffer* gBuffer = nullptr;
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定
 bool gravePresslastFrame = false; // 上一帧是否按下了`键
@@ -57,6 +61,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     if (pingpongFramebuffer)
     {
         pingpongFramebuffer->resize(width, height);
+    }
+    if (gBuffer)
+    {
+        gBuffer->resize(width, height);
     }
 };
 
@@ -177,6 +185,8 @@ int main()
     framebuffer = &fb;
     PingPongFramebuffer pingpongFBO(bfwidth, bfheight);
     pingpongFramebuffer = &pingpongFBO;
+    GBuffer sceneGBuffer(bfwidth, bfheight);
+    gBuffer = &sceneGBuffer;
 
    Shader screenShader(
     "../src/shader/pratice/framebuffer/screen.vs",
@@ -244,6 +254,16 @@ Shader basicModelShader(
         "../src/shader/pratice/framebuffer/blur.fs"
     );
 
+    Shader geometryShader(
+        "../src/shader/pratice/geometry/geometry_pass.vs",
+        "../src/shader/pratice/geometry/geometry_pass.fs"
+    );
+
+    Shader lightingPassShader(
+        "../src/shader/pratice/lightPass/light.vs",
+        "../src/shader/pratice/lightPass/light.fs"
+    );
+
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
     LightMesh lightMesh;
@@ -262,8 +282,9 @@ Shader basicModelShader(
     sceneResources.pointShadowMapShader = &pointShadowMapShader;
     sceneResources.basicModelShader = &basicModelShader;
     sceneResources.lightingModelShader = &lightingModelShader;
-    sceneResources.reflectModelShader = &cubemapShader;
     sceneResources.blurShader = &blurShader;
+    sceneResources.geometryShader = &geometryShader;
+    sceneResources.lightingPassShader = &lightingPassShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
     sceneResources.lightMesh = &lightMesh;
@@ -287,9 +308,12 @@ Shader basicModelShader(
     sceneConfig.enableFlashlight = false;
     sceneConfig.enableGammaCorrection = false;
     sceneConfig.enableBloom = false;
-    sceneConfig.enableNormalMapping = true;
-    sceneConfig.enableParallaxMapping = true;
-    sceneConfig.parallaxHeightScale = 0.03f;
+    sceneConfig.cubeEnableNormalMapping = true;
+    sceneConfig.cubeEnableParallaxMapping = true;
+    sceneConfig.cubeParallaxHeightScale = 0.03f;
+    sceneConfig.modelEnableNormalMapping = true;
+    sceneConfig.modelEnableParallaxMapping = false;
+    sceneConfig.modelParallaxHeightScale = 0.03f;
 
     SceneRenderState sceneState;
     SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState, &rock_1k);
@@ -319,17 +343,32 @@ Shader basicModelShader(
     shadowResources.pointShadowMap = &pointShadowMap;
     shadowResources.spotShadowMap = &spotShadowMap;
 
-    RenderMode renderMode = RenderMode::Basic;
     int renderModeIndex = 0;
 
     SceneObjectPass objectPass(sceneResources,
         shadowResources,
         sceneConfig,
         sceneState,
-        renderMode,
         lightSettings,
         camera,
         sceneDrawer);
+
+    GeometryPass geometryPass(
+        sceneResources,
+        sceneConfig,
+        sceneState,
+        camera,
+        sceneDrawer,
+        sceneGBuffer);
+
+    LightingPass lightingPass(
+        sceneResources,
+        shadowResources,
+        sceneConfig,
+        sceneState,
+        lightSettings,
+        camera,
+        sceneGBuffer);
 
     SceneRender sceneRender(camera, 
         objectPass, 
@@ -340,7 +379,10 @@ Shader basicModelShader(
         lightSettings, 
         directionalShadowPass,
         pointShadowPass, 
-        spotShadowPass);
+        spotShadowPass,
+        geometryPass,
+        lightingPass,
+        sceneGBuffer);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -380,13 +422,17 @@ Shader basicModelShader(
         ImGui::Checkbox("Gamma Correction", &sceneConfig.enableGammaCorrection);
         ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
         ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
-        ImGui::Checkbox("Normal Mapping", &sceneConfig.enableNormalMapping);
-        ImGui::Checkbox("Parallax Mapping", &sceneConfig.enableParallaxMapping);
-        ImGui::SliderFloat("Parallax Height Scale", &sceneConfig.parallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
+        ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);
+        ImGui::SliderFloat("Cube Parallax Height Scale", &sceneConfig.cubeParallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::Checkbox("Model Normal Mapping", &sceneConfig.modelEnableNormalMapping);
+        ImGui::Checkbox("Model Parallax Mapping", &sceneConfig.modelEnableParallaxMapping);
+        ImGui::SliderFloat("Model Parallax Height Scale", &sceneConfig.modelParallaxHeightScale, 0.0f, 0.1f, "%.3f");
         ImGui::SliderFloat("Exposure", &sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
         ImGui::SliderFloat("Bloom Strength", &sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
         ImGui::SliderFloat("Bloom Threshold", &sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
-        ImGui::SliderInt("Number of Layers", &sceneConfig.numLayers, 1, 64);
+        ImGui::SliderInt("Cube Parallax Layers", &sceneConfig.cubeNumLayers, 1, 64);
+        ImGui::SliderInt("Model Parallax Layers", &sceneConfig.modelNumLayers, 1, 64);
         ImGui::SliderInt("Number of Blur Passes", &sceneConfig.numBlurPasses, 1, 20);
 
         if (sceneConfig.enablePointLight)

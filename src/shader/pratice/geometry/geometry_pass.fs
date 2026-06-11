@@ -14,9 +14,11 @@ in vec3 TangentFragPos;
 uniform sampler2D diffuseTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D parallaxTexture;
+uniform sampler2D specularTexture;
 
 uniform bool enableNormalMapping;
 uniform bool enableParallaxMapping;
+uniform bool hasSpecularMap;
 uniform float parallaxHeightScale;
 uniform int numLayers;
 
@@ -77,5 +79,5 @@ void main()
     }
 
     gAlbedoSpec.rgb = pow(texture(diffuseTexture, texCoords).rgb, vec3(2.2));
-    gAlbedoSpec.a = 0.0; // 暂无specular贴图
+    gAlbedoSpec.a = hasSpecularMap ? texture(specularTexture, texCoords).r : 1.0;
 }

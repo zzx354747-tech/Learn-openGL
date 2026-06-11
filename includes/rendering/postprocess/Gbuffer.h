@@ -2,6 +2,7 @@
 
 #include <glad/gl.h>
 #include <iostream>
+#include <rendering/postprocess/HDR_Framebuffer.h>
 
 class GBuffer
 {
@@ -52,6 +53,14 @@ public:
             return 0;
         }
         return attachments[index];
+    }
+
+    void blitDepthTo(Framebuffer& framebuffer, int width, int height)
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, getFBO());
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer.getFBO());
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     ~GBuffer()

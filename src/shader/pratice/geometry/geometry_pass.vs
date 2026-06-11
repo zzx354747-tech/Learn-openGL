@@ -15,11 +15,12 @@ out vec3 TangentFragPos;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform mat3 normalMatrix;
 uniform vec3 cameraPos;
 
 void main()
 {
+    mat3 normalMatrix = transpose(inverse(mat3(model)));
+
     // 将切线空间的T、B、N转换到世界空间
     vec3 T = normalize(normalMatrix * aTangent);
     vec3 B = normalize(normalMatrix * aBitangent);

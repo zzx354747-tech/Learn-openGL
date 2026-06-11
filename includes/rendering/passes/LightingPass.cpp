@@ -6,6 +6,7 @@ void LightingPass::render(Framebuffer& framebuffer, Screenquad& screenQuad)
         return;
 
     framebuffer.bind();
+    glDepthMask(GL_FALSE); // 禁止写入深度,保护深度信息
     
     Shader* shader = getLightingShader();   
     shader->use();
@@ -27,6 +28,9 @@ void LightingPass::render(Framebuffer& framebuffer, Screenquad& screenQuad)
     // 绘制屏幕四边形
     screenQuad.draw();
 
+    // 在draw时如果进行深度测试，会覆盖掉之前的深度信息
+    // 在draw之后恢复深度写入，确保后续的skybox和light render能够正确使用深度测试
+    glDepthMask(GL_TRUE);
     framebuffer.unbind();
 }
 
