@@ -1,14 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 project(OpenGLPractice)
 
-# 设置 C++ 标准
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 查找 GLFW
 find_package(glfw3 REQUIRED)
 
-# 包含目录
 include_directories(
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/third_party/glad/include
@@ -16,15 +13,34 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/third_party/assimp/install/include
 )
 
-# assimp 库目录
 link_directories(${CMAKE_SOURCE_DIR}/third_party/assimp/install/lib)
 
-# GLAD 源文件
+# ── 平台系统库 ────────────────────────────────────────────
+if(APPLE)
+    set(PLATFORM_LIBS
+        "-framework OpenGL"
+        "-framework Cocoa"
+        "-framework IOKit"
+        "-framework CoreVideo"
+    )
+elseif(WIN32)
+    set(PLATFORM_LIBS
+        opengl32
+        gdi32
+        user32
+        shell32
+    )
+else()  # Linux
+    find_package(OpenGL REQUIRED)
+    set(PLATFORM_LIBS OpenGL::GL dl m)
+endif()
+# ─────────────────────────────────────────────────────────
+
 set(GLAD_SOURCES
     ${CMAKE_SOURCE_DIR}/third_party/glad/src/gl.c
 )
 
-# ImGui 源文件
+# ── ImGui ─────────────────────────────────────────────────
 set(IMGUI_SOURCES
     ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui.cpp
     ${CMAKE_SOURCE_DIR}/third_party/imgui-master/imgui_draw.cpp
@@ -35,7 +51,6 @@ set(IMGUI_SOURCES
     ${CMAKE_SOURCE_DIR}/third_party/imgui-master/backends/imgui_impl_opengl3.cpp
 )
 
-# 创建 ImGui 库
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/imgui-master
@@ -43,128 +58,60 @@ target_include_directories(imgui PUBLIC
 )
 target_link_libraries(imgui PUBLIC glfw)
 
-# 添加可执行文件 - 3Ddemo
+# ── 辅助宏：统一设置输出目录 ──────────────────────────────
+macro(set_output_dir target)
+    set_target_properties(${target} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+    )
+endmacro()
+
+# ── 各 Target ─────────────────────────────────────────────
+
 add_executable(3Ddemo
     src/demo/3Ddemo.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(3Ddemo glfw ${PLATFORM_LIBS})
+set_output_dir(3Ddemo)
 
-# 链接库
-target_link_libraries(3Ddemo
-    glfw
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(3Ddemo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - 3Dbkp
 add_executable(3Dbkp
     src/example/3Dbkp.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(3Dbkp glfw ${PLATFORM_LIBS})
+set_output_dir(3Dbkp)
 
-# 链接库
-target_link_libraries(3Dbkp
-    glfw
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(3Dbkp PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - Rot_demo
 add_executable(rot_demo
     src/demo/Rot_demo.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(rot_demo glfw ${PLATFORM_LIBS})
+set_output_dir(rot_demo)
 
-# 链接库
-target_link_libraries(rot_demo
-    glfw
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(rot_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-
-# 添加可执行文件 - texture_demo
 add_executable(texture_demo
     src/demo/texture_demo.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(texture_demo glfw ${PLATFORM_LIBS})
 
-# 链接库
-target_link_libraries(texture_demo
-    glfw
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 添加可执行文件 - light_demo
 add_executable(light_demo
     src/example/light.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(light_demo glfw ${PLATFORM_LIBS})
+set_output_dir(light_demo)
 
-# 链接库
-target_link_libraries(light_demo
-    glfw
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(light_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - parallel_demo
 add_executable(parallel_demo
     src/example/parallel.cpp
     src/camera.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(parallel_demo glfw ${PLATFORM_LIBS})
+set_output_dir(parallel_demo)
 
-# 链接库
-target_link_libraries(parallel_demo
-    glfw
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(parallel_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-
-# 添加可执行文件 - diffuse_demo
 add_executable(diffuse_demo
     src/example/light_example.cpp
     src/camera.cpp
@@ -172,23 +119,9 @@ add_executable(diffuse_demo
     src/Graphics.cpp
     ${GLAD_SOURCES}
 )
-# 链接库
-target_link_libraries(diffuse_demo
-    glfw
-    assimp
-    z
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
+target_link_libraries(diffuse_demo glfw assimp z ${PLATFORM_LIBS})
+set_output_dir(diffuse_demo)
 
-# 设置输出目录
-set_target_properties(diffuse_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - backpack_demo
 add_executable(backpack_demo
     src/demo/backpack_demo.cpp
     src/camera.cpp
@@ -197,48 +130,18 @@ add_executable(backpack_demo
     includes/rendering/Model/Mesh.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(backpack_demo glfw assimp z ${PLATFORM_LIBS})
+set_output_dir(backpack_demo)
 
-# 链接库
-target_link_libraries(backpack_demo
-    glfw
-    assimp
-    z
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(backpack_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - stencil_demo
 add_executable(stencil_demo
     src/demo/stencil_demo.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(stencil_demo glfw assimp z ${PLATFORM_LIBS})
+set_output_dir(stencil_demo)
 
-# 链接库
-target_link_libraries(stencil_demo
-    glfw
-    assimp
-    z
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(stencil_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - newbackpack
 add_executable(newbackpack
     src/demo/newbackpack.cpp
     src/camera.cpp
@@ -247,24 +150,9 @@ add_executable(newbackpack
     includes/rendering/Model/Mesh.cpp
     ${GLAD_SOURCES}
 )
+target_link_libraries(newbackpack glfw assimp z ${PLATFORM_LIBS})
+set_output_dir(newbackpack)
 
-# 链接库
-target_link_libraries(newbackpack
-    glfw
-    assimp
-    z
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(newbackpack PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
-
-# 添加可执行文件 - fbo_demo
 add_executable(fbo_demo
     src/demo/Frabuffer.cpp
     src/camera.cpp
@@ -281,20 +169,5 @@ add_executable(fbo_demo
     includes/rendering/passes/ShadowPass/PointShadowPass.cpp
     ${GLAD_SOURCES}
 )
-
-# 链接库
-target_link_libraries(fbo_demo
-    imgui
-    glfw
-    assimp
-    z
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-)
-
-# 设置输出目录
-set_target_properties(fbo_demo PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
-)
+target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
+set_output_dir(fbo_demo)
