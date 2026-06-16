@@ -288,6 +288,8 @@ Shader basicModelShader(
     LightMesh lightMesh;
     SkyboxMesh skyboxMesh;
     Model rock_1k ("../3D_Model/rock_1k.glb");
+    Model sponzaModel("../3D_model/sponza/sponza.obj");
+    Model sibenikModel("../3D_model/sibenik/sibenik.obj");
 
     SceneRenderResources sceneResources;
     sceneResources.basicCubeShader = &basicCubeShader;
@@ -320,6 +322,8 @@ Shader basicModelShader(
     sceneResources.secondCubeNormalTexture = &secondCubeNormalTexture;
     sceneResources.secondCubeParallaxTexture = &secondCubeParallaxTexture;
     sceneResources.model = &rock_1k;
+    sceneResources.sponzaModel = &sponzaModel;
+    sceneResources.sibenikModel = &sibenikModel;
 
     SceneRenderConfig sceneConfig;
     sceneConfig.enableFloor = true;
@@ -338,7 +342,13 @@ Shader basicModelShader(
     sceneConfig.modelParallaxHeightScale = 0.03f;
 
     SceneRenderState sceneState;
-    SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState, &rock_1k);
+    SceneDrawer sceneDrawer(&cubeMesh,
+        &planeMesh,
+        &sceneState,
+        &sceneConfig,
+        &rock_1k,
+        &sponzaModel,
+        &sibenikModel);
 
     DirectionalShadowMap shadowDebug(4096, 4096);
     DirectionalShadowMap shadowMap(4096, 4096);
@@ -366,6 +376,7 @@ Shader basicModelShader(
     shadowResources.spotShadowMap = &spotShadowMap;
 
     int renderModeIndex = 0;
+    int sceneIndex = 0;
 
     SceneObjectPass objectPass(sceneResources,
         shadowResources,
@@ -426,11 +437,15 @@ Shader basicModelShader(
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        float lightTime = currentFrame * 0.35f;
+        glm::vec3 sceneCenter = sceneDrawer.getActiveSceneWorldCenter();
+        glm::vec3 sceneSize = sceneDrawer.getActiveSceneWorldSize();
+        float sceneRadius = glm::max(sceneSize.x, sceneSize.z) * 0.28f;
+        sceneRadius = glm::max(sceneRadius, 2.0f);
+        float lightTime = currentFrame * 0.45f;
         sceneState.lightPositions = glm::vec3(
-            std::cos(lightTime) * 3.0f,
-            1.5f + std::sin(currentFrame * 1.3f) * 0.5f,
-            std::sin(lightTime) * 3.0f - 1.0f
+            sceneCenter.x + std::cos(lightTime) * sceneRadius,
+            sceneCenter.y + glm::max(sceneSize.y * 0.22f, 1.0f),
+            sceneCenter.z + std::sin(lightTime) * sceneRadius * 0.75f
         );
 
         float FPS = 1.0f / deltaTime;
@@ -445,6 +460,11 @@ Shader basicModelShader(
         {
             sceneConfig.renderMode = static_cast<RenderMode>(renderModeIndex);
         }
+        const char* sceneNames[] = {"Default Scene", "Sponza", "Sibenik Cathedral"};
+        if (ImGui::Combo("Scene", &sceneIndex, sceneNames, 3))
+        {
+            sceneConfig.sceneSelection = static_cast<SceneSelection>(sceneIndex);
+        }
         ImGui::Checkbox("Floor", &sceneConfig.enableFloor);
         ImGui::Checkbox("Skybox", &sceneConfig.enableSkybox);
         ImGui::Checkbox("Point Light", &sceneConfig.enablePointLight);
@@ -454,12 +474,14 @@ Shader basicModelShader(
         ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
         ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
         ImGui::Checkbox("SSAO", &sceneConfig.enableSSAO);
+        ImGui::SliderFloat("SSAO Strength", &sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
         ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
         ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);
         ImGui::SliderFloat("Cube Parallax Height Scale", &sceneConfig.cubeParallaxHeightScale, 0.0f, 0.1f, "%.3f");
         ImGui::Checkbox("Model Normal Mapping", &sceneConfig.modelEnableNormalMapping);
         ImGui::Checkbox("Model Parallax Mapping", &sceneConfig.modelEnableParallaxMapping);
         ImGui::SliderFloat("Model Parallax Height Scale", &sceneConfig.modelParallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::SliderFloat("Model Bump Normal Strength", &sceneConfig.modelBumpNormalStrength, 0.0f, 10.0f, "%.2f");
         ImGui::SliderFloat("Exposure", &sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
         ImGui::SliderFloat("Bloom Strength", &sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
         ImGui::SliderFloat("Bloom Threshold", &sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
@@ -474,6 +496,7 @@ Shader basicModelShader(
             ImGui::ColorEdit3("Point Light Ambient", glm::value_ptr(lightSettings.pointAmbient));
             ImGui::ColorEdit3("Point Light Diffuse", glm::value_ptr(lightSettings.pointDiffuse));
             ImGui::ColorEdit3("Point Light Specular", glm::value_ptr(lightSettings.pointSpecular));
+            ImGui::DragFloat("Point Light Intensity", &lightSettings.pointIntensity, 0.05f, 0.0f, 20.0f);
             ImGui::DragFloat("Point Light Constant", &lightSettings.pointConstant, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Point Light Linear", &lightSettings.pointLinear, 0.001f, 0.0f, 1.0f);
             ImGui::DragFloat("Point Light Quadratic", &lightSettings.pointQuadratic, 0.001f, 0.0f, 1.0f);
@@ -486,6 +509,7 @@ Shader basicModelShader(
             ImGui::ColorEdit3("Directional Light Ambient", glm::value_ptr(lightSettings.sunAmbient));
             ImGui::ColorEdit3("Directional Light Diffuse", glm::value_ptr(lightSettings.sunDiffuse));
             ImGui::ColorEdit3("Directional Light Specular", glm::value_ptr(lightSettings.sunSpecular));
+            ImGui::DragFloat("Directional Light Intensity", &lightSettings.sunIntensity, 0.05f, 0.0f, 20.0f);
         }
 
         if (sceneConfig.enableFlashlight)
@@ -495,6 +519,7 @@ Shader basicModelShader(
             ImGui::ColorEdit3("Flashlight Ambient", glm::value_ptr(lightSettings.flashAmbient));
             ImGui::ColorEdit3("Flashlight Diffuse", glm::value_ptr(lightSettings.flashDiffuse));
             ImGui::ColorEdit3("Flashlight Specular", glm::value_ptr(lightSettings.flashSpecular));
+            ImGui::DragFloat("Flashlight Intensity", &lightSettings.flashIntensity, 0.05f, 0.0f, 20.0f);
             ImGui::DragFloat("Flashlight Constant", &lightSettings.flashConstant, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Flashlight Linear", &lightSettings.flashLinear, 0.001f, 0.0f, 1.0f);
             ImGui::DragFloat("Flashlight Quadratic", &lightSettings.flashQuadratic, 0.001f, 0.0f, 1.0f);

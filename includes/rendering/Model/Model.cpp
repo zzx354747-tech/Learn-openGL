@@ -1,6 +1,8 @@
 #include "Model.h"
 #include "stb_image.h"
 
+#include <algorithm>
+
 // processNode递归便利节点
 // processMesh遍历节点中的mesh
 // loadMaterialTextures遍历材质的所有纹理，加载到纹理数组里
@@ -178,10 +180,18 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
         std::vector<texture> heightMaps = loadMaterialTextures(
             material,
             aiTextureType_HEIGHT,
-            "texture_normal",
+            "texture_height",
             scene
         );
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+
+        std::vector<texture> displacementMaps = loadMaterialTextures(
+            material,
+            aiTextureType_DISPLACEMENT,
+            "texture_height",
+            scene
+        );
+        textures.insert(textures.end(), displacementMaps.begin(), displacementMaps.end());
     }
 
     return Mesh(vertices, indices, textures);
@@ -201,6 +211,7 @@ void Model::draw(Shader& shader)
 unsigned int TextureFromFile(const char* path, const std::string& directory, const aiScene* scene)
 {
     std::string filename = std::string(path);
+    std::replace(filename.begin(), filename.end(), '\\', '/');
 
     unsigned int textureID;
     glGenTextures(1, &textureID);

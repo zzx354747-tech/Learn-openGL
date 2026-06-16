@@ -44,6 +44,7 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setBool("enableDirectionalLight", config.enableDirectionalLight);
     shader.setBool("enableFlashlight", config.enableFlashlight);
     shader.setBool("enableSSAO", config.enableSSAO);
+    shader.setFloat("ssaoStrength", config.ssaoStrength);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);

@@ -14,8 +14,17 @@ public:
     SceneDrawer (CubeMesh* cubeMesh, 
         PlaneMesh* planeMesh, 
         SceneRenderState* state,
-        Model* model)
-        :cubeMesh(cubeMesh), planeMesh(planeMesh), state(state), model(model)
+        SceneRenderConfig* config,
+        Model* model,
+        Model* sponzaModel,
+        Model* sibenikModel)
+        : cubeMesh(cubeMesh),
+          planeMesh(planeMesh),
+          state(state),
+          config(config),
+          model(model),
+          sponzaModel(sponzaModel),
+          sibenikModel(sibenikModel)
     {
     }
 
@@ -29,6 +38,9 @@ public:
 
     void drawCubes(Shader& shader)
     {
+        if (!isDefaultScene())
+            return;
+
         if (!cubeMesh || !state)
             return;
 
@@ -51,6 +63,9 @@ public:
 
     void drawSecondCubes(Shader& shader)
     {
+        if (!isDefaultScene())
+            return;
+
         if (!cubeMesh || !state)
             return;
 
@@ -73,6 +88,9 @@ public:
 
     void drawPlane(Shader& shader)
     {
+        if (!isDefaultScene())
+            return;
+
         if (!planeMesh)
             return;
 
@@ -83,30 +101,51 @@ public:
 
     void drawModel(Shader& shader)
     {
-        if (!model)
+        Model* activeModel = getActiveModel();
+        if (!activeModel)
             return;
 
+        shader.setMat4("model", getActiveModelMatrix());
+
+        activeModel->draw(shader);
+    }
+
+    glm::mat4 getActiveModelMatrix() const
+    {
+        Model* activeModel = getActiveModel();
+        if (!activeModel || !activeModel->hasValidBounds())
+            return glm::mat4(1.0f);
+
+        glm::vec3 boundsCenter = activeModel->getBoundsCenter();
+        glm::vec3 boundsSize = activeModel->getBoundsSize();
+        float scale = getActiveModelScale(activeModel);
+        glm::vec3 targetCenter = getActiveModelTargetCenter(activeModel, scale);
+
         glm::mat4 modelMatrix = glm::mat4(1.0f);
-        if (model->hasValidBounds())
-        {
-            glm::vec3 boundsCenter = model->getBoundsCenter();
-            glm::vec3 boundsSize = model->getBoundsSize();
-            float maxExtent = glm::max(boundsSize.x, glm::max(boundsSize.y, boundsSize.z));
-            float scale = maxExtent > 0.0f ? 10.0f / maxExtent : 1.0f;
-            float floorY = -0.5f;
-            glm::vec3 targetCenter(
-                0.0f,
-                floorY + boundsSize.y * scale * 0.5f,
-                -2.0f
-            );
+        modelMatrix = glm::translate(modelMatrix, targetCenter);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(scale));
+        modelMatrix = glm::translate(modelMatrix, -boundsCenter);
 
-            modelMatrix = glm::translate(modelMatrix, targetCenter);
-            modelMatrix = glm::scale(modelMatrix, glm::vec3(scale));
-            modelMatrix = glm::translate(modelMatrix, -boundsCenter);
-        }
-        shader.setMat4("model", modelMatrix);
+        return modelMatrix;
+    }
 
-        model->draw(shader);
+    glm::vec3 getActiveSceneWorldCenter() const
+    {
+        Model* activeModel = getActiveModel();
+        if (!activeModel || !activeModel->hasValidBounds())
+            return glm::vec3(0.0f);
+
+        float scale = getActiveModelScale(activeModel);
+        return getActiveModelTargetCenter(activeModel, scale);
+    }
+
+    glm::vec3 getActiveSceneWorldSize() const
+    {
+        Model* activeModel = getActiveModel();
+        if (!activeModel || !activeModel->hasValidBounds())
+            return glm::vec3(1.0f);
+
+        return activeModel->getBoundsSize() * getActiveModelScale(activeModel);
     }
 
 
@@ -114,6 +153,53 @@ private:
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
     SceneRenderState* state = nullptr;
+    SceneRenderConfig* config = nullptr;
     Model* model = nullptr;
+    Model* sponzaModel = nullptr;
+    Model* sibenikModel = nullptr;
+
+    bool isDefaultScene() const
+    {
+        return !config || config->sceneSelection == SceneSelection::Default;
+    }
+
+    float getActiveModelScale(Model* activeModel) const
+    {
+        glm::vec3 boundsSize = activeModel->getBoundsSize();
+        float maxExtent = glm::max(boundsSize.x, glm::max(boundsSize.y, boundsSize.z));
+        float targetSize = isDefaultScene() ? 10.0f : 18.0f;
+
+        return maxExtent > 0.0f ? targetSize / maxExtent : 1.0f;
+    }
+
+    glm::vec3 getActiveModelTargetCenter(Model* activeModel, float scale) const
+    {
+        glm::vec3 boundsSize = activeModel->getBoundsSize();
+        float floorY = -0.5f;
+
+        return glm::vec3(
+            0.0f,
+            floorY + boundsSize.y * scale * 0.5f,
+            isDefaultScene() ? -2.0f : -1.0f
+        );
+    }
+
+    Model* getActiveModel() const
+    {
+        if (!config)
+            return model;
+
+        switch (config->sceneSelection)
+        {
+            case SceneSelection::Sponza:
+                return sponzaModel;
+            case SceneSelection::Sibenik:
+                return sibenikModel;
+            case SceneSelection::Default:
+            default:
+                return model;
+        }
+
+    }
 
 };

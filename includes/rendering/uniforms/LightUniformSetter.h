@@ -40,9 +40,9 @@ private:
     {
         shader.setVec3("pointLight.position", state.lightPositions);
 
-        shader.setVec3("pointLight.ambient", lightSettings.pointAmbient);
-        shader.setVec3("pointLight.diffuse", lightSettings.pointDiffuse);
-        shader.setVec3("pointLight.specular", lightSettings.pointSpecular);
+        shader.setVec3("pointLight.ambient", lightSettings.pointAmbient * lightSettings.pointIntensity);
+        shader.setVec3("pointLight.diffuse", lightSettings.pointDiffuse * lightSettings.pointIntensity);
+        shader.setVec3("pointLight.specular", lightSettings.pointSpecular * lightSettings.pointIntensity);
 
         shader.setFloat("pointLight.constant", lightSettings.pointConstant);
         shader.setFloat("pointLight.linear", lightSettings.pointLinear);
@@ -55,13 +55,13 @@ private:
             lightSettings.sunDirection);
 
         shader.setVec3("sun.ambient",
-            lightSettings.sunAmbient);
+            lightSettings.sunAmbient * lightSettings.sunIntensity);
 
         shader.setVec3("sun.diffuse",
-            lightSettings.sunDiffuse);
+            lightSettings.sunDiffuse * lightSettings.sunIntensity);
 
         shader.setVec3("sun.specular",
-            lightSettings.sunSpecular);
+            lightSettings.sunSpecular * lightSettings.sunIntensity);
     }
 
     static void setupFlashLight(
@@ -82,17 +82,17 @@ private:
 
         shader.setVec3(
             "flashLight.ambient",
-            lightSettings.flashAmbient
+            lightSettings.flashAmbient * lightSettings.flashIntensity
         );
 
         shader.setVec3(
             "flashLight.diffuse",
-            lightSettings.flashDiffuse
+            lightSettings.flashDiffuse * lightSettings.flashIntensity
         );
 
         shader.setVec3(
             "flashLight.specular",
-            lightSettings.flashSpecular
+            lightSettings.flashSpecular * lightSettings.flashIntensity
         );
 
         shader.setFloat(

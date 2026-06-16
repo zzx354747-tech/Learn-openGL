@@ -109,9 +109,12 @@ void GeometryPass::setupCubeMaterial(Shader& shader)
 {
     shader.setFloat("parallaxHeightScale", config.cubeParallaxHeightScale);
     shader.setFloat("heightScale", config.cubeParallaxHeightScale);
+    shader.setFloat("bumpNormalStrength", 1.0f);
     shader.setInt("numLayers", config.cubeNumLayers);
     shader.setBool("enableNormalMapping", config.cubeEnableNormalMapping);
     shader.setBool("enableParallaxMapping", config.cubeEnableParallaxMapping);
+    shader.setBool("hasNormalMap", true);
+    shader.setBool("hasParallaxMap", true);
     shader.setBool("hasSpecularMap", false);
     shader.setVec3("cameraPos", camera.Getposition());
 }
@@ -120,6 +123,9 @@ void GeometryPass::setupPlaneMaterial(Shader& shader)
 {
     shader.setBool("enableNormalMapping", false);
     shader.setBool("enableParallaxMapping", false);
+    shader.setBool("hasNormalMap", false);
+    shader.setBool("hasParallaxMap", false);
+    shader.setFloat("bumpNormalStrength", 1.0f);
     shader.setBool("hasSpecularMap", false);
     shader.setVec3("cameraPos", camera.Getposition());
 }
@@ -128,9 +134,12 @@ void GeometryPass::setupModelMaterial(Shader& shader)
 {
     shader.setFloat("parallaxHeightScale", config.modelParallaxHeightScale);
     shader.setFloat("heightScale", config.modelParallaxHeightScale);
+    shader.setFloat("bumpNormalStrength", config.modelBumpNormalStrength);
     shader.setInt("numLayers", config.modelNumLayers);
     shader.setBool("enableNormalMapping", config.modelEnableNormalMapping);
     shader.setBool("enableParallaxMapping", config.modelEnableParallaxMapping);
+    shader.setBool("hasNormalMap", false);
+    shader.setBool("hasParallaxMap", false);
     shader.setVec3("cameraPos", camera.Getposition());
 }
     

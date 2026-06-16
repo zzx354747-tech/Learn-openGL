@@ -9,6 +9,13 @@ enum class RenderMode
     ShadowDebug,
 };
 
+enum class SceneSelection
+{
+    Default,
+    Sponza,
+    Sibenik,
+};
+
 struct SceneRenderConfig
 {
     bool enableFloor = false;
@@ -20,6 +27,7 @@ struct SceneRenderConfig
     bool enableHDR = false;
     bool enableBloom = false;
     bool enableSSAO = true;
+    float ssaoStrength = 1.0f;
 
     // Cube
     bool cubeEnableNormalMapping = false;
@@ -31,6 +39,7 @@ struct SceneRenderConfig
     bool modelEnableNormalMapping = false;
     bool modelEnableParallaxMapping = false;
     float modelParallaxHeightScale = 0.03f;
+    float modelBumpNormalStrength = 2.0f;
     int modelNumLayers = 32;
 
     int numBlurPasses = 10;
@@ -39,6 +48,7 @@ struct SceneRenderConfig
     float bloomThreshold = 0.7f;
 
     RenderMode renderMode = RenderMode::Basic;
+    SceneSelection sceneSelection = SceneSelection::Default;
 };
 
 struct SceneRenderState

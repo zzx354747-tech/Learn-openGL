@@ -38,6 +38,8 @@ struct SceneRenderResources
     LightMesh* lightMesh = nullptr;
     SkyboxMesh* skyboxMesh = nullptr;
     Model* model = nullptr;
+    Model* sponzaModel = nullptr;
+    Model* sibenikModel = nullptr;
 
     CubeMap* skybox = nullptr;
     PingPongFramebuffer* pingpongFBO = nullptr;

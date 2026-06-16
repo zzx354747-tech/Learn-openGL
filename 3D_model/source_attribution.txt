@@ -1,3 +1,15 @@
 Model by Berk Gedik, from: https://sketchfab.com/3d-models/survival-guitar-backpack-low-poly-799f8c4511f84fab8c3f12887f7e6b36
 
 Modified material assignment (Joey de Vries) for easier load in OpenGL model loading chapter, and renamed albedo to diffuse and metallic to specular to match non-PBR lighting setup.
+
+Crytek Sponza downloaded from Morgan McGuire's Computer Graphics Archive:
+https://casual-effects.com/data
+
+Original Sponza package copyright and license details are kept in:
+3D_model/sponza/copyright.txt
+
+Sibenik Cathedral downloaded from Morgan McGuire's Computer Graphics Archive:
+https://casual-effects.com/data
+
+Original Sibenik package copyright and license details are kept in:
+3D_model/sibenik/copyright.txt

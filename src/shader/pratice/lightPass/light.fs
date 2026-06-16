@@ -60,6 +60,7 @@ uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool enableSSAO;
 
+uniform float ssaoStrength;
 uniform float bloomThreshold;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
@@ -282,40 +283,51 @@ void main()
     vec3 Normal = normalize(texture(gNormal, TexCoords).rgb);
     vec3 baseColor = texture(gAlbedoSpec, TexCoords).rgb;
     float specularStrength = texture(gAlbedoSpec, TexCoords).a;
-    float ao = enableSSAO ? texture(AO, TexCoords).r : 1.0;
+    float aoSample = clamp(texture(AO, TexCoords).r, 0.0, 1.0);
+    float ao = enableSSAO ? pow(aoSample, ssaoStrength) : 1.0;
 
     vec4 FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
     vec4 FragPosSpotLightSpace = spotLightSpaceMatrix * vec4(FragPos, 1.0);
 
     vec3 viewDir = normalize(viewPos - FragPos);
 
-    vec3 ambient = vec3(0.3 * ao) * baseColor;
-    vec3 result = ambient;
+    vec3 result = vec3(0.0);
 
     if (enablePointLight)
+    {
+        result += pointLight.ambient * baseColor * ao;
         result += calcPointLight(pointLight, 
                     Normal, 
                     FragPos, 
                     viewDir, 
                     baseColor,
                     specularStrength);
+    }
 
     if (enableDirectionalLight)
+    {
+        result += sun.ambient * baseColor * ao;
         result += calcSun(sun, 
                     Normal, 
                     viewDir, 
                     baseColor,
                     specularStrength,
                     FragPosLightSpace);
+    }
 
     if (enableFlashlight)
+    {
+        result += flashLight.ambient * baseColor * ao;
         result += calcFlashLight(flashLight, 
                     Normal,
                     FragPos, 
                     viewDir,
                     baseColor,
                     specularStrength,
-                    FragPosSpotLightSpace); 
+                    FragPosSpotLightSpace);
+    }
+
+    result *= ao;
 
     FragColor = vec4(result, 1.0);
 

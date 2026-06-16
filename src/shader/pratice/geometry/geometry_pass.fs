@@ -18,8 +18,11 @@ uniform sampler2D specularTexture;
 
 uniform bool enableNormalMapping;
 uniform bool enableParallaxMapping;
+uniform bool hasNormalMap;
+uniform bool hasParallaxMap;
 uniform bool hasSpecularMap;
 uniform float parallaxHeightScale;
+uniform float bumpNormalStrength;
 uniform int numLayers;
 
 vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
@@ -55,11 +58,29 @@ vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
     return prevTexCoords * weight + currentTexCoords * (1.0 - weight);
 }
 
+vec3 normalFromHeightMap(vec2 texCoords)
+{
+    vec2 texelSize = 1.0 / vec2(textureSize(parallaxTexture, 0));
+
+    float heightLeft = texture(parallaxTexture, texCoords - vec2(texelSize.x, 0.0)).r;
+    float heightRight = texture(parallaxTexture, texCoords + vec2(texelSize.x, 0.0)).r;
+    float heightDown = texture(parallaxTexture, texCoords - vec2(0.0, texelSize.y)).r;
+    float heightUp = texture(parallaxTexture, texCoords + vec2(0.0, texelSize.y)).r;
+
+    vec3 tangentNormal = normalize(vec3(
+        (heightLeft - heightRight) * bumpNormalStrength,
+        (heightDown - heightUp) * bumpNormalStrength,
+        1.0
+    ));
+
+    return normalize(TBN * tangentNormal);
+}
+
 void main()
 {
     vec2 texCoords = TexCoords;
 
-    if (enableParallaxMapping)
+    if (enableParallaxMapping && hasParallaxMap)
     {
         vec3 viewDir = normalize(TangentViewPos - TangentFragPos);
         texCoords = parallaxMapping(TexCoords, viewDir);
@@ -67,11 +88,15 @@ void main()
 
     gPosition = vec4(FragPos, 1.0);
 
-    if (enableNormalMapping)
+    if (enableNormalMapping && hasNormalMap)
     {
         vec3 normalMap = texture(normalTexture, texCoords).rgb;
         normalMap = normalMap * 2.0 - 1.0; // 将法线从[0,1]范围转换到[-1,1]范围
         gNormal = normalize(TBN * normalMap);
+    }
+    else if (enableNormalMapping && hasParallaxMap)
+    {
+        gNormal = normalFromHeightMap(texCoords);
     }
     else
     {
