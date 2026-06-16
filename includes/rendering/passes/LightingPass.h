@@ -11,6 +11,7 @@
 #include "rendering/uniforms/SpotShadowUniformSetter.h"
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/uniforms/LightUniformSetter.h"
+#include "rendering/postprocess/SSAO.h"
 
 class LightingPass
 {
@@ -32,7 +33,9 @@ public:
         gBuffer(gBuffer)
     {}
 
-    void render(Framebuffer& framebuffer, Screenquad& screenQuad);
+    void render(Framebuffer& framebuffer,
+        Screenquad& screenQuad,
+        unsigned int aoTexture);
 
 private:
     SceneRenderResources& resources;
@@ -50,5 +53,5 @@ private:
 
     Shader* getLightingShader();
 
-    void bindGBufferTextures(Shader& shader);
+    void bindGBufferTextures(Shader& shader, unsigned int aoTexture);
 };

@@ -1,17 +1,20 @@
 #include "LightingPass.h"
 
-void LightingPass::render(Framebuffer& framebuffer, Screenquad& screenQuad)
+void LightingPass::render(Framebuffer& framebuffer,
+    Screenquad& screenQuad,
+    unsigned int aoTexture)
 {
     if (!resources.lightingPassShader)
         return;
 
     framebuffer.bind();
+    glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE); // 禁止写入深度,保护深度信息
-    
-    Shader* shader = getLightingShader();   
+
+    Shader* shader = getLightingShader();
     shader->use();
 
-    bindGBufferTextures(*shader);
+    bindGBufferTextures(*shader, aoTexture);
     // 方向光阴影贴图
     shader->setInt("shadowMap", 10);
     // 点光源阴影贴图
@@ -40,6 +43,7 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setBool("enablePointLight", config.enablePointLight);
     shader.setBool("enableDirectionalLight", config.enableDirectionalLight);
     shader.setBool("enableFlashlight", config.enableFlashlight);
+    shader.setBool("enableSSAO", config.enableSSAO);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
@@ -49,9 +53,9 @@ void LightingPass::setupPointShadow(Shader& shader, unsigned int textureUnit)
 {
     if (!shadowResources.pointShadowMap)
         return;
-        
-        PointShadowUniformSetter::apply(shader, 
-            *shadowResources.pointShadowMap, 
+
+        PointShadowUniformSetter::apply(shader,
+            *shadowResources.pointShadowMap,
             state.lightPositions,
             textureUnit);
 }
@@ -61,7 +65,7 @@ void LightingPass::setupSpotShadow(Shader& shader, unsigned int textureUnit)
     if (!shadowResources.spotShadowMap)
         return;
 
-    SpotShadowUniformSetter::apply(shader, 
+    SpotShadowUniformSetter::apply(shader,
         *shadowResources.spotShadowMap,
         state.spotLightSpaceMatrix,
         textureUnit);
@@ -72,7 +76,7 @@ Shader* LightingPass::getLightingShader()
     return resources.lightingPassShader;
 }
 
-void LightingPass::bindGBufferTextures(Shader& shader)
+void LightingPass::bindGBufferTextures(Shader& shader, unsigned int aoTexture)
 {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gBuffer.getGbufferTextureID(0));
@@ -85,4 +89,8 @@ void LightingPass::bindGBufferTextures(Shader& shader)
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, gBuffer.getGbufferTextureID(2));
     shader.setInt("gAlbedoSpec", 2);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, aoTexture);
+    shader.setInt("AO", 3);
 }

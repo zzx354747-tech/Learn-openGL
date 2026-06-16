@@ -276,6 +276,8 @@ add_executable(fbo_demo
     includes/rendering/passes/SceneObjectPass.cpp
     includes/rendering/passes/GeometryPass.cpp
     includes/rendering/passes/LightingPass.cpp
+    includes/rendering/passes/SSAOCommonPass.cpp
+    includes/rendering/postprocess/SSAO.cpp
     includes/rendering/passes/ShadowPass/PointShadowPass.cpp
     ${GLAD_SOURCES}
 )

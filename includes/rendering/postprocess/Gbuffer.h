@@ -55,6 +55,10 @@ public:
         return attachments[index];
     }
 
+    unsigned int getPositionTexture() const { return gPosition; }
+    unsigned int getNormalTexture() const { return gNormal; }
+    unsigned int getAlbedoSpecTexture() const { return gAlbedoSpec; }
+
     void blitDepthTo(Framebuffer& framebuffer, int width, int height)
     {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, getFBO());

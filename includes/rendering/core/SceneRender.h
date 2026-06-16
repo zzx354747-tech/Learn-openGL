@@ -15,10 +15,12 @@
 #include "rendering/passes/GeometryPass.h"
 #include "rendering/passes/LightingPass.h"
 #include "rendering/postprocess/Gbuffer.h"
+#include "rendering/passes/SSAOCommonPass.h"
+#include "rendering/postprocess/SSAO.h"
 
 class SceneRender
 {
-public: 
+public:
     SceneRender(
         Camera& camera,
         SceneObjectPass& objectPass,
@@ -32,12 +34,14 @@ public:
         SpotShadowPass& spotShadowPass,
         GeometryPass& geometryPass,
         LightingPass& lightingPass,
-        GBuffer& gBuffer
+        GBuffer& gBuffer,
+        SSAOCommonPass& ssaoCommonPass,
+        SSAO& ssao
     )        : camera(camera),
         objectPass(objectPass),
         shadowResources(shadowResources),
         resources(resources),
-        config(config), 
+        config(config),
         state(state),
         lightSettings(lightSettings),
         directionalShadowPass(directionalShadowPass),
@@ -45,15 +49,17 @@ public:
         spotShadowPass(spotShadowPass),
         geometryPass(geometryPass),
         lightingPass(lightingPass),
-        gBuffer(gBuffer)
+        gBuffer(gBuffer),
+        ssaoCommonPass(ssaoCommonPass),
+        ssao(ssao)
     {
     }
 
     void render(
-        int bfwidth, 
-        int bfheight, 
-        Shader& screenShader, 
-        Screenquad& screenQuad, 
+        int bfwidth,
+        int bfheight,
+        Shader& screenShader,
+        Screenquad& screenQuad,
         Framebuffer& framebuffer
     )
     {
@@ -71,14 +77,17 @@ public:
         //Light模式下的延迟渲染阶段
         if (config.renderMode == RenderMode::Lighting)
         {
-            renderGboPass(bfwidth, bfheight, framebuffer, screenQuad);
+            renderGboPass(bfwidth,
+                bfheight,
+                framebuffer,
+                screenQuad);
         }
         else
         {
         // 非Lighting模式下的离屏渲染阶段
         renderHDRFrameBufferPass(bfwidth, bfheight, framebuffer);
         }
-        
+
         if (config.enableBloom && resources.pingpongFBO && resources.blurShader)
         {
             renderBlurPass(framebuffer, *resources.pingpongFBO, *resources.blurShader, screenQuad, config.numBlurPasses);
@@ -102,6 +111,8 @@ private:
     GeometryPass& geometryPass;
     LightingPass& lightingPass;
     GBuffer& gBuffer;
+    SSAOCommonPass& ssaoCommonPass;
+    SSAO& ssao;
 
     void renderShadowDebugPass(int bfwidth, int bfheight, Screenquad& screenquad)
     {
@@ -121,11 +132,19 @@ private:
         screenquad.draw();
     }
 
-    void renderGboPass(int bfwidth, int bfheight, Framebuffer& framebuffer, Screenquad& screenQuad)
+    void renderGboPass(int bfwidth,
+        int bfheight,
+        Framebuffer& framebuffer,
+        Screenquad& screenQuad
+        )
     {
         geometryPass.render(bfwidth, bfheight);
+        if (config.enableSSAO)
+        {
+            ssaoCommonPass.render(bfwidth, bfheight);
+        }
         gBuffer.blitDepthTo(framebuffer, bfwidth, bfheight);
-        lightingPass.render(framebuffer, screenQuad);
+        lightingPass.render(framebuffer, screenQuad, ssao.getSSAOBlurColorBuffer());
 
         //lighting模式下的skybox,light render
         framebuffer.bind();
@@ -137,7 +156,7 @@ private:
     }
 
     void renderHDRFrameBufferPass(int bfwidth,
-        int bfheight, 
+        int bfheight,
         Framebuffer& framebuffer)
     {
        framebuffer.bind();

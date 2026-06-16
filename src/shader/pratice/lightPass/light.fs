@@ -44,6 +44,8 @@ uniform sampler2D spotShadowMap;
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedoSpec;
+// 接收SSAO贴图
+uniform sampler2D AO;
 
 uniform float farPlane;
 
@@ -56,6 +58,7 @@ uniform mat4 spotLightSpaceMatrix;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
+uniform bool enableSSAO;
 
 uniform float bloomThreshold;
 
@@ -194,7 +197,6 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
         light.quadratic * distance * distance
     );
 
-    vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
     vec3 specular = light.specular * spec * specularStrength;
 
@@ -205,7 +207,7 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
     diffuse *= (1.0 - shadow);
     specular *= (1.0 - shadow);
 
-    return ambient + (diffuse + specular) * attenuation;
+    return (diffuse + specular) * attenuation;
 }
 
 vec3 calcSun(Sun light, 
@@ -220,7 +222,6 @@ vec4 FragPosLightSpace)
     float diff = max(dot(normal, lightDir), 0.0);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
 
-    vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
     vec3 specular = light.specular * spec * specularStrength;
 
@@ -234,7 +235,7 @@ vec4 FragPosLightSpace)
     diffuse *= (1.0 - shadow);
     specular *= (1.0 - shadow);
     
-    return ambient + diffuse + specular;
+    return diffuse + specular;
 }
 
 vec3 calcFlashLight(FlashLight light, 
@@ -255,7 +256,6 @@ vec4 FragPosSpotLightSpace)
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
 
-    vec3 ambient = light.ambient * baseColor;
     vec3 diffuse = light.diffuse * diff * baseColor;
     vec3 specular = light.specular * spec * specularStrength;
 
@@ -271,8 +271,7 @@ vec4 FragPosSpotLightSpace)
     diffuse *= (1.0 - shadow);
     specular *= (1.0 - shadow);
 
-    return ambient +
-        (diffuse + specular)
+    return (diffuse + specular)
         * attenuation
         * intensity;
 }
@@ -283,13 +282,15 @@ void main()
     vec3 Normal = normalize(texture(gNormal, TexCoords).rgb);
     vec3 baseColor = texture(gAlbedoSpec, TexCoords).rgb;
     float specularStrength = texture(gAlbedoSpec, TexCoords).a;
+    float ao = enableSSAO ? texture(AO, TexCoords).r : 1.0;
 
     vec4 FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
     vec4 FragPosSpotLightSpace = spotLightSpaceMatrix * vec4(FragPos, 1.0);
 
     vec3 viewDir = normalize(viewPos - FragPos);
 
-    vec3 result = vec3(0.0);
+    vec3 ambient = vec3(0.3 * ao) * baseColor;
+    vec3 result = ambient;
 
     if (enablePointLight)
         result += calcPointLight(pointLight, 

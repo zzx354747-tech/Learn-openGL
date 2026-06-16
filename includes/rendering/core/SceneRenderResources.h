@@ -30,6 +30,8 @@ struct SceneRenderResources
     Shader* blurShader = nullptr;
     Shader* geometryShader = nullptr;
     Shader* lightingPassShader = nullptr;
+    Shader* ssaoShader = nullptr;
+    Shader* ssaoBlurShader = nullptr;
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;

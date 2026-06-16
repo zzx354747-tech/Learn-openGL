@@ -19,6 +19,7 @@ struct SceneRenderConfig
     bool enableGammaCorrection = false;
     bool enableHDR = false;
     bool enableBloom = false;
+    bool enableSSAO = true;
 
     // Cube
     bool cubeEnableNormalMapping = false;

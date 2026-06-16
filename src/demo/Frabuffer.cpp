@@ -32,7 +32,9 @@
 #include "rendering/passes/ShadowPass/SpotShadowPass.h"
 #include "rendering/passes/GeometryPass.h"
 #include "rendering/passes/LightingPass.h"
+#include "rendering/passes/SSAOCommonPass.h"
 #include "rendering/postprocess/Gbuffer.h"
+#include "rendering/postprocess/SSAO.h"
 #include "rendering/Model/Mesh.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
@@ -41,6 +43,7 @@
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
 GBuffer* gBuffer = nullptr;
+SSAO* ssao = nullptr;
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定
 bool gravePresslastFrame = false; // 上一帧是否按下了`键
@@ -65,6 +68,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     if (gBuffer)
     {
         gBuffer->resize(width, height);
+    }
+    if (ssao)
+    {
+        ssao->resize(width, height);
     }
 };
 
@@ -187,6 +194,8 @@ int main()
     pingpongFramebuffer = &pingpongFBO;
     GBuffer sceneGBuffer(bfwidth, bfheight);
     gBuffer = &sceneGBuffer;
+    SSAO sceneSSAO(bfwidth, bfheight);
+    ssao = &sceneSSAO;
 
    Shader screenShader(
     "../src/shader/pratice/framebuffer/screen.vs",
@@ -264,6 +273,16 @@ Shader basicModelShader(
         "../src/shader/pratice/lightPass/light.fs"
     );
 
+    Shader ssaoShader(
+        "../src/shader/pratice/SSAO/ssao_common.vs",
+        "../src/shader/pratice/SSAO/ssao.fs"
+    );
+
+    Shader ssaoBlurShader(
+        "../src/shader/pratice/SSAO/ssao_common.vs",
+        "../src/shader/pratice/SSAO/ssao_blur.fs"
+    );
+
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
     LightMesh lightMesh;
@@ -285,6 +304,8 @@ Shader basicModelShader(
     sceneResources.blurShader = &blurShader;
     sceneResources.geometryShader = &geometryShader;
     sceneResources.lightingPassShader = &lightingPassShader;
+    sceneResources.ssaoShader = &ssaoShader;
+    sceneResources.ssaoBlurShader = &ssaoBlurShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
     sceneResources.lightMesh = &lightMesh;
@@ -308,6 +329,7 @@ Shader basicModelShader(
     sceneConfig.enableFlashlight = false;
     sceneConfig.enableGammaCorrection = false;
     sceneConfig.enableBloom = false;
+    sceneConfig.enableSSAO = true;
     sceneConfig.cubeEnableNormalMapping = true;
     sceneConfig.cubeEnableParallaxMapping = true;
     sceneConfig.cubeParallaxHeightScale = 0.03f;
@@ -370,6 +392,13 @@ Shader basicModelShader(
         camera,
         sceneGBuffer);
 
+    SSAOCommonPass ssaoCommonPass(
+        sceneResources,
+        sceneSSAO,
+        screenQuad,
+        camera,
+        sceneGBuffer);
+
     SceneRender sceneRender(camera, 
         objectPass, 
         shadowResources, 
@@ -382,7 +411,9 @@ Shader basicModelShader(
         spotShadowPass,
         geometryPass,
         lightingPass,
-        sceneGBuffer);
+        sceneGBuffer,
+        ssaoCommonPass,
+        sceneSSAO);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -422,6 +453,7 @@ Shader basicModelShader(
         ImGui::Checkbox("Gamma Correction", &sceneConfig.enableGammaCorrection);
         ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
         ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
+        ImGui::Checkbox("SSAO", &sceneConfig.enableSSAO);
         ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
         ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);
         ImGui::SliderFloat("Cube Parallax Height Scale", &sceneConfig.cubeParallaxHeightScale, 0.0f, 0.1f, "%.3f");
