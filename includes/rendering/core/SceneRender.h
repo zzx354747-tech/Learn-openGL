@@ -165,8 +165,8 @@ private:
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        objectPass.renderNoLightingCube(bfwidth, bfheight);
         objectPass.renderNoLightingPlane(bfwidth, bfheight);
+        objectPass.renderNoLightingMaterialSpheres(bfwidth, bfheight);
         lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
 
         if (resources.model)

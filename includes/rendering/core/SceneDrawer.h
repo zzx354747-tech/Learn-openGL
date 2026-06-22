@@ -5,34 +5,32 @@
 #include "core/Shader.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
+#include "rendering/assets/SphereMesh.h"
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderTypes.h"
 
 class SceneDrawer
 {
 public:
-    SceneDrawer (CubeMesh* cubeMesh, 
-        PlaneMesh* planeMesh, 
+    SceneDrawer (CubeMesh* cubeMesh,
+        PlaneMesh* planeMesh,
+        SphereMesh* sphereMesh,
         SceneRenderState* state,
         SceneRenderConfig* config,
-        Model* model,
-        Model* sponzaModel,
-        Model* sibenikModel)
+        Model* model)
         : cubeMesh(cubeMesh),
           planeMesh(planeMesh),
+          sphereMesh(sphereMesh),
           state(state),
           config(config),
-          model(model),
-          sponzaModel(sponzaModel),
-          sibenikModel(sibenikModel)
+          model(model)
     {
     }
 
     void drawScene(Shader& shader)
     {
-        drawCubes(shader);
-        drawSecondCubes(shader);
         drawPlane(shader);
+        drawMaterialSpheres(shader);
         drawModel(shader);
     }
 
@@ -99,6 +97,29 @@ public:
         planeMesh->draw();
     }
 
+    void drawMaterialSpheres(Shader& shader)
+    {
+        if (!isDefaultScene() || !sphereMesh || !state)
+            return;
+
+        for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+        {
+            drawMaterialSphere(shader, i);
+        }
+    }
+
+    void drawMaterialSphere(Shader& shader, unsigned int index)
+    {
+        if (!isDefaultScene() || !sphereMesh || !state || index >= MaterialSphereCount)
+            return;
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, state->materialSpherePositions[index]);
+        model = glm::scale(model, glm::vec3(0.5f));
+        shader.setMat4("model", model);
+        sphereMesh->draw();
+    }
+
     void drawModel(Shader& shader)
     {
         Model* activeModel = getActiveModel();
@@ -143,20 +164,22 @@ public:
     {
         Model* activeModel = getActiveModel();
         if (!activeModel || !activeModel->hasValidBounds())
-            return glm::vec3(1.0f);
+            return getMaterialSphereSceneSize();
 
-        return activeModel->getBoundsSize() * getActiveModelScale(activeModel);
+        glm::vec3 modelSize = activeModel->getBoundsSize() * getActiveModelScale(activeModel);
+        glm::vec3 sphereSize = getMaterialSphereSceneSize();
+
+        return glm::max(modelSize, sphereSize);
     }
 
 
 private:
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
+    SphereMesh* sphereMesh = nullptr;
     SceneRenderState* state = nullptr;
     SceneRenderConfig* config = nullptr;
     Model* model = nullptr;
-    Model* sponzaModel = nullptr;
-    Model* sibenikModel = nullptr;
 
     bool isDefaultScene() const
     {
@@ -167,7 +190,7 @@ private:
     {
         glm::vec3 boundsSize = activeModel->getBoundsSize();
         float maxExtent = glm::max(boundsSize.x, glm::max(boundsSize.y, boundsSize.z));
-        float targetSize = isDefaultScene() ? 10.0f : 18.0f;
+        float targetSize = isDefaultScene() ? 15.0f : 18.0f;
 
         return maxExtent > 0.0f ? targetSize / maxExtent : 1.0f;
     }
@@ -180,8 +203,29 @@ private:
         return glm::vec3(
             0.0f,
             floorY + boundsSize.y * scale * 0.5f,
-            isDefaultScene() ? -2.0f : -1.0f
+            isDefaultScene() ? -5.5f : -1.0f
         );
+    }
+
+    glm::vec3 getMaterialSphereSceneSize() const
+    {
+        if (!state)
+            return glm::vec3(1.0f);
+
+        float minX = state->materialSpherePositions[0].x;
+        float maxX = state->materialSpherePositions[0].x;
+        float minZ = state->materialSpherePositions[0].z;
+        float maxZ = state->materialSpherePositions[0].z;
+
+        for (unsigned int i = 1; i < MaterialSphereCount; ++i)
+        {
+            minX = glm::min(minX, state->materialSpherePositions[i].x);
+            maxX = glm::max(maxX, state->materialSpherePositions[i].x);
+            minZ = glm::min(minZ, state->materialSpherePositions[i].z);
+            maxZ = glm::max(maxZ, state->materialSpherePositions[i].z);
+        }
+
+        return glm::vec3(maxX - minX + 2.0f, 3.0f, maxZ - minZ + 2.0f);
     }
 
     Model* getActiveModel() const
@@ -191,10 +235,6 @@ private:
 
         switch (config->sceneSelection)
         {
-            case SceneSelection::Sponza:
-                return sponzaModel;
-            case SceneSelection::Sibenik:
-                return sibenikModel;
             case SceneSelection::Default:
             default:
                 return model;

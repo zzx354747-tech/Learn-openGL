@@ -55,21 +55,25 @@ private:
 
     glm::mat4 createLightSpaceMatrix() const
     {
-        float nearPlane = 1.0f;
-        float farPlane = 7.5f;
+        glm::vec3 sceneCenter = drawer.getActiveSceneWorldCenter();
+        glm::vec3 sceneSize = drawer.getActiveSceneWorldSize();
+        float sceneExtent = glm::max(sceneSize.x, glm::max(sceneSize.y, sceneSize.z));
+        float halfExtent = glm::max(sceneExtent * 0.75f, 10.0f);
+        float nearPlane = 0.1f;
+        float farPlane = glm::max(sceneExtent * 2.5f, 30.0f);
 
         glm::mat4 lightProjection = glm::ortho(
-            -10.0f,
-            10.0f,
-            -10.0f,
-            10.0f,
+            -halfExtent,
+            halfExtent,
+            -halfExtent,
+            halfExtent,
             nearPlane,
             farPlane);
 
         glm::vec3 lightDirection = glm::normalize(lightSettings.sunDirection);
         glm::mat4 lightView = glm::lookAt(
-            -lightDirection * 4.5f,
-            glm::vec3(0.0f),
+            sceneCenter - lightDirection * halfExtent,
+            sceneCenter,
             glm::vec3(0.0f, 1.0f, 0.0f));
 
         return lightProjection * lightView;

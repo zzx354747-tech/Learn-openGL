@@ -32,6 +32,7 @@ public:
 
     void renderNoLightingCube(int bfwidth, int bfheight);
     void renderNoLightingPlane(int bfwidth, int bfheight);
+    void renderNoLightingMaterialSpheres(int bfwidth, int bfheight);
     void renderNoLightingModel(int bfwidth, int bfheight);
 
 private:
@@ -45,6 +46,7 @@ private:
 
     void bindCubeTexture(Shader& shader, GLTexture& cubeTexture);
     void bindPlaneTexture(Shader& shader, GLTexture& floorTexture);
+    void bindAlbedoTexture(Shader& shader, GLTexture& albedoTexture);
 
     Shader* getCubeShader();
     Shader* getPlaneShader();

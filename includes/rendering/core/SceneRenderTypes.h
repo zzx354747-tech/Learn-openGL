@@ -1,6 +1,8 @@
 #pragma once
 #include <glm/glm.hpp>
 
+constexpr unsigned int MaterialSphereCount = 8;
+
 enum class RenderMode
 {
     Basic,
@@ -12,8 +14,6 @@ enum class RenderMode
 enum class SceneSelection
 {
     Default,
-    Sponza,
-    Sibenik,
 };
 
 struct SceneRenderConfig
@@ -27,6 +27,7 @@ struct SceneRenderConfig
     bool enableHDR = false;
     bool enableBloom = false;
     bool enableSSAO = true;
+    bool enablePBR = false;
     float ssaoStrength = 1.0f;
 
     // Cube
@@ -34,6 +35,13 @@ struct SceneRenderConfig
     bool cubeEnableParallaxMapping = false;
     float cubeParallaxHeightScale = 0.03f;
     int cubeNumLayers = 32;
+
+    // Floor
+    bool floorEnableNormalMapping = true;
+    bool floorEnableParallaxMapping = false;
+    float floorParallaxHeightScale = 0.03f;
+    float floorBumpNormalStrength = 1.0f;
+    int floorNumLayers = 32;
 
     // Model
     bool modelEnableNormalMapping = false;
@@ -67,7 +75,19 @@ struct SceneRenderState
         glm::vec3( 3.8f,  1.0f, -5.5f),
     };
 
-    glm::vec3 lightPositions = glm::vec3(1.2f, 1.0f, 2.0f);
+    glm::vec3 materialSpherePositions[MaterialSphereCount] =
+    {
+        glm::vec3(-2.4f, 0.0f, -3.9f),
+        glm::vec3(-0.8f, 0.0f, -3.9f),
+        glm::vec3( 0.8f, 0.0f, -3.9f),
+        glm::vec3( 2.4f, 0.0f, -3.9f),
+        glm::vec3(-2.4f, 0.0f, -5.7f),
+        glm::vec3(-0.8f, 0.0f, -5.7f),
+        glm::vec3( 0.8f, 0.0f, -5.7f),
+        glm::vec3( 2.4f, 0.0f, -5.7f),
+    };
+
+    glm::vec3 lightPositions = glm::vec3(-1.0f, 9.0f, -5.0f);
     glm::vec3 color = glm::vec3(1.0f);
 
     glm::mat4 dirLightSpaceMatrix = glm::mat4(1.0f);

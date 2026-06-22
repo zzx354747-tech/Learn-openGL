@@ -32,19 +32,41 @@ void SceneObjectPass::renderNoLightingPlane(int bfwidth, int bfheight)
 {
     Shader* shader = getPlaneShader();
 
-        if (!shader ||
-            !resources.planeMesh||
-            !resources.floorTexture||
-            !config.enableFloor)
-            return;
+    if (!shader ||
+        !resources.planeMesh ||
+        !resources.floorTexture ||
+        !config.enableFloor)
+        return;
 
-        shader->use();
+    shader->use();
 
-        CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
 
-        bindPlaneTexture(*shader, *resources.floorTexture);
+    bindPlaneTexture(*shader, *resources.floorTexture);
 
-        drawer.drawPlane(*shader);
+    drawer.drawPlane(*shader);
+}
+
+void SceneObjectPass::renderNoLightingMaterialSpheres(int bfwidth, int bfheight)
+{
+    Shader* shader = getModelShader();
+
+    if (!shader || !resources.sphereMesh)
+        return;
+
+    shader->use();
+
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+
+    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    {
+        PBRMaterialTextures& material = resources.materialSpherePBRMaterials[i];
+        if (!material.albedo)
+            continue;
+
+        bindAlbedoTexture(*shader, *material.albedo);
+        drawer.drawMaterialSphere(*shader, i);
+    }
 }
 
 void SceneObjectPass::renderNoLightingModel(int bfwidth, int bfheight)
@@ -95,6 +117,13 @@ void SceneObjectPass::bindPlaneTexture(Shader& shader, GLTexture& floorTexture)
     glActiveTexture(GL_TEXTURE0);
     shader.setInt("texture1", 0);
     floorTexture.bind();
+}
+
+void SceneObjectPass::bindAlbedoTexture(Shader& shader, GLTexture& albedoTexture)
+{
+    albedoTexture.bind(0);
+    shader.setInt("diffuseTexture", 0);
+    shader.setInt("texture_diffuse1", 0);
 }
 
 Shader* SceneObjectPass::getPlaneShader()

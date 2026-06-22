@@ -4,10 +4,12 @@ layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 layout (location = 3) in vec3 aTangent;
 layout (location = 4) in vec3 aBitangent;
+layout (location = 5) in vec2 aTexCoords1;
 
 out vec3 FragPos;
 out vec3 Normal;
 out vec2 TexCoords;
+out vec2 TexCoords1;
 out mat3 TBN;
 out vec3 TangentViewPos;
 out vec3 TangentFragPos;
@@ -20,6 +22,9 @@ uniform vec3 cameraPos;
 void main()
 {
     mat3 normalMatrix = transpose(inverse(mat3(model)));
+
+    TexCoords = aTexCoords;
+    TexCoords1 = aTexCoords1;
 
     // 将切线空间的T、B、N转换到世界空间
     vec3 T = normalize(normalMatrix * aTangent);
@@ -37,7 +42,6 @@ void main()
     vec4 WorldPos = model * vec4(aPos, 1.0);
     FragPos = WorldPos.xyz;
     Normal = N;
-    TexCoords = aTexCoords;
     gl_Position = projection * view * WorldPos;
 
     // 把世界空间变换到切线空间

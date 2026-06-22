@@ -60,7 +60,7 @@ void SSAOCommonPass::bindGBufferTextures(Shader& shader)
 
     glActiveTexture(GL_TEXTURE1);
     shader.setInt("gNormal", 1);
-    glBindTexture(GL_TEXTURE_2D, gBuffer.getNormalTexture());
+    glBindTexture(GL_TEXTURE_2D, gBuffer.getNormalRoughnessTexture());
 }
 
 void SSAOCommonPass::bindSSAOInputTexture(Shader& shader)

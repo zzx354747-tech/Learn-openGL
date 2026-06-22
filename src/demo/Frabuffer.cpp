@@ -18,6 +18,7 @@
 #include "rendering/postprocess/Screenquad.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
+#include "rendering/assets/SphereMesh.h"
 #include "rendering/assets/LightMesh.h"
 #include "rendering/assets/LightSettings.h"
 #include "rendering/assets/CubeMap.h"
@@ -182,7 +183,55 @@ int main()
     GLTexture secondCubeDiffuseTexture("../textures/toy/toy_box_diffuse.png");
     GLTexture secondCubeNormalTexture("../textures/toy/toy_box_normal.png");
     GLTexture secondCubeParallaxTexture("../textures/toy/toy_box_disp.png");
-    GLTexture floorTexture("../textures/wooden_floor.png");
+    GLTexture floorTexture("../textures/PBR/Ground104_2K-PNG/Ground104_2K-PNG_Color.png");
+    GLTexture defaultMetallicTexture(0, 0, 0);
+    GLTexture defaultRoughnessTexture(255, 255, 255);
+    GLTexture groundNormalTexture("../textures/PBR/Ground104_2K-PNG/Ground104_2K-PNG_NormalGL.png");
+    GLTexture groundRoughnessTexture("../textures/PBR/Ground104_2K-PNG/Ground104_2K-PNG_Roughness.png");
+    GLTexture groundDisplacementTexture("../textures/PBR/Ground104_2K-PNG/Ground104_2K-PNG_Displacement.png");
+
+    GLTexture bricks066AlbedoTexture("../textures/PBR/Bricks066_2K-PNG/Bricks066_2K-PNG_Color.png");
+    GLTexture bricks066NormalTexture("../textures/PBR/Bricks066_2K-PNG/Bricks066_2K-PNG_NormalGL.png");
+    GLTexture bricks066RoughnessTexture("../textures/PBR/Bricks066_2K-PNG/Bricks066_2K-PNG_Roughness.png");
+    GLTexture bricks066DisplacementTexture("../textures/PBR/Bricks066_2K-PNG/Bricks066_2K-PNG_Displacement.png");
+
+    GLTexture grass005AlbedoTexture("../textures/PBR/Grass005_2K-PNG/Grass005_2K-PNG_Color.png");
+    GLTexture grass005NormalTexture("../textures/PBR/Grass005_2K-PNG/Grass005_2K-PNG_NormalGL.png");
+    GLTexture grass005RoughnessTexture("../textures/PBR/Grass005_2K-PNG/Grass005_2K-PNG_Roughness.png");
+    GLTexture grass005DisplacementTexture("../textures/PBR/Grass005_2K-PNG/Grass005_2K-PNG_Displacement.png");
+
+    GLTexture gravel023AlbedoTexture("../textures/PBR/Gravel023_2K-PNG/Gravel023_2K-PNG_Color.png");
+    GLTexture gravel023NormalTexture("../textures/PBR/Gravel023_2K-PNG/Gravel023_2K-PNG_NormalGL.png");
+    GLTexture gravel023RoughnessTexture("../textures/PBR/Gravel023_2K-PNG/Gravel023_2K-PNG_Roughness.png");
+    GLTexture gravel023DisplacementTexture("../textures/PBR/Gravel023_2K-PNG/Gravel023_2K-PNG_Displacement.png");
+
+    GLTexture marble012AlbedoTexture("../textures/PBR/Marble012_2K-PNG/Marble012_2K-PNG_Color.png");
+    GLTexture marble012NormalTexture("../textures/PBR/Marble012_2K-PNG/Marble012_2K-PNG_NormalGL.png");
+    GLTexture marble012RoughnessTexture("../textures/PBR/Marble012_2K-PNG/Marble012_2K-PNG_Roughness.png");
+    GLTexture marble012DisplacementTexture("../textures/PBR/Marble012_2K-PNG/Marble012_2K-PNG_Displacement.png");
+
+    GLTexture metal003AlbedoTexture("../textures/PBR/Metal003_2K-PNG/Metal003_2K-PNG_Color.png");
+    GLTexture metal003NormalTexture("../textures/PBR/Metal003_2K-PNG/Metal003_2K-PNG_NormalGL.png");
+    GLTexture metal003RoughnessTexture("../textures/PBR/Metal003_2K-PNG/Metal003_2K-PNG_Roughness.png");
+    GLTexture metal003MetallicTexture("../textures/PBR/Metal003_2K-PNG/Metal003_2K-PNG_Metalness.png");
+    GLTexture metal003DisplacementTexture("../textures/PBR/Metal003_2K-PNG/Metal003_2K-PNG_Displacement.png");
+
+    GLTexture metal034AlbedoTexture("../textures/PBR/Metal034_2K-PNG/Metal034_2K-PNG_Color.png");
+    GLTexture metal034NormalTexture("../textures/PBR/Metal034_2K-PNG/Metal034_2K-PNG_NormalGL.png");
+    GLTexture metal034RoughnessTexture("../textures/PBR/Metal034_2K-PNG/Metal034_2K-PNG_Roughness.png");
+    GLTexture metal034MetallicTexture("../textures/PBR/Metal034_2K-PNG/Metal034_2K-PNG_Metalness.png");
+    GLTexture metal034DisplacementTexture("../textures/PBR/Metal034_2K-PNG/Metal034_2K-PNG_Displacement.png");
+
+    GLTexture metal055AlbedoTexture("../textures/PBR/Metal055A_2K-PNG/Metal055A_2K-PNG_Color.png");
+    GLTexture metal055NormalTexture("../textures/PBR/Metal055A_2K-PNG/Metal055A_2K-PNG_NormalGL.png");
+    GLTexture metal055RoughnessTexture("../textures/PBR/Metal055A_2K-PNG/Metal055A_2K-PNG_Roughness.png");
+    GLTexture metal055MetallicTexture("../textures/PBR/Metal055A_2K-PNG/Metal055A_2K-PNG_Metalness.png");
+    GLTexture metal055DisplacementTexture("../textures/PBR/Metal055A_2K-PNG/Metal055A_2K-PNG_Displacement.png");
+
+    GLTexture rock060AlbedoTexture("../textures/PBR/Rock060_2K-PNG/Rock060_2K-PNG_Color.png");
+    GLTexture rock060NormalTexture("../textures/PBR/Rock060_2K-PNG/Rock060_2K-PNG_NormalGL.png");
+    GLTexture rock060RoughnessTexture("../textures/PBR/Rock060_2K-PNG/Rock060_2K-PNG_Roughness.png");
+    GLTexture rock060DisplacementTexture("../textures/PBR/Rock060_2K-PNG/Rock060_2K-PNG_Displacement.png");
 
     CubeMap skybox(skyboxFaces);
 
@@ -285,11 +334,10 @@ Shader basicModelShader(
 
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
+    SphereMesh sphereMesh;
     LightMesh lightMesh;
     SkyboxMesh skyboxMesh;
-    Model rock_1k ("../3D_Model/rock_1k.glb");
-    Model sponzaModel("../3D_model/sponza/sponza.obj");
-    Model sibenikModel("../3D_model/sibenik/sibenik.obj");
+    Model livingRoomModel("../3D_model/living_room_interior_free.glb");
 
     SceneRenderResources sceneResources;
     sceneResources.basicCubeShader = &basicCubeShader;
@@ -310,6 +358,7 @@ Shader basicModelShader(
     sceneResources.ssaoBlurShader = &ssaoBlurShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
+    sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
     sceneResources.skyboxMesh = &skyboxMesh;
     sceneResources.skybox = &skybox;
@@ -321,9 +370,72 @@ Shader basicModelShader(
     sceneResources.secondCubeDiffuseTexture = &secondCubeDiffuseTexture;
     sceneResources.secondCubeNormalTexture = &secondCubeNormalTexture;
     sceneResources.secondCubeParallaxTexture = &secondCubeParallaxTexture;
-    sceneResources.model = &rock_1k;
-    sceneResources.sponzaModel = &sponzaModel;
-    sceneResources.sibenikModel = &sibenikModel;
+    sceneResources.defaultRoughnessTexture = &defaultRoughnessTexture;
+    sceneResources.defaultMetallicTexture = &defaultMetallicTexture;
+    sceneResources.floorPBRMaterial = {
+        &floorTexture,
+        &groundNormalTexture,
+        &groundRoughnessTexture,
+        &defaultMetallicTexture,
+        &groundDisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[0] = {
+        &bricks066AlbedoTexture,
+        &bricks066NormalTexture,
+        &bricks066RoughnessTexture,
+        &defaultMetallicTexture,
+        &bricks066DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[1] = {
+        &grass005AlbedoTexture,
+        &grass005NormalTexture,
+        &grass005RoughnessTexture,
+        &defaultMetallicTexture,
+        &grass005DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[2] = {
+        &gravel023AlbedoTexture,
+        &gravel023NormalTexture,
+        &gravel023RoughnessTexture,
+        &defaultMetallicTexture,
+        &gravel023DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[3] = {
+        &marble012AlbedoTexture,
+        &marble012NormalTexture,
+        &marble012RoughnessTexture,
+        &defaultMetallicTexture,
+        &marble012DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[4] = {
+        &metal003AlbedoTexture,
+        &metal003NormalTexture,
+        &metal003RoughnessTexture,
+        &metal003MetallicTexture,
+        &metal003DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[5] = {
+        &metal034AlbedoTexture,
+        &metal034NormalTexture,
+        &metal034RoughnessTexture,
+        &metal034MetallicTexture,
+        &metal034DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[6] = {
+        &metal055AlbedoTexture,
+        &metal055NormalTexture,
+        &metal055RoughnessTexture,
+        &metal055MetallicTexture,
+        &metal055DisplacementTexture
+    };
+    sceneResources.materialSpherePBRMaterials[7] = {
+        &rock060AlbedoTexture,
+        &rock060NormalTexture,
+        &rock060RoughnessTexture,
+        &defaultMetallicTexture,
+        &rock060DisplacementTexture
+    };
+    sceneResources.model = &livingRoomModel;
 
     SceneRenderConfig sceneConfig;
     sceneConfig.enableFloor = true;
@@ -334,6 +446,7 @@ Shader basicModelShader(
     sceneConfig.enableGammaCorrection = false;
     sceneConfig.enableBloom = false;
     sceneConfig.enableSSAO = true;
+    sceneConfig.enablePBR = true;
     sceneConfig.cubeEnableNormalMapping = true;
     sceneConfig.cubeEnableParallaxMapping = true;
     sceneConfig.cubeParallaxHeightScale = 0.03f;
@@ -342,19 +455,20 @@ Shader basicModelShader(
     sceneConfig.modelParallaxHeightScale = 0.03f;
 
     SceneRenderState sceneState;
+    sceneConfig.renderMode = RenderMode::Lighting;
+
     SceneDrawer sceneDrawer(&cubeMesh,
         &planeMesh,
+        &sphereMesh,
         &sceneState,
         &sceneConfig,
-        &rock_1k,
-        &sponzaModel,
-        &sibenikModel);
+        &livingRoomModel);
 
     DirectionalShadowMap shadowDebug(4096, 4096);
     DirectionalShadowMap shadowMap(4096, 4096);
-    PointShadowMap pointShadowMap(1024, 1024, 1.0f, 25.0f);
+    PointShadowMap pointShadowMap(1024, 1024, 1.0f, 50.0f);
     PointShadowPass pointShadowPass(pointShadowMap, *sceneResources.pointShadowMapShader, sceneDrawer);
-    SpotShadowMap spotShadowMap(1024, 1024, 1.0f, 25.0f);
+    SpotShadowMap spotShadowMap(1024, 1024, 1.0f, 50.0f);
     LightSettings lightSettings;
     DirectionalShadowPass directionalShadowPass(
         shadowMap,
@@ -375,8 +489,7 @@ Shader basicModelShader(
     shadowResources.pointShadowMap = &pointShadowMap;
     shadowResources.spotShadowMap = &spotShadowMap;
 
-    int renderModeIndex = 0;
-    int sceneIndex = 0;
+    int renderModeIndex = 1;
 
     SceneObjectPass objectPass(sceneResources,
         shadowResources,
@@ -439,13 +552,10 @@ Shader basicModelShader(
 
         glm::vec3 sceneCenter = sceneDrawer.getActiveSceneWorldCenter();
         glm::vec3 sceneSize = sceneDrawer.getActiveSceneWorldSize();
-        float sceneRadius = glm::max(sceneSize.x, sceneSize.z) * 0.28f;
-        sceneRadius = glm::max(sceneRadius, 2.0f);
-        float lightTime = currentFrame * 0.45f;
         sceneState.lightPositions = glm::vec3(
-            sceneCenter.x + std::cos(lightTime) * sceneRadius,
-            sceneCenter.y + glm::max(sceneSize.y * 0.22f, 1.0f),
-            sceneCenter.z + std::sin(lightTime) * sceneRadius * 0.75f
+            sceneCenter.x - sceneSize.x * 0.12f,
+            -0.5f + sceneSize.y * 0.68f,
+            sceneCenter.z + sceneSize.z * 0.08f
         );
 
         float FPS = 1.0f / deltaTime;
@@ -460,11 +570,7 @@ Shader basicModelShader(
         {
             sceneConfig.renderMode = static_cast<RenderMode>(renderModeIndex);
         }
-        const char* sceneNames[] = {"Default Scene", "Sponza", "Sibenik Cathedral"};
-        if (ImGui::Combo("Scene", &sceneIndex, sceneNames, 3))
-        {
-            sceneConfig.sceneSelection = static_cast<SceneSelection>(sceneIndex);
-        }
+        sceneConfig.sceneSelection = SceneSelection::Default;
         ImGui::Checkbox("Floor", &sceneConfig.enableFloor);
         ImGui::Checkbox("Skybox", &sceneConfig.enableSkybox);
         ImGui::Checkbox("Point Light", &sceneConfig.enablePointLight);
@@ -474,10 +580,15 @@ Shader basicModelShader(
         ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
         ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
         ImGui::Checkbox("SSAO", &sceneConfig.enableSSAO);
+        ImGui::Checkbox("PBR", &sceneConfig.enablePBR);
         ImGui::SliderFloat("SSAO Strength", &sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
         ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
         ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);
         ImGui::SliderFloat("Cube Parallax Height Scale", &sceneConfig.cubeParallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::Checkbox("Floor Normal Mapping", &sceneConfig.floorEnableNormalMapping);
+        ImGui::Checkbox("Floor Parallax Mapping", &sceneConfig.floorEnableParallaxMapping);
+        ImGui::SliderFloat("Floor Parallax Height Scale", &sceneConfig.floorParallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::SliderFloat("Floor Bump Normal Strength", &sceneConfig.floorBumpNormalStrength, 0.0f, 10.0f, "%.2f");
         ImGui::Checkbox("Model Normal Mapping", &sceneConfig.modelEnableNormalMapping);
         ImGui::Checkbox("Model Parallax Mapping", &sceneConfig.modelEnableParallaxMapping);
         ImGui::SliderFloat("Model Parallax Height Scale", &sceneConfig.modelParallaxHeightScale, 0.0f, 0.1f, "%.3f");
@@ -486,6 +597,7 @@ Shader basicModelShader(
         ImGui::SliderFloat("Bloom Strength", &sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
         ImGui::SliderFloat("Bloom Threshold", &sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
         ImGui::SliderInt("Cube Parallax Layers", &sceneConfig.cubeNumLayers, 1, 64);
+        ImGui::SliderInt("Floor Parallax Layers", &sceneConfig.floorNumLayers, 1, 64);
         ImGui::SliderInt("Model Parallax Layers", &sceneConfig.modelNumLayers, 1, 64);
         ImGui::SliderInt("Number of Blur Passes", &sceneConfig.numBlurPasses, 1, 20);
 
@@ -496,7 +608,8 @@ Shader basicModelShader(
             ImGui::ColorEdit3("Point Light Ambient", glm::value_ptr(lightSettings.pointAmbient));
             ImGui::ColorEdit3("Point Light Diffuse", glm::value_ptr(lightSettings.pointDiffuse));
             ImGui::ColorEdit3("Point Light Specular", glm::value_ptr(lightSettings.pointSpecular));
-            ImGui::DragFloat("Point Light Intensity", &lightSettings.pointIntensity, 0.05f, 0.0f, 20.0f);
+            ImGui::DragFloat("Light Brightness", &lightSettings.pointIntensity, 0.05f, 0.0f, 20.0f);
+            ImGui::DragFloat("Ambient Brightness", &lightSettings.pointAmbientIntensity, 0.05f, 0.0f, 20.0f);
             ImGui::DragFloat("Point Light Constant", &lightSettings.pointConstant, 0.01f, 0.0f, 1.0f);
             ImGui::DragFloat("Point Light Linear", &lightSettings.pointLinear, 0.001f, 0.0f, 1.0f);
             ImGui::DragFloat("Point Light Quadratic", &lightSettings.pointQuadratic, 0.001f, 0.0f, 1.0f);

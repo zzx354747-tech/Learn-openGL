@@ -14,6 +14,16 @@ public:
         initData(path);
     }
 
+    GLTexture(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255)
+        : path("<solid>")
+    {
+        initTex();
+        unsigned char pixel[] = {r, g, b, a};
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+
     ~GLTexture()
     {
         glDeleteTextures(1, &id);
@@ -68,4 +78,3 @@ private:
 
 
 };
-

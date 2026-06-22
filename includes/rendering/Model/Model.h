@@ -4,6 +4,7 @@
 #include <string>
 
 #include <assimp/Importer.hpp>
+#include <assimp/GltfMaterial.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
@@ -30,6 +31,8 @@ private:
     std::string directory;
     glm::vec3 boundsMin = glm::vec3(0.0f);
     glm::vec3 boundsMax = glm::vec3(0.0f);
+    // 已加载纹理的缓存
+    std::unordered_map<std::string, texture> textures_loaded;
     bool hasBounds = false;
 
     std::vector<texture> loadMaterialTextures(

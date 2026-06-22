@@ -3,6 +3,7 @@
 #include "core/Shader.h"
 #include "rendering/assets/CubeMesh.h"
 #include "rendering/assets/PlaneMesh.h"
+#include "rendering/assets/SphereMesh.h"
 #include "rendering/assets/LightMesh.h"
 #include "rendering/assets/SkyboxMesh.h"
 #include "rendering/Model/Model.h"
@@ -13,6 +14,20 @@
 #include "rendering/postprocess/SpotShadowMap.h"
 #include "rendering/postprocess/PingPong_Framebuffer.h"
 #include "rendering/core/SceneRenderTypes.h"
+
+struct PBRMaterialTextures
+{
+    GLTexture* albedo = nullptr;
+    GLTexture* normal = nullptr;
+    GLTexture* roughness = nullptr;
+    GLTexture* metallic = nullptr;
+    GLTexture* displacement = nullptr;
+
+    bool isValid() const
+    {
+        return albedo && roughness && metallic;
+    }
+};
 
 struct SceneRenderResources
 {
@@ -35,11 +50,10 @@ struct SceneRenderResources
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
+    SphereMesh* sphereMesh = nullptr;
     LightMesh* lightMesh = nullptr;
     SkyboxMesh* skyboxMesh = nullptr;
     Model* model = nullptr;
-    Model* sponzaModel = nullptr;
-    Model* sibenikModel = nullptr;
 
     CubeMap* skybox = nullptr;
     PingPongFramebuffer* pingpongFBO = nullptr;
@@ -51,6 +65,11 @@ struct SceneRenderResources
     GLTexture* secondCubeDiffuseTexture = nullptr;
     GLTexture* secondCubeNormalTexture = nullptr;
     GLTexture* secondCubeParallaxTexture = nullptr;
+    GLTexture* defaultRoughnessTexture = nullptr;
+    GLTexture* defaultMetallicTexture = nullptr;
+
+    PBRMaterialTextures floorPBRMaterial;
+    PBRMaterialTextures materialSpherePBRMaterials[MaterialSphereCount];
 };
 
 struct ShadowResources

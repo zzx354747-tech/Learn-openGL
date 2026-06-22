@@ -8,6 +8,7 @@ struct LightSettings
     glm::vec3 pointDiffuse  = glm::vec3(2.4f);
     glm::vec3 pointSpecular = glm::vec3(1.8f);
     float pointIntensity = 1.0f;
+    float pointAmbientIntensity = 1.0f;
 
     float pointConstant  = 1.0f;
     float pointLinear    = 0.045f;

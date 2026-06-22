@@ -9,8 +9,8 @@ void GeometryPass::render(int bfwidth, int bfheight)
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderCube(bfwidth, bfheight);
     renderPlane(bfwidth, bfheight);
+    renderMaterialSpheres(bfwidth, bfheight);
     renderModel(bfwidth, bfheight);
     gBuffer.unbind();
 }
@@ -32,6 +32,7 @@ void GeometryPass::renderCube(int bfwidth, int bfheight)
         bindCubeDiffuseTexture(*shader, *resources.cubeDiffuseTexture);
         bindCubeNormalTexture(*shader, *resources.cubeNormalTexture);
         bindCubeParallaxTexture(*shader, *resources.cubeParallaxTexture);
+        bindDefaultPBRFallbackTextures(*shader);
         setupCubeMaterial(*shader);
         drawer.drawCubes(*shader);
 
@@ -43,6 +44,7 @@ void GeometryPass::renderCube(int bfwidth, int bfheight)
         bindCubeDiffuseTexture(*shader, *resources.secondCubeDiffuseTexture);
         bindCubeNormalTexture(*shader, *resources.secondCubeNormalTexture);
         bindCubeParallaxTexture(*shader, *resources.secondCubeParallaxTexture);
+        bindDefaultPBRFallbackTextures(*shader);
         setupCubeMaterial(*shader);
         drawer.drawSecondCubes(*shader);
 }
@@ -61,9 +63,54 @@ void GeometryPass::renderPlane(int bfwidth, int bfheight)
 
         CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
 
-        bindPlaneTexture(*shader, *resources.floorTexture);
-        setupPlaneMaterial(*shader);
+        if (resources.floorPBRMaterial.isValid())
+        {
+            bindPBRMaterial(*shader, resources.floorPBRMaterial);
+            setupPBRMaterial(
+                *shader,
+                resources.floorPBRMaterial,
+                config.floorEnableNormalMapping,
+                config.floorEnableParallaxMapping,
+                config.floorParallaxHeightScale,
+                config.floorNumLayers,
+                config.floorBumpNormalStrength);
+        }
+        else
+        {
+            bindPlaneTexture(*shader, *resources.floorTexture);
+            setupPlaneMaterial(*shader);
+        }
+
         drawer.drawPlane(*shader);
+}
+
+void GeometryPass::renderMaterialSpheres(int bfwidth, int bfheight)
+{
+    Shader* shader = getGeometryShader();
+
+    if (!shader || !resources.sphereMesh)
+        return;
+
+    shader->use();
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+
+    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    {
+        const PBRMaterialTextures& material = resources.materialSpherePBRMaterials[i];
+        if (!material.isValid())
+            continue;
+
+        bindPBRMaterial(*shader, material);
+        setupPBRMaterial(
+            *shader,
+            material,
+            config.modelEnableNormalMapping,
+            config.modelEnableParallaxMapping,
+            config.modelParallaxHeightScale,
+            config.modelNumLayers,
+            config.modelBumpNormalStrength);
+        drawer.drawMaterialSphere(*shader, i);
+    }
 }
 
 void GeometryPass::renderModel(int bfwidth, int bfheight)
@@ -85,6 +132,7 @@ void GeometryPass::bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture
 {
     cubeTexture.bind(0);
     shader.setInt("diffuseTexture", 0);
+    shader.setInt("albedoTexture", 0);
 }
 
 void GeometryPass::bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture)
@@ -103,6 +151,60 @@ void GeometryPass::bindPlaneTexture(Shader& shader, GLTexture& floorTexture)
 {
     floorTexture.bind(0);
     shader.setInt("diffuseTexture", 0);
+    shader.setInt("albedoTexture", 0);
+}
+
+void GeometryPass::bindPBRMaterial(Shader& shader, const PBRMaterialTextures& material)
+{
+    material.albedo->bind(0);
+    shader.setInt("diffuseTexture", 0);
+    shader.setInt("albedoTexture", 0);
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("hasMetallicMap", true);
+    shader.setBool("hasRoughnessMap", true);
+    shader.setVec4("baseColorFactor", glm::vec4(1.0f));
+    shader.setFloat("metallicFactor", 0.0f);
+    shader.setFloat("roughnessFactor", 1.0f);
+    shader.setBool("alphaMask", false);
+    shader.setFloat("alphaCutoff", 0.5f);
+    shader.setInt("albedoTexCoordIndex", 0);
+    shader.setInt("normalTexCoordIndex", 0);
+    shader.setInt("parallaxTexCoordIndex", 0);
+    shader.setInt("metallicTexCoordIndex", 0);
+    shader.setInt("roughnessTexCoordIndex", 0);
+
+    if (material.normal)
+    {
+        material.normal->bind(1);
+        shader.setInt("normalTexture", 1);
+    }
+
+    if (material.displacement)
+    {
+        material.displacement->bind(2);
+        shader.setInt("parallaxTexture", 2);
+    }
+
+    material.metallic->bind(3);
+    shader.setInt("metallicTexture", 3);
+
+    material.roughness->bind(4);
+    shader.setInt("roughnessTexture", 4);
+}
+
+void GeometryPass::bindDefaultPBRFallbackTextures(Shader& shader)
+{
+    if (resources.defaultMetallicTexture)
+    {
+        resources.defaultMetallicTexture->bind(3);
+        shader.setInt("metallicTexture", 3);
+    }
+
+    if (resources.defaultRoughnessTexture)
+    {
+        resources.defaultRoughnessTexture->bind(4);
+        shader.setInt("roughnessTexture", 4);
+    }
 }
 
 void GeometryPass::setupCubeMaterial(Shader& shader)
@@ -116,6 +218,19 @@ void GeometryPass::setupCubeMaterial(Shader& shader)
     shader.setBool("hasNormalMap", true);
     shader.setBool("hasParallaxMap", true);
     shader.setBool("hasSpecularMap", false);
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("hasMetallicMap", true);
+    shader.setBool("hasRoughnessMap", true);
+    shader.setVec4("baseColorFactor", glm::vec4(1.0f));
+    shader.setFloat("metallicFactor", 0.0f);
+    shader.setFloat("roughnessFactor", 1.0f);
+    shader.setBool("alphaMask", false);
+    shader.setFloat("alphaCutoff", 0.5f);
+    shader.setInt("albedoTexCoordIndex", 0);
+    shader.setInt("normalTexCoordIndex", 0);
+    shader.setInt("parallaxTexCoordIndex", 0);
+    shader.setInt("metallicTexCoordIndex", 0);
+    shader.setInt("roughnessTexCoordIndex", 0);
     shader.setVec3("cameraPos", camera.Getposition());
 }
 
@@ -127,6 +242,53 @@ void GeometryPass::setupPlaneMaterial(Shader& shader)
     shader.setBool("hasParallaxMap", false);
     shader.setFloat("bumpNormalStrength", 1.0f);
     shader.setBool("hasSpecularMap", false);
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("hasMetallicMap", false);
+    shader.setBool("hasRoughnessMap", false);
+    shader.setVec4("baseColorFactor", glm::vec4(1.0f));
+    shader.setFloat("metallicFactor", 0.0f);
+    shader.setFloat("roughnessFactor", 1.0f);
+    shader.setBool("alphaMask", false);
+    shader.setFloat("alphaCutoff", 0.5f);
+    shader.setInt("albedoTexCoordIndex", 0);
+    shader.setInt("normalTexCoordIndex", 0);
+    shader.setInt("parallaxTexCoordIndex", 0);
+    shader.setInt("metallicTexCoordIndex", 0);
+    shader.setInt("roughnessTexCoordIndex", 0);
+    shader.setVec3("cameraPos", camera.Getposition());
+}
+
+void GeometryPass::setupPBRMaterial(
+    Shader& shader,
+    const PBRMaterialTextures& material,
+    bool enableNormalMapping,
+    bool enableParallaxMapping,
+    float parallaxHeightScale,
+    int numLayers,
+    float bumpNormalStrength)
+{
+    shader.setFloat("parallaxHeightScale", parallaxHeightScale);
+    shader.setFloat("heightScale", parallaxHeightScale);
+    shader.setFloat("bumpNormalStrength", bumpNormalStrength);
+    shader.setInt("numLayers", numLayers);
+    shader.setBool("enableNormalMapping", enableNormalMapping);
+    shader.setBool("enableParallaxMapping", enableParallaxMapping);
+    shader.setBool("hasNormalMap", material.normal != nullptr);
+    shader.setBool("hasParallaxMap", material.displacement != nullptr);
+    shader.setBool("hasSpecularMap", false);
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("hasMetallicMap", true);
+    shader.setBool("hasRoughnessMap", true);
+    shader.setVec4("baseColorFactor", glm::vec4(1.0f));
+    shader.setFloat("metallicFactor", 0.0f);
+    shader.setFloat("roughnessFactor", 1.0f);
+    shader.setBool("alphaMask", false);
+    shader.setFloat("alphaCutoff", 0.5f);
+    shader.setInt("albedoTexCoordIndex", 0);
+    shader.setInt("normalTexCoordIndex", 0);
+    shader.setInt("parallaxTexCoordIndex", 0);
+    shader.setInt("metallicTexCoordIndex", 0);
+    shader.setInt("roughnessTexCoordIndex", 0);
     shader.setVec3("cameraPos", camera.Getposition());
 }
 
@@ -140,6 +302,19 @@ void GeometryPass::setupModelMaterial(Shader& shader)
     shader.setBool("enableParallaxMapping", config.modelEnableParallaxMapping);
     shader.setBool("hasNormalMap", false);
     shader.setBool("hasParallaxMap", false);
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("hasMetallicMap", false);
+    shader.setBool("hasRoughnessMap", false);
+    shader.setVec4("baseColorFactor", glm::vec4(1.0f));
+    shader.setFloat("metallicFactor", 0.0f);
+    shader.setFloat("roughnessFactor", 1.0f);
+    shader.setBool("alphaMask", false);
+    shader.setFloat("alphaCutoff", 0.5f);
+    shader.setInt("albedoTexCoordIndex", 0);
+    shader.setInt("normalTexCoordIndex", 0);
+    shader.setInt("parallaxTexCoordIndex", 0);
+    shader.setInt("metallicTexCoordIndex", 0);
+    shader.setInt("roughnessTexCoordIndex", 0);
     shader.setVec3("cameraPos", camera.Getposition());
 }
     

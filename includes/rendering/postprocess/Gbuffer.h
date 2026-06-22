@@ -15,12 +15,12 @@ public:
     void resize(int width, int height)
     {
         glBindTexture(GL_TEXTURE_2D, gPosition);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-
-        glBindTexture(GL_TEXTURE_2D, gNormal);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
 
-        glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+        glBindTexture(GL_TEXTURE_2D, gNormalRoughness);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+
+        glBindTexture(GL_TEXTURE_2D, gAlbedoMetallic);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -56,8 +56,8 @@ public:
     }
 
     unsigned int getPositionTexture() const { return gPosition; }
-    unsigned int getNormalTexture() const { return gNormal; }
-    unsigned int getAlbedoSpecTexture() const { return gAlbedoSpec; }
+    unsigned int getNormalRoughnessTexture() const { return gNormalRoughness; }
+    unsigned int getAlbedoMetallicTexture() const { return gAlbedoMetallic; }
 
     void blitDepthTo(Framebuffer& framebuffer, int width, int height)
     {
@@ -71,8 +71,8 @@ public:
     {
         glDeleteFramebuffers(1, &gBuffer);
         glDeleteTextures(1, &gPosition);
-        glDeleteTextures(1, &gNormal);
-        glDeleteTextures(1, &gAlbedoSpec);
+        glDeleteTextures(1, &gNormalRoughness);
+        glDeleteTextures(1, &gAlbedoMetallic);
         glDeleteRenderbuffers(1, &rboDepth);
     }
 
@@ -83,8 +83,8 @@ private:
     GLuint gBuffer = 0;
     GLuint attachments[3] = { 0, 0, 0 };
     GLuint gPosition = 0;
-    GLuint gNormal = 0;
-    GLuint gAlbedoSpec = 0;
+    GLuint gNormalRoughness = 0;
+    GLuint gAlbedoMetallic = 0;
     GLuint rboDepth = 0;
 
     void initGBuffer(int width, int height)
@@ -96,37 +96,37 @@ private:
         // 位置纹理
         glGenTextures(1, &gPosition);
         glBindTexture(GL_TEXTURE_2D, gPosition);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
 
         attachments[0] = gPosition;
 
-        // 法线纹理
-        glGenTextures(1, &gNormal);
-        glBindTexture(GL_TEXTURE_2D, gNormal);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+        // 法线/粗糙度纹理
+        glGenTextures(1, &gNormalRoughness);
+        glBindTexture(GL_TEXTURE_2D, gNormalRoughness);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormalRoughness, 0);
 
-        attachments[1] = gNormal;
+        attachments[1] = gNormalRoughness;
 
-        // 漫反射/镜面反射纹理
-        glGenTextures(1, &gAlbedoSpec);
-        glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+        // 漫反射/金属度/反射率纹理
+        glGenTextures(1, &gAlbedoMetallic);
+        glBindTexture(GL_TEXTURE_2D, gAlbedoMetallic);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoMetallic, 0);
 
-        attachments[2] = gAlbedoSpec;
+        attachments[2] = gAlbedoMetallic;
 
         // 设置要渲染的附件
-        GLenum drawbuffers[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-        glDrawBuffers(3, drawbuffers);
-
+        GLenum drawBuffers[3] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+        glDrawBuffers(3, drawBuffers);
+        
         // 深度缓冲区
         glGenRenderbuffers(1, &rboDepth);
         glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);

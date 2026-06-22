@@ -38,15 +38,26 @@ private:
 
     void renderCube(int bfwidth, int bfheight);
     void renderPlane(int bfwidth, int bfheight);
+    void renderMaterialSpheres(int bfwidth, int bfheight);
     void renderModel(int bfwidth, int bfheight);
 
     void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
     void bindCubeNormalTexture(Shader& shader, GLTexture& cubeTexture);
     void bindCubeParallaxTexture(Shader& shader, GLTexture& cubeTexture);
     void bindPlaneTexture(Shader& shader, GLTexture& floorTexture);
+    void bindPBRMaterial(Shader& shader, const PBRMaterialTextures& material);
+    void bindDefaultPBRFallbackTextures(Shader& shader);
 
     void setupCubeMaterial(Shader& shader);
     void setupPlaneMaterial(Shader& shader);
+    void setupPBRMaterial(
+        Shader& shader,
+        const PBRMaterialTextures& material,
+        bool enableNormalMapping,
+        bool enableParallaxMapping,
+        float parallaxHeightScale,
+        int numLayers,
+        float bumpNormalStrength);
     void setupModelMaterial(Shader& shader);
 
     Shader* getGeometryShader();

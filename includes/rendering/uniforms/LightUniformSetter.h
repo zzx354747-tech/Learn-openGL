@@ -40,7 +40,7 @@ private:
     {
         shader.setVec3("pointLight.position", state.lightPositions);
 
-        shader.setVec3("pointLight.ambient", lightSettings.pointAmbient * lightSettings.pointIntensity);
+        shader.setVec3("pointLight.ambient", lightSettings.pointAmbient * lightSettings.pointAmbientIntensity);
         shader.setVec3("pointLight.diffuse", lightSettings.pointDiffuse * lightSettings.pointIntensity);
         shader.setVec3("pointLight.specular", lightSettings.pointSpecular * lightSettings.pointIntensity);
 

@@ -1,29 +1,48 @@
 #version 330 core
 
-layout (location = 0) out vec4 gPosition;
-layout (location = 1) out vec3 gNormal;
-layout (location = 2) out vec4 gAlbedoSpec;
+layout (location = 0) out vec3 gPosition;
+layout (location = 1) out vec4 gNormalRoughness;
+layout (location = 2) out vec4 gAlbedoMetallic;
 
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
+in vec2 TexCoords1;
 in mat3 TBN;
 in vec3 TangentViewPos;
 in vec3 TangentFragPos;
 
-uniform sampler2D diffuseTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D parallaxTexture;
-uniform sampler2D specularTexture;
+uniform sampler2D albedoTexture;
+uniform sampler2D metallicTexture;
+uniform sampler2D roughnessTexture;
 
 uniform bool enableNormalMapping;
 uniform bool enableParallaxMapping;
 uniform bool hasNormalMap;
 uniform bool hasParallaxMap;
-uniform bool hasSpecularMap;
+uniform bool usePackedMetallicRoughness;
+uniform bool hasRoughnessMap;
+uniform bool hasMetallicMap;
+uniform vec4 baseColorFactor;
+uniform float roughnessFactor;
+uniform float metallicFactor;
+uniform bool alphaMask;
+uniform float alphaCutoff;
+uniform int albedoTexCoordIndex;
+uniform int normalTexCoordIndex;
+uniform int parallaxTexCoordIndex;
+uniform int roughnessTexCoordIndex;
+uniform int metallicTexCoordIndex;
 uniform float parallaxHeightScale;
 uniform float bumpNormalStrength;
 uniform int numLayers;
+
+vec2 getTexCoords(int index)
+{
+    return index == 1 ? TexCoords1 : TexCoords;
+}
 
 vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
 {
@@ -78,31 +97,57 @@ vec3 normalFromHeightMap(vec2 texCoords)
 
 void main()
 {
-    vec2 texCoords = TexCoords;
+    vec2 texCoords = getTexCoords(albedoTexCoordIndex);
+    vec2 normalTexCoords = getTexCoords(normalTexCoordIndex);
+    vec2 parallaxTexCoords = getTexCoords(parallaxTexCoordIndex);
+    vec2 roughnessTexCoords = getTexCoords(roughnessTexCoordIndex);
+    vec2 metallicTexCoords = getTexCoords(metallicTexCoordIndex);
+    vec3 normal;
 
     if (enableParallaxMapping && hasParallaxMap)
     {
         vec3 viewDir = normalize(TangentViewPos - TangentFragPos);
-        texCoords = parallaxMapping(TexCoords, viewDir);
+        vec2 parallaxOffset = parallaxMapping(parallaxTexCoords, viewDir) - parallaxTexCoords;
+        texCoords += parallaxOffset;
+        normalTexCoords += parallaxOffset;
+        roughnessTexCoords += parallaxOffset;
+        metallicTexCoords += parallaxOffset;
     }
 
-    gPosition = vec4(FragPos, 1.0);
+    gPosition = vec3(FragPos);
 
     if (enableNormalMapping && hasNormalMap)
     {
-        vec3 normalMap = texture(normalTexture, texCoords).rgb;
+        vec3 normalMap = texture(normalTexture, normalTexCoords).rgb;
         normalMap = normalMap * 2.0 - 1.0; // 将法线从[0,1]范围转换到[-1,1]范围
-        gNormal = normalize(TBN * normalMap);
+        normal = normalize(TBN * normalMap);
     }
     else if (enableNormalMapping && hasParallaxMap)
     {
-        gNormal = normalFromHeightMap(texCoords);
+        normal = normalFromHeightMap(texCoords);
     }
     else
     {
-        gNormal = normalize(Normal);
+        normal = normalize(Normal);
     }
 
-    gAlbedoSpec.rgb = pow(texture(diffuseTexture, texCoords).rgb, vec3(2.2));
-    gAlbedoSpec.a = hasSpecularMap ? texture(specularTexture, texCoords).r : 1.0;
+    vec3 metallicRoughness = texture(metallicTexture, metallicTexCoords).rgb;
+    float roughness = usePackedMetallicRoughness
+        ? metallicRoughness.g
+        : (hasRoughnessMap ? texture(roughnessTexture, roughnessTexCoords).r : roughnessFactor);
+    float metallic = usePackedMetallicRoughness
+        ? metallicRoughness.b
+        : (hasMetallicMap ? metallicRoughness.r : metallicFactor);
+    roughness = clamp(roughness, 0.04, 1.0);
+    metallic = clamp(metallic, 0.0, 1.0);
+    vec4 albedoSample = texture(albedoTexture, texCoords) * baseColorFactor;
+    if (alphaMask && albedoSample.a < alphaCutoff)
+    {
+        discard;
+    }
+    vec3 albedo = pow(albedoSample.rgb, vec3(2.2));
+
+    gNormalRoughness = vec4(normal, roughness);
+    gAlbedoMetallic = vec4(albedo, metallic);
+
 }

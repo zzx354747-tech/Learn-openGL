@@ -44,6 +44,7 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setBool("enableDirectionalLight", config.enableDirectionalLight);
     shader.setBool("enableFlashlight", config.enableFlashlight);
     shader.setBool("enableSSAO", config.enableSSAO);
+    shader.setBool("enablePBR", config.enablePBR);
     shader.setFloat("ssaoStrength", config.ssaoStrength);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
 
@@ -85,11 +86,11 @@ void LightingPass::bindGBufferTextures(Shader& shader, unsigned int aoTexture)
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, gBuffer.getGbufferTextureID(1));
-    shader.setInt("gNormal", 1);
+    shader.setInt("gNormalRoughness", 1);
 
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, gBuffer.getGbufferTextureID(2));
-    shader.setInt("gAlbedoSpec", 2);
+    shader.setInt("gAlbedoMetallic", 2);
 
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, aoTexture);

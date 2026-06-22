@@ -10,7 +10,6 @@ struct PointLight {
     vec3 position;
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
     float constant;
     float linear;
     float quadratic;
@@ -20,7 +19,6 @@ struct Sun {
     vec3 direction;
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
 };
 
 struct FlashLight {
@@ -28,7 +26,6 @@ struct FlashLight {
     vec3 direction;
     vec3 ambient;
     vec3 diffuse;
-    vec3 specular;
     float constant;
     float linear;
     float quadratic;
@@ -42,8 +39,8 @@ uniform samplerCube depthCubeMap;
 uniform sampler2D spotShadowMap;
 
 uniform sampler2D gPosition;
-uniform sampler2D gNormal;
-uniform sampler2D gAlbedoSpec;
+uniform sampler2D gNormalRoughness;
+uniform sampler2D gAlbedoMetallic;
 // 接收SSAO贴图
 uniform sampler2D AO;
 
@@ -59,6 +56,7 @@ uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool enableSSAO;
+uniform bool enablePBR;
 
 uniform float ssaoStrength;
 uniform float bloomThreshold;
@@ -183,13 +181,112 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     return shadow;
 }
 
-vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor, float specularStrength)
+// BRDF函数
+// NDF,GGX模型
+const float PI = 3.14159265359;
+
+float D_GGX(vec3 N, vec3 H, float roughness)
+{
+    float a  = roughness * roughness;
+    float a2 = a * a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float denom  = (NdotH * NdotH * (a2 - 1.0) + 1.0);
+    return a2 / (PI * denom * denom);
+}
+
+// F函数,Schlick近似
+vec3 F_Schlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// 高度相关G2函数，代入了渲染方程化简
+float V_SmithGGXCorrelated(float NdotV, float NdotL, float roughness)
+{
+    float a2   = roughness * roughness * roughness * roughness;
+    float GGXV = NdotL * sqrt(a2 + (1.0 - a2) * NdotV * NdotV);
+    float GGXL = NdotV * sqrt(a2 + (1.0 - a2) * NdotL * NdotL);
+    return 0.5 / (GGXV + GGXL + 1e-5);
+}
+
+vec3 calcPointLightPhong(PointLight light, vec3 normal, vec3 fragPos, 
+                          vec3 viewDir, vec3 albedo, float roughness, float metallic)
 {
     vec3 lightDir = normalize(light.position - fragPos);
-    vec3 reflectDir = reflect(-lightDir, normal);
-
+    vec3 H = normalize(lightDir + viewDir);
     float diff = max(dot(normal, lightDir), 0.0);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+    float shininess = (1.0 - roughness) * (1.0 - roughness) * 128.0 + 1.0;
+    float spec = pow(max(dot(normal, H), 0.0), shininess);
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
+    vec3 diffuse  = light.diffuse * diff * albedo;
+    vec3 specular = light.diffuse * spec * metallic;
+    float shadow = PointShadowCalculation(fragPos) * 0.8;
+    return (diffuse + specular) * attenuation * (1.0 - shadow);
+}
+
+vec3 calcSunPhong(Sun light, vec3 normal, vec3 viewDir, 
+                   vec3 albedo, vec4 FragPosLightSpace, float roughness, float metallic)
+{
+    vec3 lightDir = normalize(-light.direction);
+    vec3 H = normalize(lightDir + viewDir);
+    float diff = max(dot(normal, lightDir), 0.0);
+    float shininess = (1.0 - roughness) * (1.0 - roughness) * 128.0 + 1.0;
+    float spec = pow(max(dot(normal, H), 0.0), shininess);
+    vec3 diffuse  = light.diffuse * diff * albedo;
+    vec3 specular = light.diffuse * spec * metallic;
+    float shadow = ShadowCalculation(FragPosLightSpace) * 0.8;
+    return (diffuse + specular) * (1.0 - shadow);
+}
+
+vec3 calcFlashLightPhong(FlashLight light, vec3 normal, vec3 fragPos, 
+                          vec3 viewDir, vec3 albedo, vec4 FragPosSpotLightSpace,
+                          float roughness, float metallic)
+{
+    vec3 lightDir = normalize(light.position - fragPos);
+    vec3 H = normalize(lightDir + viewDir);
+    float diff = max(dot(normal, lightDir), 0.0);
+    float shininess = (1.0 - roughness) * (1.0 - roughness) * 128.0 + 1.0;
+    float spec = pow(max(dot(normal, H), 0.0), shininess);
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
+    float theta = dot(lightDir, normalize(-light.direction));
+    float epsilon = light.cutOff - light.outerCutOff;
+    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+    vec3 diffuse  = light.diffuse * diff * albedo;
+    vec3 specular = light.diffuse * spec * metallic;
+    float shadow = SpotShadowCalculation(FragPosSpotLightSpace) * 0.8;
+    return (diffuse + specular) * attenuation * intensity * (1.0 - shadow);
+}
+
+vec3 calcPointLight(PointLight light, 
+        vec3 normal, 
+        vec3 fragPos, 
+        vec3 viewDir, 
+        vec3 albedo,
+        vec3 F0,
+        float roughness,
+        float metallic)
+{
+    vec3 lightDir = normalize(light.position - fragPos);
+
+    // 计算半程向量
+    vec3 H = normalize(lightDir + viewDir);
+    // 计算NdotL,NdotV
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    // 调用BRDF函数，计算D、F、G
+    float D = D_GGX(normal, H, roughness);
+    vec3 F = F_Schlick(max(dot(H, viewDir), 0.0), F0);
+    float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
+
+    // 能量守恒
+    vec3 KS = F;
+    vec3 KD = vec3(1.0) - KS;
+    KD *= 1.0 - metallic;
+
+    // 镜面反射部分
+    vec3 specular = D * F * Vis;
 
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (
@@ -198,33 +295,51 @@ vec3 calcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, v
         light.quadratic * distance * distance
     );
 
-    vec3 diffuse = light.diffuse * diff * baseColor;
-    vec3 specular = light.specular * spec * specularStrength;
+    vec3 radiance = light.diffuse * attenuation;
+
+    // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
+    vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
     float shadowStrength = 0.8;
     float shadow = PointShadowCalculation(fragPos);
     shadow *= shadowStrength;
 
-    diffuse *= (1.0 - shadow);
-    specular *= (1.0 - shadow);
-
-    return (diffuse + specular) * attenuation;
+    return Lo * (1.0 - shadow);
 }
 
 vec3 calcSun(Sun light, 
 vec3 normal, 
 vec3 viewDir, 
-vec3 baseColor,
-float specularStrength,
-vec4 FragPosLightSpace)
+vec3 albedo,
+vec4 FragPosLightSpace,
+vec3 F0,
+float roughness,
+float metallic)
 {
     vec3 lightDir = normalize(-light.direction);
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float diff = max(dot(normal, lightDir), 0.0);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
 
-    vec3 diffuse = light.diffuse * diff * baseColor;
-    vec3 specular = light.specular * spec * specularStrength;
+    // 计算半程向量
+    vec3 H = normalize(lightDir + viewDir);
+    // 计算NdotL,NdotV
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    // 调用BRDF函数，计算D、F、G
+    float D = D_GGX(normal, H, roughness);
+    vec3 F = F_Schlick(max(dot(H, viewDir), 0.0), F0);
+    float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
+
+    // 能量守恒
+    vec3 KS = F;
+    vec3 KD = vec3(1.0) - KS;
+    KD *= 1.0 - metallic;
+
+    // 镜面反射部分
+    vec3 specular = D * F * Vis;
+
+    vec3 radiance = light.diffuse;
+
+    // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
+    vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
     float shadowStrength = 0.8; // 阴影强度，可以根据需要调整
 
@@ -232,33 +347,49 @@ vec4 FragPosLightSpace)
 
     shadow *= shadowStrength; // 将阴影强度应用到阴影值上
 
-    // 将阴影应用到漫反射和镜面反射上
-    diffuse *= (1.0 - shadow);
-    specular *= (1.0 - shadow);
-    
-    return diffuse + specular;
+    return Lo * (1.0 - shadow);
 }
 
 vec3 calcFlashLight(FlashLight light, 
 vec3 normal, 
 vec3 fragPos, 
 vec3 viewDir, 
-vec3 baseColor,
-float specularStrength,
-vec4 FragPosSpotLightSpace)
+vec3 albedo,
+vec4 FragPosSpotLightSpace,
+vec3 F0,
+float roughness,
+float metallic)
 {
     vec3 lightDir = normalize(light.position - fragPos);
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float diff = max(dot(normal, lightDir), 0.0);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+
+     // 计算半程向量
+    vec3 H = normalize(lightDir + viewDir);
+    // 计算NdotL,NdotV
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    // 调用BRDF函数，计算D、F、G
+    float D = D_GGX(normal, H, roughness);
+    vec3 F = F_Schlick(max(dot(H, viewDir), 0.0), F0);
+    float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness);
+
+    // 能量守恒
+    vec3 KS = F;
+    vec3 KD = vec3(1.0) - KS;
+    KD *= 1.0 - metallic;
+
+    // 镜面反射部分
+    vec3 specular = D * F * Vis;
+
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
 
-    vec3 diffuse = light.diffuse * diff * baseColor;
-    vec3 specular = light.specular * spec * specularStrength;
+    vec3 radiance = light.diffuse * attenuation * intensity;
+
+     // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
+    vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
     float shadow =
         SpotShadowCalculation(
@@ -269,20 +400,19 @@ vec4 FragPosSpotLightSpace)
 
     shadow *= shadowStrength;
 
-    diffuse *= (1.0 - shadow);
-    specular *= (1.0 - shadow);
-
-    return (diffuse + specular)
-        * attenuation
-        * intensity;
+    return Lo * (1.0 - shadow);
 }
 
 void main()
 {
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
-    vec3 Normal = normalize(texture(gNormal, TexCoords).rgb);
-    vec3 baseColor = texture(gAlbedoSpec, TexCoords).rgb;
-    float specularStrength = texture(gAlbedoSpec, TexCoords).a;
+    vec3 Normal = normalize(texture(gNormalRoughness, TexCoords).rgb);
+    vec3 albedo = texture(gAlbedoMetallic, TexCoords).rgb;
+    float metallic = texture(gAlbedoMetallic, TexCoords).a;
+    float roughness = texture(gNormalRoughness, TexCoords).a;
+    // 现实中几乎非金属材料反射率都在2%-5%,金属材质反射率为它本身的颜色
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+
     float aoSample = clamp(texture(AO, TexCoords).r, 0.0, 1.0);
     float ao = enableSSAO ? pow(aoSample, ssaoStrength) : 1.0;
 
@@ -294,41 +424,50 @@ void main()
     vec3 result = vec3(0.0);
 
     if (enablePointLight)
-    {
-        result += pointLight.ambient * baseColor * ao;
-        result += calcPointLight(pointLight, 
-                    Normal, 
-                    FragPos, 
-                    viewDir, 
-                    baseColor,
-                    specularStrength);
-    }
+{
+    result += pointLight.ambient * albedo * ao;
+    if (enablePBR)
+        result += calcPointLight(pointLight, Normal, 
+                    FragPos, viewDir, 
+                    albedo, F0, 
+                    roughness, metallic);
+    else
+        result += calcPointLightPhong(pointLight, Normal, 
+                    FragPos, viewDir, 
+                    albedo, roughness, 
+                    metallic);
+}
 
-    if (enableDirectionalLight)
-    {
-        result += sun.ambient * baseColor * ao;
-        result += calcSun(sun, 
-                    Normal, 
-                    viewDir, 
-                    baseColor,
-                    specularStrength,
-                    FragPosLightSpace);
-    }
+if (enableDirectionalLight)
+{
+    result += sun.ambient * albedo * ao;
+    if (enablePBR)
+        result += calcSun(sun, Normal, 
+                    viewDir, albedo, 
+                    FragPosLightSpace, F0,
+                    roughness, metallic);
+    else
+        result += calcSunPhong(sun, Normal,
+                    viewDir, albedo,
+                    FragPosLightSpace,
+                    roughness, metallic);
+}
 
-    if (enableFlashlight)
-    {
-        result += flashLight.ambient * baseColor * ao;
-        result += calcFlashLight(flashLight, 
-                    Normal,
-                    FragPos, 
-                    viewDir,
-                    baseColor,
-                    specularStrength,
-                    FragPosSpotLightSpace);
-    }
-
-    result *= ao;
-
+if (enableFlashlight)
+{
+    result += flashLight.ambient * albedo * ao;
+    if (enablePBR)
+        result += calcFlashLight(flashLight, Normal, 
+                    FragPos, viewDir, 
+                    albedo, FragPosSpotLightSpace,
+                    F0, roughness,
+                    metallic);
+    else
+        result += calcFlashLightPhong(flashLight, Normal, 
+                    FragPos, viewDir, 
+                    albedo, FragPosSpotLightSpace,
+                    roughness, metallic);
+}
     FragColor = vec4(result, 1.0);
 
     // 按人眼对三个颜色的敏感度计算亮度，如果亮度超过阈值，就把它写入BrightColor，否则写入黑色
