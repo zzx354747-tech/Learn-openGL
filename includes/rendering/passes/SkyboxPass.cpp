@@ -32,7 +32,7 @@ void SkyboxPass::renderSkyboxPass(
 
 }
 
-void SkyboxPass::bindSkyboxTexture(CubeMap* skybox)
+void SkyboxPass::bindSkyboxTexture(EnvCubemap* skybox)
 {
     glActiveTexture(GL_TEXTURE0);
     skybox->bind();

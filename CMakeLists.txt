@@ -6,14 +6,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(glfw3 REQUIRED)
 
+set(ASSIMP_INSTALL_DIR ${CMAKE_SOURCE_DIR}/third_party/assimp/install)
+if(EXISTS ${ASSIMP_INSTALL_DIR}/include AND EXISTS ${ASSIMP_INSTALL_DIR}/lib)
+    set(ASSIMP_INCLUDE_DIR ${ASSIMP_INSTALL_DIR}/include)
+    set(ASSIMP_GENERATED_INCLUDE_DIR ${ASSIMP_INSTALL_DIR}/include)
+    set(ASSIMP_LIBRARY_DIR ${ASSIMP_INSTALL_DIR}/lib)
+else()
+    set(ASSIMP_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/third_party/assimp/include)
+    set(ASSIMP_GENERATED_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/third_party/assimp/build/include)
+    set(ASSIMP_LIBRARY_DIR ${CMAKE_SOURCE_DIR}/third_party/assimp/build/lib)
+endif()
+
 include_directories(
     ${CMAKE_SOURCE_DIR}/includes
     ${CMAKE_SOURCE_DIR}/third_party/glad/include
     ${CMAKE_SOURCE_DIR}/third_party/stb
-    ${CMAKE_SOURCE_DIR}/third_party/assimp/install/include
+    ${ASSIMP_INCLUDE_DIR}
+    ${ASSIMP_GENERATED_INCLUDE_DIR}
 )
 
-link_directories(${CMAKE_SOURCE_DIR}/third_party/assimp/install/lib)
+link_directories(${ASSIMP_LIBRARY_DIR})
 
 # ── 平台系统库 ────────────────────────────────────────────
 if(APPLE)
@@ -149,6 +161,7 @@ add_executable(newbackpack
     includes/rendering/Model/Model.cpp
     includes/rendering/Model/Mesh.cpp
     ${GLAD_SOURCES}
+    includes/rendering/assets/HDRTexture.cpp
 )
 target_link_libraries(newbackpack glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(newbackpack)
@@ -168,6 +181,9 @@ add_executable(fbo_demo
     includes/rendering/postprocess/SSAO.cpp
     includes/rendering/passes/ShadowPass/PointShadowPass.cpp
     ${GLAD_SOURCES}
+    includes/rendering/assets/HDRTexture.cpp
+    includes/rendering/assets/EnvCubemap.cpp
+    includes/rendering/assets/IrradianceMap.cpp
 )
 target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(fbo_demo)

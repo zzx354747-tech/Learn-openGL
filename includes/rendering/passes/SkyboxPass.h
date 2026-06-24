@@ -12,5 +12,5 @@ public:
         int bfheight);
 
 private:
-    static void bindSkyboxTexture(CubeMap* skybox);
+    static void bindSkyboxTexture(EnvCubemap* skybox);
 };

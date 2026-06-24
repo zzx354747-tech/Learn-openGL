@@ -40,6 +40,8 @@
 #include "rendering/Model/Model.h"
 #include "rendering/core/SceneRenderResources.h"
 #include "rendering/passes/SceneObjectPass.h"
+#include "rendering/assets/HDRTexture.h"
+#include "rendering/assets/EnvCubemap.h"
 
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
@@ -233,8 +235,6 @@ int main()
     GLTexture rock060RoughnessTexture("../textures/PBR/Rock060_2K-PNG/Rock060_2K-PNG_Roughness.png");
     GLTexture rock060DisplacementTexture("../textures/PBR/Rock060_2K-PNG/Rock060_2K-PNG_Displacement.png");
 
-    CubeMap skybox(skyboxFaces);
-
     Screenquad screenQuad;
 
     Framebuffer fb(bfwidth, bfheight);
@@ -302,6 +302,11 @@ Shader basicModelShader(
     "../src/shader/pratice/scenerender/basic_model.fs"
 );
 
+    Shader envCubemapShader(
+        "../src/shader/pratice/skybox/envCubemap.vs",
+        "../src/shader/pratice/skybox/envCubemap.fs"
+    );
+
     Shader lightingModelShader(
         "../src/shader/pratice/scenerender/model.vs",
         "../src/shader/pratice/scenerender/model.fs"
@@ -356,13 +361,12 @@ Shader basicModelShader(
     sceneResources.lightingPassShader = &lightingPassShader;
     sceneResources.ssaoShader = &ssaoShader;
     sceneResources.ssaoBlurShader = &ssaoBlurShader;
+    sceneResources.envCubemapShader = &envCubemapShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
     sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
     sceneResources.skyboxMesh = &skyboxMesh;
-    sceneResources.skybox = &skybox;
-    sceneResources.pingpongFBO = &pingpongFBO;
     sceneResources.floorTexture = &floorTexture;
     sceneResources.cubeDiffuseTexture = &cubeDiffuseTexture;
     sceneResources.cubeNormalTexture = &cubeNormalTexture;
@@ -488,6 +492,13 @@ Shader basicModelShader(
     shadowResources.shadowMap = &shadowMap;
     shadowResources.pointShadowMap = &pointShadowMap;
     shadowResources.spotShadowMap = &spotShadowMap;
+
+    HDRTexture hdrTexture;
+    hdrTexture.load("../textures/skybox/night.hdr");
+    EnvCubemap skybox(hdrTexture, *sceneResources.envCubemapShader);
+
+    sceneResources.skybox = &skybox;
+    sceneResources.pingpongFBO = &pingpongFBO;
 
     int renderModeIndex = 1;
 
