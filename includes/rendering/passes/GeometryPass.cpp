@@ -139,7 +139,7 @@ void GeometryPass::renderModel(int bfwidth, int bfheight)
 {
     Shader* shader = getGeometryShader();
     
-        if (!shader || !config.enableModel)
+        if (!shader)
             return;
 
         shader->use();
@@ -290,7 +290,7 @@ void GeometryPass::setupClearSphereMaterial(Shader& shader)
     shader.setBool("usePackedMetallicRoughness", false);
     shader.setBool("hasMetallicMap", false);
     shader.setBool("hasRoughnessMap", false);
-    shader.setVec4("baseColorFactor", glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    shader.setVec4("baseColorFactor", glm::vec4(0.18f, 0.24f, 0.28f, 0.0f));
     shader.setFloat("metallicFactor", 0.0f);
     shader.setFloat("roughnessFactor", 0.04f);
     shader.setBool("alphaMask", false);

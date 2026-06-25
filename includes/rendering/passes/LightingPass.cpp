@@ -52,13 +52,6 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setVec3("iblAmbientTint", config.iblAmbientTint);
     shader.setFloat("iblAmbientStrength", config.iblAmbientStrength);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
-    shader.setFloat("pointShadowStrength", lightSettings.pointShadowStrength);
-    shader.setFloat("sunShadowStrength", lightSettings.sunShadowStrength);
-    shader.setFloat("flashShadowStrength", lightSettings.flashShadowStrength);
-    shader.setFloat("directionalShadowLightSize", config.directionalShadowLightSize);
-    shader.setFloat("directionalShadowBlockerSearchRadius", config.directionalShadowBlockerSearchRadius);
-    shader.setFloat("directionalShadowMinFilterRadius", config.directionalShadowMinFilterRadius);
-    shader.setFloat("directionalShadowMaxFilterRadius", config.directionalShadowMaxFilterRadius);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
 }

@@ -14,14 +14,6 @@ enum class RenderMode
 enum class SceneSelection
 {
     Default,
-    ModernCity,
-};
-
-enum class EnvironmentSelection
-{
-    Night,
-    Sunny,
-    NightN8_3K,
 };
 
 struct SceneRenderConfig
@@ -38,7 +30,6 @@ struct SceneRenderConfig
     bool enablePBR = false;
     bool enableIBL = false;
     bool enableClearSphere = true;
-    bool enableModel = true;
     float ssaoStrength = 1.0f;
     glm::vec3 fixedAmbientColor = glm::vec3(0.08f);
     float fixedAmbientStrength = 1.0f;
@@ -69,14 +60,9 @@ struct SceneRenderConfig
     float exposure = 1.0f;
     float bloomStrength = 0.6f;
     float bloomThreshold = 0.7f;
-    float directionalShadowLightSize = 0.006f;
-    float directionalShadowBlockerSearchRadius = 0.006f;
-    float directionalShadowMinFilterRadius = 0.0005f;
-    float directionalShadowMaxFilterRadius = 0.014f;
 
     RenderMode renderMode = RenderMode::Basic;
     SceneSelection sceneSelection = SceneSelection::Default;
-    EnvironmentSelection environmentSelection = EnvironmentSelection::Night;
 };
 
 struct SceneRenderState
