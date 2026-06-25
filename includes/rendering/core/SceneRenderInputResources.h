@@ -58,6 +58,7 @@ struct SceneRenderInputResources
     GLTexture* secondCubeDiffuseTexture = nullptr;
     GLTexture* secondCubeNormalTexture = nullptr;
     GLTexture* secondCubeParallaxTexture = nullptr;
+    GLTexture* clearSphereAlbedoTexture = nullptr;
     GLTexture* defaultRoughnessTexture = nullptr;
     GLTexture* defaultMetallicTexture = nullptr;
 

@@ -1,5 +1,7 @@
 #version 330 core
 
+// 此为各向同性GGX，所以随意选择了局部坐标系的构建方式
+
 out vec4 FragColor;
 in vec3 localPos;
 
@@ -28,11 +30,14 @@ void main
         for (float theta = 0.0; theta < 0.5 * PI; theta += sampleDelta)
         {
             // 球面坐标转笛卡尔坐标
-            vec3 tangentSample = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+            vec3 tangentSample = vec3(sin(theta) * cos(phi), 
+                            sin(theta) * sin(phi), cos(theta));
             // 将切线空间的采样向量转换为世界空间
-            vec3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * N;
+            vec3 sampleVec = tangentSample.x * right + 
+            tangentSample.y * up + tangentSample.z * N;
 
-            irradiance += texture(environmentMap, sampleVec).rgb * cos(theta) * sin(theta);
+            irradiance += texture(environmentMap, 
+            sampleVec).rgb * cos(theta) * sin(theta);
             nrSamples++;
         }
     }

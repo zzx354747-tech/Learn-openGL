@@ -42,6 +42,9 @@
 #include "rendering/passes/SceneObjectPass.h"
 #include "rendering/assets/HDRTexture.h"
 #include "rendering/assets/EnvCubemap.h"
+#include "rendering/assets/IrradianceMap.h"
+#include "rendering/assets/PrefilterMap.h"
+#include "rendering/assets/BrdfLUT.h"
 
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
@@ -186,6 +189,7 @@ int main()
     GLTexture secondCubeNormalTexture("../textures/toy/toy_box_normal.png");
     GLTexture secondCubeParallaxTexture("../textures/toy/toy_box_disp.png");
     GLTexture floorTexture("../textures/PBR/Ground104_2K-PNG/Ground104_2K-PNG_Color.png");
+    GLTexture clearSphereAlbedoTexture(255, 255, 255, 0);
     GLTexture defaultMetallicTexture(0, 0, 0);
     GLTexture defaultRoughnessTexture(255, 255, 255);
     GLTexture groundNormalTexture("../textures/PBR/Ground104_2K-PNG/Ground104_2K-PNG_NormalGL.png");
@@ -307,6 +311,21 @@ Shader basicModelShader(
         "../src/shader/pratice/skybox/envCubemap.fs"
     );
 
+    Shader irradianceShader(
+        "../src/shader/pratice/skybox/envCubemap.vs",
+        "../src/shader/pratice/skybox/irradiance.fs"
+    );
+
+    Shader prefilterShader(
+        "../src/shader/pratice/skybox/envCubemap.vs",
+        "../src/shader/pratice/skybox/prefilter.fs"
+    );
+
+    Shader brdfShader(
+        "../src/shader/pratice/skybox/brdf.vs",
+        "../src/shader/pratice/skybox/brdf.fs"
+    );
+
     Shader lightingModelShader(
         "../src/shader/pratice/scenerender/model.vs",
         "../src/shader/pratice/scenerender/model.fs"
@@ -374,6 +393,7 @@ Shader basicModelShader(
     sceneResources.secondCubeDiffuseTexture = &secondCubeDiffuseTexture;
     sceneResources.secondCubeNormalTexture = &secondCubeNormalTexture;
     sceneResources.secondCubeParallaxTexture = &secondCubeParallaxTexture;
+    sceneResources.clearSphereAlbedoTexture = &clearSphereAlbedoTexture;
     sceneResources.defaultRoughnessTexture = &defaultRoughnessTexture;
     sceneResources.defaultMetallicTexture = &defaultMetallicTexture;
     sceneResources.floorPBRMaterial = {
@@ -451,6 +471,12 @@ Shader basicModelShader(
     sceneConfig.enableBloom = false;
     sceneConfig.enableSSAO = true;
     sceneConfig.enablePBR = true;
+    sceneConfig.enableIBL = true;
+    sceneConfig.enableClearSphere = true;
+    sceneConfig.fixedAmbientColor = glm::vec3(0.08f);
+    sceneConfig.fixedAmbientStrength = 1.0f;
+    sceneConfig.iblAmbientTint = glm::vec3(1.0f);
+    sceneConfig.iblAmbientStrength = 1.0f;
     sceneConfig.cubeEnableNormalMapping = true;
     sceneConfig.cubeEnableParallaxMapping = true;
     sceneConfig.cubeParallaxHeightScale = 0.03f;
@@ -496,8 +522,14 @@ Shader basicModelShader(
     HDRTexture hdrTexture;
     hdrTexture.load("../textures/skybox/night.hdr");
     EnvCubemap skybox(hdrTexture, *sceneResources.envCubemapShader);
+    IrradianceMap irradianceMap(skybox, irradianceShader);
+    PrefilterMap prefilterMap(skybox, prefilterShader);
+    BrdfLUT brdfLUT(brdfShader);
 
     sceneResources.skybox = &skybox;
+    sceneResources.irradianceMap = &irradianceMap;
+    sceneResources.prefilterMap = &prefilterMap;
+    sceneResources.brdfLUT = &brdfLUT;
     sceneResources.pingpongFBO = &pingpongFBO;
 
     int renderModeIndex = 1;
@@ -592,6 +624,12 @@ Shader basicModelShader(
         ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
         ImGui::Checkbox("SSAO", &sceneConfig.enableSSAO);
         ImGui::Checkbox("PBR", &sceneConfig.enablePBR);
+        ImGui::Checkbox("IBL", &sceneConfig.enableIBL);
+        ImGui::Checkbox("Clear Sphere", &sceneConfig.enableClearSphere);
+        ImGui::ColorEdit3("Fixed Ambient Color", glm::value_ptr(sceneConfig.fixedAmbientColor));
+        ImGui::DragFloat("Fixed Ambient Strength", &sceneConfig.fixedAmbientStrength, 0.01f, 0.0f, 4.0f);
+        ImGui::ColorEdit3("IBL Ambient Tint", glm::value_ptr(sceneConfig.iblAmbientTint));
+        ImGui::DragFloat("IBL Ambient Strength", &sceneConfig.iblAmbientStrength, 0.01f, 0.0f, 4.0f);
         ImGui::SliderFloat("SSAO Strength", &sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
         ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
         ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);

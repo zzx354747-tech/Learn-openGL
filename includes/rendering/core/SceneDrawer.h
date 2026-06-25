@@ -108,6 +108,18 @@ public:
         }
     }
 
+    void drawClearSphere(Shader& shader)
+    {
+        if (!isDefaultScene() || !sphereMesh || !state || !config || !config->enableClearSphere)
+            return;
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, state->clearSpherePosition);
+        model = glm::scale(model, glm::vec3(0.34f));
+        shader.setMat4("model", model);
+        sphereMesh->draw();
+    }
+
     void drawMaterialSphere(Shader& shader, unsigned int index)
     {
         if (!isDefaultScene() || !sphereMesh || !state || index >= MaterialSphereCount)
@@ -225,7 +237,14 @@ private:
             maxZ = glm::max(maxZ, state->materialSpherePositions[i].z);
         }
 
-        return glm::vec3(maxX - minX + 2.0f, 3.0f, maxZ - minZ + 2.0f);
+        glm::vec3 size(maxX - minX + 2.0f, 3.0f, maxZ - minZ + 2.0f);
+        if (config && config->enableClearSphere)
+        {
+            size.x = glm::max(size.x, glm::abs(state->clearSpherePosition.x - minX) + 2.0f);
+            size.z = glm::max(size.z, glm::abs(state->clearSpherePosition.z - minZ) + 2.0f);
+        }
+
+        return size;
     }
 
     Model* getActiveModel() const

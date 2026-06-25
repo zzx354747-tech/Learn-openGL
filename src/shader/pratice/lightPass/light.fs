@@ -8,7 +8,6 @@ in vec2 TexCoords;
 
 struct PointLight {
     vec3 position;
-    vec3 ambient;
     vec3 diffuse;
     float constant;
     float linear;
@@ -17,14 +16,12 @@ struct PointLight {
 
 struct Sun {
     vec3 direction;
-    vec3 ambient;
     vec3 diffuse;
 };
 
 struct FlashLight {
     vec3 position;
     vec3 direction;
-    vec3 ambient;
     vec3 diffuse;
     float constant;
     float linear;
@@ -41,6 +38,10 @@ uniform sampler2D spotShadowMap;
 uniform sampler2D gPosition;
 uniform sampler2D gNormalRoughness;
 uniform sampler2D gAlbedoMetallic;
+uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
+
 // 接收SSAO贴图
 uniform sampler2D AO;
 
@@ -57,8 +58,13 @@ uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool enableSSAO;
 uniform bool enablePBR;
+uniform bool enableIBL;
 
 uniform float ssaoStrength;
+uniform vec3 fixedAmbientColor;
+uniform float fixedAmbientStrength;
+uniform vec3 iblAmbientTint;
+uniform float iblAmbientStrength;
 uniform float bloomThreshold;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
@@ -403,6 +409,44 @@ float metallic)
     return Lo * (1.0 - shadow);
 }
 
+vec3 calcIBLAmbient(vec3 normal, vec3 fragPos,
+vec3 camPos, vec3 albedo, 
+float metallic, float roughness, 
+float ao)
+{
+vec3 N = normalize(normal);
+vec3 V = normalize(camPos - fragPos);
+vec3 R = reflect(-V, N);
+
+float NdotV = max(dot(N, V), 0.0);
+
+// 菲涅尔（用粗糙度修正，避免 grazing angle 过亮）
+vec3 F0 = mix(vec3(0.04), albedo, metallic);
+vec3 F  = F0 + (max(vec3(1.0 - roughness), F0) - F0)
+             * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
+
+// 漫反射：irradiance map 直接采样
+vec3 kS = F;
+vec3 kD = (1.0 - kS) * (1.0 - metallic);
+vec3 irradiance = texture(irradianceMap, N).rgb;
+vec3 diffuse    = kD * irradiance * albedo;
+
+// 镜面反射：prefilter + BRDF LUT
+const float MAX_REFLECTION_LOD = 4.0;
+vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+vec2 brdf  = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+vec3 specular = prefilteredColor * (F0 * brdf.x + brdf.y);
+
+vec3 ambient = (diffuse + specular) * ao * iblAmbientTint * iblAmbientStrength;
+
+return ambient;
+}
+
+vec3 calcFixedAmbient(vec3 albedo, float ao)
+{
+    return fixedAmbientColor * fixedAmbientStrength * albedo * ao;
+}
+
 void main()
 {
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
@@ -423,9 +467,13 @@ void main()
 
     vec3 result = vec3(0.0);
 
+    if (enablePBR && enableIBL)
+        result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
+    else
+        result += calcFixedAmbient(albedo, ao);
+
     if (enablePointLight)
 {
-    result += pointLight.ambient * albedo * ao;
     if (enablePBR)
         result += calcPointLight(pointLight, Normal, 
                     FragPos, viewDir, 
@@ -440,7 +488,6 @@ void main()
 
 if (enableDirectionalLight)
 {
-    result += sun.ambient * albedo * ao;
     if (enablePBR)
         result += calcSun(sun, Normal, 
                     viewDir, albedo, 
@@ -455,7 +502,6 @@ if (enableDirectionalLight)
 
 if (enableFlashlight)
 {
-    result += flashLight.ambient * albedo * ao;
     if (enablePBR)
         result += calcFlashLight(flashLight, Normal, 
                     FragPos, viewDir, 

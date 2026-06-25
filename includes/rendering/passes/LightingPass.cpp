@@ -45,7 +45,12 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setBool("enableFlashlight", config.enableFlashlight);
     shader.setBool("enableSSAO", config.enableSSAO);
     shader.setBool("enablePBR", config.enablePBR);
+    shader.setBool("enableIBL", config.enableIBL);
     shader.setFloat("ssaoStrength", config.ssaoStrength);
+    shader.setVec3("fixedAmbientColor", config.fixedAmbientColor);
+    shader.setFloat("fixedAmbientStrength", config.fixedAmbientStrength);
+    shader.setVec3("iblAmbientTint", config.iblAmbientTint);
+    shader.setFloat("iblAmbientStrength", config.iblAmbientStrength);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
@@ -95,4 +100,31 @@ void LightingPass::bindGBufferTextures(Shader& shader, unsigned int aoTexture)
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, aoTexture);
     shader.setInt("AO", 3);
+
+    bindIBLTextures(shader);
+}
+
+void LightingPass::bindIBLTextures(Shader& shader)
+{
+    shader.setInt("brdfLUT", 13);
+    shader.setInt("irradianceMap", 14);
+    shader.setInt("prefilterMap", 15);
+
+    if (resources.brdfLUT && resources.brdfLUT->isReady())
+    {
+        glActiveTexture(GL_TEXTURE13);
+        glBindTexture(GL_TEXTURE_2D, resources.brdfLUT->GetID());
+    }
+
+    if (resources.irradianceMap && resources.irradianceMap->isReady())
+    {
+        glActiveTexture(GL_TEXTURE14);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, resources.irradianceMap->GetID());
+    }
+
+    if (resources.prefilterMap && resources.prefilterMap->isReady())
+    {
+        glActiveTexture(GL_TEXTURE15);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, resources.prefilterMap->GetID());
+    }
 }
