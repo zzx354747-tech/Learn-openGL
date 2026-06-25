@@ -28,13 +28,7 @@ struct SceneRenderConfig
     bool enableBloom = false;
     bool enableSSAO = true;
     bool enablePBR = false;
-    bool enableIBL = false;
-    bool enableClearSphere = true;
     float ssaoStrength = 1.0f;
-    glm::vec3 fixedAmbientColor = glm::vec3(0.08f);
-    float fixedAmbientStrength = 1.0f;
-    glm::vec3 iblAmbientTint = glm::vec3(1.0f);
-    float iblAmbientStrength = 1.0f;
 
     // Cube
     bool cubeEnableNormalMapping = false;
@@ -92,8 +86,6 @@ struct SceneRenderState
         glm::vec3( 0.8f, 0.0f, -5.7f),
         glm::vec3( 2.4f, 0.0f, -5.7f),
     };
-
-    glm::vec3 clearSpherePosition = glm::vec3(0.0f, 0.55f, -4.8f);
 
     glm::vec3 lightPositions = glm::vec3(-1.0f, 9.0f, -5.0f);
     glm::vec3 color = glm::vec3(1.0f);

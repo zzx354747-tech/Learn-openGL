@@ -184,8 +184,6 @@ add_executable(fbo_demo
     includes/rendering/assets/HDRTexture.cpp
     includes/rendering/assets/EnvCubemap.cpp
     includes/rendering/assets/IrradianceMap.cpp
-    includes/rendering/assets/PrefilterMap.cpp
-    includes/rendering/assets/BrdfLUT.cpp
 )
 target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(fbo_demo)
