@@ -8,7 +8,6 @@ in vec2 TexCoords;
 
 struct PointLight {
     vec3 position;
-    vec3 ambient;
     vec3 diffuse;
     float constant;
     float linear;
@@ -17,14 +16,12 @@ struct PointLight {
 
 struct Sun {
     vec3 direction;
-    vec3 ambient;
     vec3 diffuse;
 };
 
 struct FlashLight {
     vec3 position;
     vec3 direction;
-    vec3 ambient;
     vec3 diffuse;
     float constant;
     float linear;
@@ -44,6 +41,10 @@ uniform sampler2D gAlbedoMetallic;
 // 接收SSAO贴图
 uniform sampler2D AO;
 
+uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D brdfLUT;
+
 uniform float farPlane;
 
 uniform PointLight pointLight;
@@ -57,6 +58,7 @@ uniform bool enableDirectionalLight;
 uniform bool enableFlashlight;
 uniform bool enableSSAO;
 uniform bool enablePBR;
+uniform bool enableIBL;
 
 uniform float ssaoStrength;
 uniform float bloomThreshold;
@@ -403,6 +405,40 @@ float metallic)
     return Lo * (1.0 - shadow);
 }
 
+vec3 calcIBLambient(vec3 normal, vec3 viewDir, 
+vec3 albedo, vec3 F0, 
+float roughness, float metallic,
+float ao)
+{
+    vec3 N = normal;
+    vec3 V = viewDir;
+    vec3 R = reflect(-V, N);
+
+    float NdotV = max(dot(N, V), 0.0);
+    // 菲涅耳，修正极限反射率
+    vec3 F = F0 + (max(vec3(1.0 - roughness), F0) - F0) 
+    * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
+
+    // 漫反射
+    // 反射系数
+    vec3 KS = F;
+    vec3 KD = vec3(1.0) - KS;
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse = irradiance * albedo;
+
+    // 镜面反射
+    // 设置最大LOD级别
+    // LOD0--4分别对应了mipmap0--4
+    const float MAX_REFLECTION_LOD = 4.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+    vec3 ambient = (KD * diffuse + specular) * ao;
+
+    return ambient;
+}
+
 void main()
 {
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
@@ -423,9 +459,17 @@ void main()
 
     vec3 result = vec3(0.0);
 
+    if (enableIBL && enablePBR)
+    {
+        result += calcIBLambient(Normal, viewDir, albedo, F0, roughness, metallic, ao);
+    }
+    else
+    {
+        result += vec3(0.04) * albedo * ao;
+    }
+
     if (enablePointLight)
 {
-    result += pointLight.ambient * albedo * ao;
     if (enablePBR)
         result += calcPointLight(pointLight, Normal, 
                     FragPos, viewDir, 
@@ -440,7 +484,6 @@ void main()
 
 if (enableDirectionalLight)
 {
-    result += sun.ambient * albedo * ao;
     if (enablePBR)
         result += calcSun(sun, Normal, 
                     viewDir, albedo, 
@@ -455,7 +498,6 @@ if (enableDirectionalLight)
 
 if (enableFlashlight)
 {
-    result += flashLight.ambient * albedo * ao;
     if (enablePBR)
         result += calcFlashLight(flashLight, Normal, 
                     FragPos, viewDir, 

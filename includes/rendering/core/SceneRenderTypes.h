@@ -28,6 +28,7 @@ struct SceneRenderConfig
     bool enableBloom = false;
     bool enableSSAO = true;
     bool enablePBR = false;
+    bool enableIBL = false;
     float ssaoStrength = 1.0f;
 
     // Cube

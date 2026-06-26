@@ -42,6 +42,9 @@
 #include "rendering/passes/SceneObjectPass.h"
 #include "rendering/assets/HDRTexture.h"
 #include "rendering/assets/EnvCubemap.h"
+#include "rendering/assets/IrradianceMap.h"
+#include "rendering/assets/PrefilterMap.h"
+#include "rendering/assets/BrdfLUT.h"
 
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
@@ -246,61 +249,61 @@ int main()
     SSAO sceneSSAO(bfwidth, bfheight);
     ssao = &sceneSSAO;
 
-   Shader screenShader(
+    Shader screenShader(
     "../src/shader/pratice/framebuffer/screen.vs",
     "../src/shader/pratice/framebuffer/screen.fs"
-);
+    );
 
-Shader basicCubeShader(
-    "../src/shader/pratice/scenerender/basic_cube.vs",
-    "../src/shader/pratice/scenerender/basic_cube.fs"
-);
+    Shader basicCubeShader(
+        "../src/shader/pratice/scenerender/basic_cube.vs",
+        "../src/shader/pratice/scenerender/basic_cube.fs"
+    );
 
-Shader basicPlaneShader(
-    "../src/shader/pratice/scenerender/basic_plane.vs",
-    "../src/shader/pratice/scenerender/basic_plane.fs"
-);
+    Shader basicPlaneShader(
+        "../src/shader/pratice/scenerender/basic_plane.vs",
+        "../src/shader/pratice/scenerender/basic_plane.fs"
+    );
 
-Shader lightingCubeShader(
-    "../src/shader/pratice/scenerender/lighting_cube.vs",
-    "../src/shader/pratice/scenerender/lighting_cube.fs"
-);
+    Shader lightingCubeShader(
+        "../src/shader/pratice/scenerender/lighting_cube.vs",
+        "../src/shader/pratice/scenerender/lighting_cube.fs"
+    );
 
-Shader lightingPlaneShader(
-    "../src/shader/pratice/scenerender/lighting_plane.vs",
-    "../src/shader/pratice/scenerender/lighting_plane.fs"
-);
+    Shader lightingPlaneShader(
+        "../src/shader/pratice/scenerender/lighting_plane.vs",
+        "../src/shader/pratice/scenerender/lighting_plane.fs"
+    );
 
-Shader lightCubeShader(
-    "../src/shader/pratice/scenerender/light_cube.vs",
-    "../src/shader/pratice/scenerender/light_cube.fs"
-);
+    Shader lightCubeShader(
+        "../src/shader/pratice/scenerender/light_cube.vs",
+        "../src/shader/pratice/scenerender/light_cube.fs"
+    );
 
-Shader cubemapShader(
-    "../src/shader/pratice/scenerender/cubemap.vs",
-    "../src/shader/pratice/scenerender/cubemap.fs"
-);
+    Shader cubemapShader(
+        "../src/shader/pratice/scenerender/cubemap.vs",
+        "../src/shader/pratice/scenerender/cubemap.fs"
+    );
 
-Shader shadowDebugShader(
-    "../src/shader/pratice/scenerender/shadowMap/shadowDebug.vs",
-    "../src/shader/pratice/scenerender/shadowMap/shadowDebug.fs"
-);
+    Shader shadowDebugShader(
+        "../src/shader/pratice/scenerender/shadowMap/shadowDebug.vs",
+        "../src/shader/pratice/scenerender/shadowMap/shadowDebug.fs"
+    );
 
-Shader shadowMapShader(
-    "../src/shader/pratice/scenerender/shadowMap/shadowMap.vs",
-    "../src/shader/pratice/scenerender/shadowMap/shadowMap.fs"
-);
+    Shader shadowMapShader(
+        "../src/shader/pratice/scenerender/shadowMap/shadowMap.vs",
+        "../src/shader/pratice/scenerender/shadowMap/shadowMap.fs"
+    );
 
-Shader pointShadowMapShader(
-    "../src/shader/pratice/scenerender/shadowMap/pointShadow.vs",
-    "../src/shader/pratice/scenerender/shadowMap/geometry.gs",
-    "../src/shader/pratice/scenerender/shadowMap/pointShadow.fs"
-);
+    Shader pointShadowMapShader(
+        "../src/shader/pratice/scenerender/shadowMap/pointShadow.vs",
+        "../src/shader/pratice/scenerender/shadowMap/geometry.gs",
+        "../src/shader/pratice/scenerender/shadowMap/pointShadow.fs"
+    );
 
-Shader basicModelShader(
-    "../src/shader/pratice/scenerender/basic_model.vs",
-    "../src/shader/pratice/scenerender/basic_model.fs"
-);
+    Shader basicModelShader(
+        "../src/shader/pratice/scenerender/basic_model.vs",
+        "../src/shader/pratice/scenerender/basic_model.fs"
+    );
 
     Shader envCubemapShader(
         "../src/shader/pratice/skybox/envCubemap.vs",
@@ -337,6 +340,21 @@ Shader basicModelShader(
         "../src/shader/pratice/SSAO/ssao_blur.fs"
     );
 
+    Shader prefilterShader(
+        "../src/shader/pratice/skybox/prefilter.vs",
+        "../src/shader/pratice/skybox/prefilter.fs"
+    );
+
+    Shader irradianceShader(
+        "../src/shader/pratice/skybox/irradiance.vs",
+        "../src/shader/pratice/skybox/irradiance.fs"
+    );
+
+    Shader brdfLUTShader(
+        "../src/shader/pratice/skybox/brdfLUT.vs",
+        "../src/shader/pratice/skybox/brdfLUT.fs"
+    );
+
     CubeMesh cubeMesh;
     PlaneMesh planeMesh;
     SphereMesh sphereMesh;
@@ -362,6 +380,9 @@ Shader basicModelShader(
     sceneResources.ssaoShader = &ssaoShader;
     sceneResources.ssaoBlurShader = &ssaoBlurShader;
     sceneResources.envCubemapShader = &envCubemapShader;
+    sceneResources.prefilterShader = &prefilterShader;
+    sceneResources.irradianceShader = &irradianceShader;
+    sceneResources.brdfLUTShader = &brdfLUTShader;
     sceneResources.cubeMesh = &cubeMesh;
     sceneResources.planeMesh = &planeMesh;
     sceneResources.sphereMesh = &sphereMesh;
@@ -451,6 +472,7 @@ Shader basicModelShader(
     sceneConfig.enableBloom = false;
     sceneConfig.enableSSAO = true;
     sceneConfig.enablePBR = true;
+    sceneConfig.enableIBL = true;
     sceneConfig.cubeEnableNormalMapping = true;
     sceneConfig.cubeEnableParallaxMapping = true;
     sceneConfig.cubeParallaxHeightScale = 0.03f;
@@ -497,7 +519,14 @@ Shader basicModelShader(
     hdrTexture.load("../textures/skybox/night.hdr");
     EnvCubemap skybox(hdrTexture, *sceneResources.envCubemapShader);
 
+    IrradianceMap irradianceMap(skybox, *sceneResources.irradianceShader);
+    PrefilterMap prefilterMap(skybox, *sceneResources.prefilterShader);
+    BrdfLUT brdfLUT(*sceneResources.brdfLUTShader);
+
     sceneResources.skybox = &skybox;
+    sceneResources.irradianceMap = &irradianceMap;
+    sceneResources.prefilterMap = &prefilterMap;
+    sceneResources.brdfLUT = &brdfLUT;
     sceneResources.pingpongFBO = &pingpongFBO;
 
     int renderModeIndex = 1;
@@ -592,6 +621,7 @@ Shader basicModelShader(
         ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
         ImGui::Checkbox("SSAO", &sceneConfig.enableSSAO);
         ImGui::Checkbox("PBR", &sceneConfig.enablePBR);
+        ImGui::Checkbox("IBL", &sceneConfig.enableIBL);
         ImGui::SliderFloat("SSAO Strength", &sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
         ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
         ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);

@@ -43,6 +43,9 @@ struct SceneRenderInputResources
     Shader* ssaoShader = nullptr;
     Shader* ssaoBlurShader = nullptr;
     Shader* envCubemapShader = nullptr;
+    Shader* prefilterShader = nullptr;
+    Shader* irradianceShader = nullptr;
+    Shader* brdfLUTShader = nullptr;
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
