@@ -17,13 +17,15 @@ public:
         SphereMesh* sphereMesh,
         SceneRenderState* state,
         SceneRenderConfig* config,
-        Model* model)
+        Model* model,
+        Model* modernCityModel)
         : cubeMesh(cubeMesh),
           planeMesh(planeMesh),
           sphereMesh(sphereMesh),
           state(state),
           config(config),
-          model(model)
+          model(model),
+          modernCityModel(modernCityModel)
     {
     }
 
@@ -108,6 +110,18 @@ public:
         }
     }
 
+    void drawClearSphere(Shader& shader)
+    {
+        if (!isDefaultScene() || !sphereMesh || !state || !config || !config->enableClearSphere)
+            return;
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, state->clearSpherePosition);
+        model = glm::scale(model, glm::vec3(0.34f));
+        shader.setMat4("model", model);
+        sphereMesh->draw();
+    }
+
     void drawMaterialSphere(Shader& shader, unsigned int index)
     {
         if (!isDefaultScene() || !sphereMesh || !state || index >= MaterialSphereCount)
@@ -115,13 +129,16 @@ public:
 
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, state->materialSpherePositions[index]);
-        model = glm::scale(model, glm::vec3(0.5f));
+        model = glm::scale(model, glm::vec3(0.65f));
         shader.setMat4("model", model);
         sphereMesh->draw();
     }
 
     void drawModel(Shader& shader)
     {
+        if (config && !config->enableModel)
+            return;
+
         Model* activeModel = getActiveModel();
         if (!activeModel)
             return;
@@ -153,23 +170,40 @@ public:
     glm::vec3 getActiveSceneWorldCenter() const
     {
         Model* activeModel = getActiveModel();
-        if (!activeModel || !activeModel->hasValidBounds())
-            return glm::vec3(0.0f);
+        glm::vec3 sphereCenter = getMaterialSphereSceneCenter();
+
+        if ((config && !config->enableModel) || !activeModel || !activeModel->hasValidBounds())
+            return sphereCenter;
 
         float scale = getActiveModelScale(activeModel);
-        return getActiveModelTargetCenter(activeModel, scale);
+        glm::vec3 modelCenter = getActiveModelTargetCenter(activeModel, scale);
+        glm::vec3 modelHalfSize = activeModel->getBoundsSize() * scale * 0.5f;
+        glm::vec3 sphereHalfSize = getMaterialSphereSceneSize() * 0.5f;
+
+        glm::vec3 minBounds = glm::min(modelCenter - modelHalfSize, sphereCenter - sphereHalfSize);
+        glm::vec3 maxBounds = glm::max(modelCenter + modelHalfSize, sphereCenter + sphereHalfSize);
+
+        return (minBounds + maxBounds) * 0.5f;
     }
 
     glm::vec3 getActiveSceneWorldSize() const
     {
         Model* activeModel = getActiveModel();
-        if (!activeModel || !activeModel->hasValidBounds())
-            return getMaterialSphereSceneSize();
-
-        glm::vec3 modelSize = activeModel->getBoundsSize() * getActiveModelScale(activeModel);
         glm::vec3 sphereSize = getMaterialSphereSceneSize();
+        if ((config && !config->enableModel) || !activeModel || !activeModel->hasValidBounds())
+            return sphereSize;
 
-        return glm::max(modelSize, sphereSize);
+        float scale = getActiveModelScale(activeModel);
+        glm::vec3 modelCenter = getActiveModelTargetCenter(activeModel, scale);
+        glm::vec3 modelSize = activeModel->getBoundsSize() * getActiveModelScale(activeModel);
+        glm::vec3 sphereCenter = getMaterialSphereSceneCenter();
+        glm::vec3 modelHalfSize = modelSize * 0.5f;
+        glm::vec3 sphereHalfSize = sphereSize * 0.5f;
+
+        glm::vec3 minBounds = glm::min(modelCenter - modelHalfSize, sphereCenter - sphereHalfSize);
+        glm::vec3 maxBounds = glm::max(modelCenter + modelHalfSize, sphereCenter + sphereHalfSize);
+
+        return maxBounds - minBounds;
     }
 
 
@@ -180,6 +214,7 @@ private:
     SceneRenderState* state = nullptr;
     SceneRenderConfig* config = nullptr;
     Model* model = nullptr;
+    Model* modernCityModel = nullptr;
 
     bool isDefaultScene() const
     {
@@ -225,7 +260,47 @@ private:
             maxZ = glm::max(maxZ, state->materialSpherePositions[i].z);
         }
 
-        return glm::vec3(maxX - minX + 2.0f, 3.0f, maxZ - minZ + 2.0f);
+        glm::vec3 size(maxX - minX + 2.0f, 3.0f, maxZ - minZ + 2.0f);
+        if (config && config->enableClearSphere)
+        {
+            size.x = glm::max(size.x, glm::abs(state->clearSpherePosition.x - minX) + 2.0f);
+            size.z = glm::max(size.z, glm::abs(state->clearSpherePosition.z - minZ) + 2.0f);
+        }
+
+        return size;
+    }
+
+    glm::vec3 getMaterialSphereSceneCenter() const
+    {
+        if (!state)
+            return glm::vec3(0.0f);
+
+        float minX = state->materialSpherePositions[0].x;
+        float maxX = state->materialSpherePositions[0].x;
+        float minZ = state->materialSpherePositions[0].z;
+        float maxZ = state->materialSpherePositions[0].z;
+
+        for (unsigned int i = 1; i < MaterialSphereCount; ++i)
+        {
+            minX = glm::min(minX, state->materialSpherePositions[i].x);
+            maxX = glm::max(maxX, state->materialSpherePositions[i].x);
+            minZ = glm::min(minZ, state->materialSpherePositions[i].z);
+            maxZ = glm::max(maxZ, state->materialSpherePositions[i].z);
+        }
+
+        if (config && config->enableClearSphere)
+        {
+            minX = glm::min(minX, state->clearSpherePosition.x);
+            maxX = glm::max(maxX, state->clearSpherePosition.x);
+            minZ = glm::min(minZ, state->clearSpherePosition.z);
+            maxZ = glm::max(maxZ, state->clearSpherePosition.z);
+        }
+
+        return glm::vec3(
+            (minX + maxX) * 0.5f,
+            0.6f,
+            (minZ + maxZ) * 0.5f
+        );
     }
 
     Model* getActiveModel() const
@@ -235,6 +310,8 @@ private:
 
         switch (config->sceneSelection)
         {
+            case SceneSelection::ModernCity:
+                return modernCityModel;
             case SceneSelection::Default:
             default:
                 return model;

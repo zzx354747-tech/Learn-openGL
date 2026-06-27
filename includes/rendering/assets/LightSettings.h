@@ -9,6 +9,7 @@ struct LightSettings
     glm::vec3 pointSpecular = glm::vec3(1.8f);
     float pointIntensity = 1.0f;
     float pointAmbientIntensity = 1.0f;
+    float pointShadowStrength = 0.8f;
 
     float pointConstant  = 1.0f;
     float pointLinear    = 0.045f;
@@ -19,11 +20,15 @@ struct LightSettings
     glm::vec3 sunDiffuse   = glm::vec3(0.4f);
     glm::vec3 sunSpecular  = glm::vec3(0.5f);
     float sunIntensity = 1.0f;
+    float sunIntensityScale = 1.0f;
+    float sunShadowStrength = 0.8f;
+    bool sunExtractedFromEnvironment = false;
 
     glm::vec3 flashAmbient  = glm::vec3(0.05f);
     glm::vec3 flashDiffuse  = glm::vec3(0.8f);
     glm::vec3 flashSpecular = glm::vec3(1.0f);
     float flashIntensity = 1.0f;
+    float flashShadowStrength = 0.8f;
 
     float flashConstant  = 1.0f;
     float flashLinear    = 0.09f;
