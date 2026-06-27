@@ -9,7 +9,7 @@ uniform samplerCube environmentMap;
 
 const float PI = 3.14159265359;
 
-void main
+void main()
 {
     // 规定采样方向,终点为片段位置，起点为立方体中心
     // 构建局部坐标系

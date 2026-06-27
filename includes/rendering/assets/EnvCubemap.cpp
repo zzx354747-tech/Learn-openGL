@@ -5,21 +5,47 @@
 #include <iostream>
 
 static float s_cubeVertices[] = {
-    -1,-1,-1,  1,-1,-1,  1, 1,-1, -1, 1,-1,  // -Z
-    -1,-1, 1,  1,-1, 1,  1, 1, 1, -1, 1, 1,  // +Z
-    -1, 1, 1, -1, 1,-1, -1,-1,-1, -1,-1, 1,  // -X
-     1, 1, 1,  1, 1,-1,  1,-1,-1,  1,-1, 1,  // +X
-    -1,-1,-1,  1,-1,-1,  1,-1, 1, -1,-1, 1,  // -Y
-    -1, 1,-1,  1, 1,-1,  1, 1, 1, -1, 1, 1   // +Y
-};
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
 
-static unsigned int s_cubeIndices[] = {
-     0, 1, 2,  0, 2, 3,
-     4, 5, 6,  4, 6, 7,
-     8, 9,10,  8,10,11,
-    12,13,14, 12,14,15,
-    16,17,18, 16,18,19,
-    20,21,22, 20,22,23
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f
 };
 
 EnvCubemap::EnvCubemap(HDRTexture& hdrTexture, Shader& shader)
@@ -46,10 +72,6 @@ EnvCubemap::~EnvCubemap()
     {
         glDeleteBuffers(1, &cubeVBO);
     }
-    if (cubeEBO)
-    {
-        glDeleteBuffers(1, &cubeEBO);
-    }
 }
 
 void EnvCubemap::bind(unsigned int unit) const
@@ -74,6 +96,11 @@ void EnvCubemap::convert(Shader &shader)
     // 创建fbo
     glGenFramebuffers(1, &cubeMapFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, cubeMapFBO);
+    unsigned int captureRBO = 0;
+    glGenRenderbuffers(1, &captureRBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, SIZE, SIZE);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
 
     // 创建texture
     glGenTextures(1, &cubeMapID);
@@ -113,18 +140,20 @@ void EnvCubemap::convert(Shader &shader)
 
     glViewport(0, 0, SIZE, SIZE);
     glBindFramebuffer(GL_FRAMEBUFFER, cubeMapFBO);
-    // 没有rbo,关闭深度测试
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
 
     for (unsigned int i = 0; i < 6; ++i)
     {
         shader.setMat4("view", views[i]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
             GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubeMapID, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         RenderCube();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDepthFunc(GL_LESS);
+    glDeleteRenderbuffers(1, &captureRBO);
 }
 
 void EnvCubemap::RenderCube()
@@ -133,15 +162,11 @@ void EnvCubemap::RenderCube()
     {
         glGenVertexArrays(1, &cubeVAO);
         glGenBuffers(1, &cubeVBO);
-        glGenBuffers(1, &cubeEBO);
 
         glBindVertexArray(cubeVAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(s_cubeVertices), s_cubeVertices, GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cubeEBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(s_cubeIndices), s_cubeIndices, GL_STATIC_DRAW);
 
         // position attribute
         glEnableVertexAttribArray(0);
@@ -150,6 +175,6 @@ void EnvCubemap::RenderCube()
 
     // render Cube
     glBindVertexArray(cubeVAO);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
 }

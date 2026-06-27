@@ -55,7 +55,6 @@ public:
         unsigned int fragment;
 
         int success;
-        char infoLog[512];
 
         vertex = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex, 1, &vShaderCode, NULL);
@@ -64,11 +63,7 @@ public:
         glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
         if (!success)
         {
-            glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-            std::cout
-                << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
-                << infoLog
-                << std::endl;
+            printShaderCompileError(vertex, "VERTEX", vertexPath);
         }
 
         fragment = glCreateShader(GL_FRAGMENT_SHADER);
@@ -78,11 +73,7 @@ public:
         glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
         if (!success)
         {
-            glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-            std::cout
-                << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"
-                << infoLog
-                << std::endl;
+            printShaderCompileError(fragment, "FRAGMENT", fragmentPath);
         }
 
         ID = glCreateProgram();
@@ -95,11 +86,7 @@ public:
         glGetProgramiv(ID, GL_LINK_STATUS, &success);
         if (!success)
         {
-            glGetProgramInfoLog(ID, 512, NULL, infoLog);
-            std::cout
-                << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
-                << infoLog
-                << std::endl;
+            printProgramLinkError(ID, vertexPath, nullptr, fragmentPath);
         }
 
         glDeleteShader(vertex);
@@ -151,7 +138,6 @@ public:
 
         unsigned int vertex, geometry, fragment;
         int success;
-        char infoLog[512];
 
         vertex = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertex, 1, &vShaderCode, NULL);
@@ -159,8 +145,7 @@ public:
         glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
         if (!success)
         {
-            glGetShaderInfoLog(vertex, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+            printShaderCompileError(vertex, "VERTEX", vertexPath);
         }
 
         geometry = glCreateShader(GL_GEOMETRY_SHADER);
@@ -169,8 +154,7 @@ public:
         glGetShaderiv(geometry, GL_COMPILE_STATUS, &success);
         if (!success)
         {
-            glGetShaderInfoLog(geometry, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n" << infoLog << std::endl;
+            printShaderCompileError(geometry, "GEOMETRY", geometryPath);
         }
 
         fragment = glCreateShader(GL_FRAGMENT_SHADER);
@@ -179,8 +163,7 @@ public:
         glGetShaderiv(fragment, GL_COMPILE_STATUS, &success);
         if (!success)
         {
-            glGetShaderInfoLog(fragment, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+            printShaderCompileError(fragment, "FRAGMENT", fragmentPath);
         }
 
         ID = glCreateProgram();
@@ -192,8 +175,7 @@ public:
         glGetProgramiv(ID, GL_LINK_STATUS, &success);
         if (!success)
         {
-            glGetProgramInfoLog(ID, 512, NULL, infoLog);
-            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+            printProgramLinkError(ID, vertexPath, geometryPath, fragmentPath);
         }
 
         glDeleteShader(vertex);
@@ -234,6 +216,58 @@ public:
     void setMat3(const std::string &name, const glm::mat3 &mat) const
     {
         glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    }
+
+private:
+    static std::string getShaderInfoLog(unsigned int shader)
+    {
+        int logLength = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+        if (logLength <= 1)
+            return {};
+
+        std::string infoLog(logLength, '\0');
+        glGetShaderInfoLog(shader, logLength, nullptr, &infoLog[0]);
+        return infoLog;
+    }
+
+    static std::string getProgramInfoLog(unsigned int program)
+    {
+        int logLength = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
+        if (logLength <= 1)
+            return {};
+
+        std::string infoLog(logLength, '\0');
+        glGetProgramInfoLog(program, logLength, nullptr, &infoLog[0]);
+        return infoLog;
+    }
+
+    static void printShaderCompileError(unsigned int shader, const char* shaderType, const char* path)
+    {
+        std::cout
+            << "ERROR::SHADER::" << shaderType << "::COMPILATION_FAILED\n"
+            << "PATH: " << (path ? path : "<unknown>") << "\n"
+            << getShaderInfoLog(shader)
+            << std::endl;
+    }
+
+    static void printProgramLinkError(unsigned int program,
+        const char* vertexPath,
+        const char* geometryPath,
+        const char* fragmentPath)
+    {
+        std::cout
+            << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n"
+            << "VERTEX: " << (vertexPath ? vertexPath : "<unknown>") << "\n";
+
+        if (geometryPath)
+            std::cout << "GEOMETRY: " << geometryPath << "\n";
+
+        std::cout
+            << "FRAGMENT: " << (fragmentPath ? fragmentPath : "<unknown>") << "\n"
+            << getProgramInfoLog(program)
+            << std::endl;
     }
 };
 

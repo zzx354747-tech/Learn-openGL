@@ -22,7 +22,6 @@ private:
     unsigned int m_captureFBO  = 0;
     unsigned int m_cubeVAO     = 0;
     unsigned int m_cubeVBO     = 0;
-    unsigned int m_cubeEBO     = 0;
 
     static constexpr unsigned int BASE_SIZE  = 128;
     static constexpr unsigned int MIP_LEVELS = 5;

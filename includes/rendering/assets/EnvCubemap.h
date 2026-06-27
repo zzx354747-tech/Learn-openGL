@@ -23,7 +23,6 @@ private:
     GLuint cubeMapFBO = 0;
     GLuint cubeVAO = 0;
     GLuint cubeVBO = 0;
-    GLuint cubeEBO = 0;
 
     void convert(Shader& shader);
     void RenderCube();
