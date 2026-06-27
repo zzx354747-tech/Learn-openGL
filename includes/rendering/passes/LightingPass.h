@@ -53,6 +53,5 @@ private:
 
     Shader* getLightingShader();
 
-    void bindGBufferTextures(Shader& shader, unsigned int aoTexture);
-    void bindIBLTextures(Shader& shader);
+    void bindLightingTextures(Shader& shader, unsigned int aoTexture);
 };

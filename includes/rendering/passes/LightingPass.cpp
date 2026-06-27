@@ -14,12 +14,8 @@ void LightingPass::render(Framebuffer& framebuffer,
     Shader* shader = getLightingShader();
     shader->use();
 
-    bindGBufferTextures(*shader, aoTexture);
-    // 方向光阴影贴图
-    shader->setInt("shadowMap", 10);
-    // 点光源阴影贴图
-    shader->setInt("depthCubeMap", 11);
-
+    bindLightingTextures(*shader, aoTexture);
+    
     setupObjectLighting(*shader);
     // 使用更高的纹理单元，避免同一个shader内sampler纹理单元冲突
     ShadowMapBinder::apply(*shader, shadowResources, state.dirLightSpaceMatrix, 10);
@@ -47,18 +43,7 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setBool("enablePBR", config.enablePBR);
     shader.setBool("enableIBL", config.enableIBL);
     shader.setFloat("ssaoStrength", config.ssaoStrength);
-    shader.setVec3("fixedAmbientColor", config.fixedAmbientColor);
-    shader.setFloat("fixedAmbientStrength", config.fixedAmbientStrength);
-    shader.setVec3("iblAmbientTint", config.iblAmbientTint);
-    shader.setFloat("iblAmbientStrength", config.iblAmbientStrength);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
-    shader.setFloat("pointShadowStrength", lightSettings.pointShadowStrength);
-    shader.setFloat("sunShadowStrength", lightSettings.sunShadowStrength);
-    shader.setFloat("flashShadowStrength", lightSettings.flashShadowStrength);
-    shader.setFloat("directionalShadowLightSize", config.directionalShadowLightSize);
-    shader.setFloat("directionalShadowBlockerSearchRadius", config.directionalShadowBlockerSearchRadius);
-    shader.setFloat("directionalShadowMinFilterRadius", config.directionalShadowMinFilterRadius);
-    shader.setFloat("directionalShadowMaxFilterRadius", config.directionalShadowMaxFilterRadius);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
 }
@@ -90,7 +75,7 @@ Shader* LightingPass::getLightingShader()
     return resources.lightingPassShader;
 }
 
-void LightingPass::bindGBufferTextures(Shader& shader, unsigned int aoTexture)
+void LightingPass::bindLightingTextures(Shader& shader, unsigned int aoTexture)
 {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, gBuffer.getGbufferTextureID(0));
@@ -108,30 +93,15 @@ void LightingPass::bindGBufferTextures(Shader& shader, unsigned int aoTexture)
     glBindTexture(GL_TEXTURE_2D, aoTexture);
     shader.setInt("AO", 3);
 
-    bindIBLTextures(shader);
-}
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, resources.irradianceMap->GetID());
+    shader.setInt("irradianceMap", 4);
 
-void LightingPass::bindIBLTextures(Shader& shader)
-{
-    shader.setInt("brdfLUT", 13);
-    shader.setInt("irradianceMap", 14);
-    shader.setInt("prefilterMap", 15);
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, resources.prefilterMap->GetID());
+    shader.setInt("prefilterMap", 5);
 
-    if (resources.brdfLUT && resources.brdfLUT->isReady())
-    {
-        glActiveTexture(GL_TEXTURE13);
-        glBindTexture(GL_TEXTURE_2D, resources.brdfLUT->GetID());
-    }
-
-    if (resources.irradianceMap && resources.irradianceMap->isReady())
-    {
-        glActiveTexture(GL_TEXTURE14);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, resources.irradianceMap->GetID());
-    }
-
-    if (resources.prefilterMap && resources.prefilterMap->isReady())
-    {
-        glActiveTexture(GL_TEXTURE15);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, resources.prefilterMap->GetID());
-    }
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, resources.brdfLUT->GetID());
+    shader.setInt("brdfLUT", 6);
 }

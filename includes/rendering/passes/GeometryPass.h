@@ -39,7 +39,6 @@ private:
     void renderCube(int bfwidth, int bfheight);
     void renderPlane(int bfwidth, int bfheight);
     void renderMaterialSpheres(int bfwidth, int bfheight);
-    void renderClearSphere(int bfwidth, int bfheight);
     void renderModel(int bfwidth, int bfheight);
 
     void bindCubeDiffuseTexture(Shader& shader, GLTexture& cubeTexture);
@@ -51,7 +50,6 @@ private:
 
     void setupCubeMaterial(Shader& shader);
     void setupPlaneMaterial(Shader& shader);
-    void setupClearSphereMaterial(Shader& shader);
     void setupPBRMaterial(
         Shader& shader,
         const PBRMaterialTextures& material,

@@ -23,7 +23,7 @@ static unsigned int s_cubeIndices[] = {
 };
 
 EnvCubemap::EnvCubemap(HDRTexture& hdrTexture, Shader& shader)
-: hdrTexture(hdrTexture), SIZE(std::min(hdrTexture.getHeight() / 2, 1024))
+: hdrTexture(hdrTexture)
 {
     convert(shader);
 }

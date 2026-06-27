@@ -108,7 +108,7 @@ void GeometryPass::renderMaterialSpheres(int bfwidth, int bfheight)
             config.modelEnableParallaxMapping,
             config.modelParallaxHeightScale,
             config.modelNumLayers,
-            config.materialSphereBumpNormalStrength);
+            config.modelBumpNormalStrength);
         drawer.drawMaterialSphere(*shader, i);
     }
 }

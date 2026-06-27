@@ -120,7 +120,6 @@ void main()
     {
         vec3 normalMap = texture(normalTexture, normalTexCoords).rgb;
         normalMap = normalMap * 2.0 - 1.0; // 将法线从[0,1]范围转换到[-1,1]范围
-        normalMap = normalize(mix(vec3(0.0, 0.0, 1.0), normalMap, bumpNormalStrength));
         normal = normalize(TBN * normalMap);
     }
     else if (enableNormalMapping && hasParallaxMap)
