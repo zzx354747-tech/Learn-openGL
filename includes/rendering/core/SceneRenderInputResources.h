@@ -43,9 +43,6 @@ struct SceneRenderInputResources
     Shader* ssaoShader = nullptr;
     Shader* ssaoBlurShader = nullptr;
     Shader* envCubemapShader = nullptr;
-    Shader* prefilterShader = nullptr;
-    Shader* irradianceShader = nullptr;
-    Shader* brdfLUTShader = nullptr;
 
     CubeMesh* cubeMesh = nullptr;
     PlaneMesh* planeMesh = nullptr;
@@ -61,6 +58,7 @@ struct SceneRenderInputResources
     GLTexture* secondCubeDiffuseTexture = nullptr;
     GLTexture* secondCubeNormalTexture = nullptr;
     GLTexture* secondCubeParallaxTexture = nullptr;
+    GLTexture* clearSphereAlbedoTexture = nullptr;
     GLTexture* defaultRoughnessTexture = nullptr;
     GLTexture* defaultMetallicTexture = nullptr;
 

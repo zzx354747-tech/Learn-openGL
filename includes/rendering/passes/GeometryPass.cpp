@@ -11,6 +11,7 @@ void GeometryPass::render(int bfwidth, int bfheight)
 
     renderPlane(bfwidth, bfheight);
     renderMaterialSpheres(bfwidth, bfheight);
+    renderClearSphere(bfwidth, bfheight);
     renderModel(bfwidth, bfheight);
     gBuffer.unbind();
 }
@@ -108,16 +109,37 @@ void GeometryPass::renderMaterialSpheres(int bfwidth, int bfheight)
             config.modelEnableParallaxMapping,
             config.modelParallaxHeightScale,
             config.modelNumLayers,
-            config.modelBumpNormalStrength);
+            config.materialSphereBumpNormalStrength);
         drawer.drawMaterialSphere(*shader, i);
     }
+}
+
+void GeometryPass::renderClearSphere(int bfwidth, int bfheight)
+{
+    Shader* shader = getGeometryShader();
+
+    if (!shader ||
+        !resources.sphereMesh ||
+        !resources.clearSphereAlbedoTexture ||
+        !config.enableClearSphere)
+        return;
+
+    shader->use();
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+
+    resources.clearSphereAlbedoTexture->bind(0);
+    shader->setInt("albedoTexture", 0);
+    shader->setInt("diffuseTexture", 0);
+    bindDefaultPBRFallbackTextures(*shader);
+    setupClearSphereMaterial(*shader);
+    drawer.drawClearSphere(*shader);
 }
 
 void GeometryPass::renderModel(int bfwidth, int bfheight)
 {
     Shader* shader = getGeometryShader();
     
-        if (!shader)
+        if (!shader || !config.enableModel)
             return;
 
         shader->use();
@@ -255,6 +277,33 @@ void GeometryPass::setupPlaneMaterial(Shader& shader)
     shader.setInt("parallaxTexCoordIndex", 0);
     shader.setInt("metallicTexCoordIndex", 0);
     shader.setInt("roughnessTexCoordIndex", 0);
+    shader.setVec3("cameraPos", camera.Getposition());
+}
+
+void GeometryPass::setupClearSphereMaterial(Shader& shader)
+{
+    shader.setBool("enableNormalMapping", false);
+    shader.setBool("enableParallaxMapping", false);
+    shader.setBool("hasNormalMap", false);
+    shader.setBool("hasParallaxMap", false);
+    shader.setBool("hasSpecularMap", false);
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("hasMetallicMap", false);
+    shader.setBool("hasRoughnessMap", false);
+    shader.setVec4("baseColorFactor", glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    shader.setFloat("metallicFactor", 0.0f);
+    shader.setFloat("roughnessFactor", 0.04f);
+    shader.setBool("alphaMask", false);
+    shader.setFloat("alphaCutoff", 0.5f);
+    shader.setInt("albedoTexCoordIndex", 0);
+    shader.setInt("normalTexCoordIndex", 0);
+    shader.setInt("parallaxTexCoordIndex", 0);
+    shader.setInt("metallicTexCoordIndex", 0);
+    shader.setInt("roughnessTexCoordIndex", 0);
+    shader.setFloat("parallaxHeightScale", 0.0f);
+    shader.setFloat("heightScale", 0.0f);
+    shader.setFloat("bumpNormalStrength", 1.0f);
+    shader.setInt("numLayers", 1);
     shader.setVec3("cameraPos", camera.Getposition());
 }
 

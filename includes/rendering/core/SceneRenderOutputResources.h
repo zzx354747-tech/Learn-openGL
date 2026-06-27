@@ -1,10 +1,10 @@
 #pragma once
 
+#include "rendering/assets/BrdfLUT.h"
 #include "rendering/assets/EnvCubemap.h"
-#include "rendering/postprocess/PingPong_Framebuffer.h"
 #include "rendering/assets/IrradianceMap.h"
 #include "rendering/assets/PrefilterMap.h"
-#include "rendering/assets/BrdfLUT.h"
+#include "rendering/postprocess/PingPong_Framebuffer.h"
 
 struct SceneRenderOutputResources
 {

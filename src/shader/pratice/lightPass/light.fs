@@ -38,12 +38,12 @@ uniform sampler2D spotShadowMap;
 uniform sampler2D gPosition;
 uniform sampler2D gNormalRoughness;
 uniform sampler2D gAlbedoMetallic;
-// 接收SSAO贴图
-uniform sampler2D AO;
-
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
+
+// 接收SSAO贴图
+uniform sampler2D AO;
 
 uniform float farPlane;
 
@@ -61,7 +61,18 @@ uniform bool enablePBR;
 uniform bool enableIBL;
 
 uniform float ssaoStrength;
+uniform vec3 fixedAmbientColor;
+uniform float fixedAmbientStrength;
+uniform vec3 iblAmbientTint;
+uniform float iblAmbientStrength;
 uniform float bloomThreshold;
+uniform float pointShadowStrength;
+uniform float sunShadowStrength;
+uniform float flashShadowStrength;
+uniform float directionalShadowLightSize;
+uniform float directionalShadowBlockerSearchRadius;
+uniform float directionalShadowMinFilterRadius;
+uniform float directionalShadowMaxFilterRadius;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -148,6 +159,68 @@ float PointShadowCalculation(vec3 fragPos)
     return shadow;
 }
 
+const int PCSS_SAMPLE_COUNT = 16;
+const vec2 PCSS_DISK[16] = vec2[](
+    vec2(-0.94201624, -0.39906216),
+    vec2( 0.94558609, -0.76890725),
+    vec2(-0.09418410, -0.92938870),
+    vec2( 0.34495938,  0.29387760),
+    vec2(-0.91588581,  0.45771432),
+    vec2(-0.81544232, -0.87912464),
+    vec2(-0.38277543,  0.27676845),
+    vec2( 0.97484398,  0.75648379),
+    vec2( 0.44323325, -0.97511554),
+    vec2( 0.53742981, -0.47373420),
+    vec2(-0.26496911, -0.41893023),
+    vec2( 0.79197514,  0.19090188),
+    vec2(-0.24188840,  0.99706507),
+    vec2(-0.81409955,  0.91437590),
+    vec2( 0.19984126,  0.78641367),
+    vec2( 0.14383161, -0.14100790)
+);
+
+float findAverageBlockerDepth(vec3 projCoords, float bias)
+{
+    float blockerDepth = 0.0;
+    int blockerCount = 0;
+
+    for (int i = 0; i < PCSS_SAMPLE_COUNT; ++i)
+    {
+        float sampleDepth = texture(
+            shadowMap,
+            projCoords.xy + PCSS_DISK[i] * directionalShadowBlockerSearchRadius
+        ).r;
+
+        if (sampleDepth < projCoords.z - bias)
+        {
+            blockerDepth += sampleDepth;
+            ++blockerCount;
+        }
+    }
+
+    if (blockerCount == 0)
+        return -1.0;
+
+    return blockerDepth / float(blockerCount);
+}
+
+float filterPCSSShadow(vec3 projCoords, float bias, float filterRadius)
+{
+    float shadow = 0.0;
+
+    for (int i = 0; i < PCSS_SAMPLE_COUNT; ++i)
+    {
+        float pcfDepth = texture(
+            shadowMap,
+            projCoords.xy + PCSS_DISK[i] * filterRadius
+        ).r;
+
+        shadow += projCoords.z - bias > pcfDepth ? 1.0 : 0.0;
+    }
+
+    return shadow / float(PCSS_SAMPLE_COUNT);
+}
+
 float ShadowCalculation(vec4 fragPosLightSpace)
 {
     // 将片段位置从裁剪空间转换到[0,1]范围内，告诉去哪里采样阴影贴图
@@ -155,32 +228,24 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     projCoords = projCoords * 0.5 + 0.5;
 
      // 处理视野外的片段，防止出现不正确的阴影
-    if (projCoords.z > 1.0)
+    if (projCoords.z > 1.0 ||
+        projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0)
         return 0.0;
 
-    // 获取当前片段在阴影贴图中的深度
-    float closestDepth = texture(shadowMap, projCoords.xy).r;
-    float currentDepth = projCoords.z;
-
-    float shadow = 0.0;
     float bias = 0.005;
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    float avgBlockerDepth = findAverageBlockerDepth(projCoords, bias);
+    if (avgBlockerDepth < 0.0)
+        return 0.0;
 
-    for (int x = -1; x <= 1; ++x)
-    {
-        for (int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(
-                shadowMap,
-                projCoords.xy + vec2(x, y) * texelSize
-            ).r;
+    float penumbraRatio = max((projCoords.z - avgBlockerDepth) / max(avgBlockerDepth, 0.0001), 0.0);
+    float filterRadius = clamp(
+        penumbraRatio * directionalShadowLightSize,
+        directionalShadowMinFilterRadius,
+        directionalShadowMaxFilterRadius
+    );
 
-            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-        }
-    }
-
-    shadow /= 9.0;
-    return shadow;
+    return filterPCSSShadow(projCoords, bias, filterRadius);
 }
 
 // BRDF函数
@@ -223,7 +288,7 @@ vec3 calcPointLightPhong(PointLight light, vec3 normal, vec3 fragPos,
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
     vec3 diffuse  = light.diffuse * diff * albedo;
     vec3 specular = light.diffuse * spec * metallic;
-    float shadow = PointShadowCalculation(fragPos) * 0.8;
+    float shadow = PointShadowCalculation(fragPos) * pointShadowStrength;
     return (diffuse + specular) * attenuation * (1.0 - shadow);
 }
 
@@ -237,7 +302,7 @@ vec3 calcSunPhong(Sun light, vec3 normal, vec3 viewDir,
     float spec = pow(max(dot(normal, H), 0.0), shininess);
     vec3 diffuse  = light.diffuse * diff * albedo;
     vec3 specular = light.diffuse * spec * metallic;
-    float shadow = ShadowCalculation(FragPosLightSpace) * 0.8;
+    float shadow = ShadowCalculation(FragPosLightSpace) * sunShadowStrength;
     return (diffuse + specular) * (1.0 - shadow);
 }
 
@@ -257,7 +322,7 @@ vec3 calcFlashLightPhong(FlashLight light, vec3 normal, vec3 fragPos,
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     vec3 diffuse  = light.diffuse * diff * albedo;
     vec3 specular = light.diffuse * spec * metallic;
-    float shadow = SpotShadowCalculation(FragPosSpotLightSpace) * 0.8;
+    float shadow = SpotShadowCalculation(FragPosSpotLightSpace) * flashShadowStrength;
     return (diffuse + specular) * attenuation * intensity * (1.0 - shadow);
 }
 
@@ -302,9 +367,8 @@ vec3 calcPointLight(PointLight light,
     // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
     vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
-    float shadowStrength = 0.8;
     float shadow = PointShadowCalculation(fragPos);
-    shadow *= shadowStrength;
+    shadow *= pointShadowStrength;
 
     return Lo * (1.0 - shadow);
 }
@@ -343,11 +407,9 @@ float metallic)
     // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
     vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
-    float shadowStrength = 0.8; // 阴影强度，可以根据需要调整
-
     float shadow = ShadowCalculation(FragPosLightSpace);
 
-    shadow *= shadowStrength; // 将阴影强度应用到阴影值上
+    shadow *= sunShadowStrength; // 将阴影强度应用到阴影值上
 
     return Lo * (1.0 - shadow);
 }
@@ -398,45 +460,47 @@ float metallic)
             FragPosSpotLightSpace
         );
 
-    float shadowStrength = 0.8;
-
-    shadow *= shadowStrength;
+    shadow *= flashShadowStrength;
 
     return Lo * (1.0 - shadow);
 }
 
-vec3 calcIBLambient(vec3 normal, vec3 viewDir, 
-vec3 albedo, vec3 F0, 
-float roughness, float metallic,
+vec3 calcIBLAmbient(vec3 normal, vec3 fragPos,
+vec3 camPos, vec3 albedo, 
+float metallic, float roughness, 
 float ao)
 {
-    vec3 N = normal;
-    vec3 V = viewDir;
-    vec3 R = reflect(-V, N);
+vec3 N = normalize(normal);
+vec3 V = normalize(camPos - fragPos);
+vec3 R = reflect(-V, N);
 
-    float NdotV = max(dot(N, V), 0.0);
-    // 菲涅耳，修正极限反射率
-    vec3 F = F0 + (max(vec3(1.0 - roughness), F0) - F0) 
-    * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
+float NdotV = max(dot(N, V), 0.0);
 
-    // 漫反射
-    // 反射系数
-    vec3 KS = F;
-    vec3 KD = vec3(1.0) - KS;
-    vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 diffuse = irradiance * albedo;
+// 菲涅尔（用粗糙度修正，避免 grazing angle 过亮）
+vec3 F0 = mix(vec3(0.04), albedo, metallic);
+vec3 F  = F0 + (max(vec3(1.0 - roughness), F0) - F0)
+             * pow(clamp(1.0 - NdotV, 0.0, 1.0), 5.0);
 
-    // 镜面反射
-    // 设置最大LOD级别
-    // LOD0--4分别对应了mipmap0--4
-    const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
-    vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+// 漫反射：irradiance map 直接采样
+vec3 kS = F;
+vec3 kD = (1.0 - kS) * (1.0 - metallic);
+vec3 irradiance = texture(irradianceMap, N).rgb;
+vec3 diffuse    = kD * irradiance * albedo;
 
-    vec3 ambient = (KD * diffuse + specular) * ao;
+// 镜面反射：prefilter + BRDF LUT
+const float MAX_REFLECTION_LOD = 4.0;
+vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+vec2 brdf  = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
-    return ambient;
+vec3 ambient = (diffuse + specular) * ao * iblAmbientTint * iblAmbientStrength;
+
+return ambient;
+}
+
+vec3 calcFixedAmbient(vec3 albedo, float ao)
+{
+    return fixedAmbientColor * fixedAmbientStrength * albedo * ao;
 }
 
 void main()
@@ -459,14 +523,10 @@ void main()
 
     vec3 result = vec3(0.0);
 
-    if (enableIBL && enablePBR)
-    {
-        result += calcIBLambient(Normal, viewDir, albedo, F0, roughness, metallic, ao);
-    }
+    if (enablePBR && enableIBL)
+        result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
     else
-    {
-        result += vec3(0.04) * albedo * ao;
-    }
+        result += calcFixedAmbient(albedo, ao);
 
     if (enablePointLight)
 {

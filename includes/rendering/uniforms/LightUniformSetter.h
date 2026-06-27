@@ -58,10 +58,10 @@ private:
             lightSettings.sunAmbient * lightSettings.sunIntensity);
 
         shader.setVec3("sun.diffuse",
-            lightSettings.sunDiffuse * lightSettings.sunIntensity);
+            lightSettings.sunDiffuse * lightSettings.sunIntensity * lightSettings.sunIntensityScale);
 
         shader.setVec3("sun.specular",
-            lightSettings.sunSpecular * lightSettings.sunIntensity);
+            lightSettings.sunSpecular * lightSettings.sunIntensity * lightSettings.sunIntensityScale);
     }
 
     static void setupFlashLight(
