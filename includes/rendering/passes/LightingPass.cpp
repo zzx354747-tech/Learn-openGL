@@ -51,6 +51,10 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("fixedAmbientStrength", config.fixedAmbientStrength);
     shader.setVec3("iblAmbientTint", config.iblAmbientTint);
     shader.setFloat("iblAmbientStrength", config.iblAmbientStrength);
+    shader.setFloat("phongDiffuseStrength", config.phongDiffuseStrength);
+    shader.setFloat("phongSpecularStrength", config.phongSpecularStrength);
+    shader.setFloat("phongIBLDiffuseStrength", config.phongIBLDiffuseStrength);
+    shader.setFloat("phongIBLSpecularStrength", config.phongIBLSpecularStrength);
     shader.setFloat("bloomThreshold", config.bloomThreshold);
     shader.setFloat("pointShadowStrength", lightSettings.pointShadowStrength);
     shader.setFloat("sunShadowStrength", lightSettings.sunShadowStrength);

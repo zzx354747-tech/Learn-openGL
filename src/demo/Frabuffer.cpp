@@ -525,6 +525,10 @@ Shader basicModelShader(
     sceneConfig.fixedAmbientStrength = 1.0f;
     sceneConfig.iblAmbientTint = glm::vec3(1.0f);
     sceneConfig.iblAmbientStrength = 1.0f;
+    sceneConfig.phongDiffuseStrength = 0.55f;
+    sceneConfig.phongSpecularStrength = 0.18f;
+    sceneConfig.phongIBLDiffuseStrength = 1.25f;
+    sceneConfig.phongIBLSpecularStrength = 0.35f;
     sceneConfig.cubeEnableNormalMapping = true;
     sceneConfig.cubeEnableParallaxMapping = true;
     sceneConfig.cubeParallaxHeightScale = 0.03f;
@@ -658,6 +662,10 @@ Shader basicModelShader(
         sceneConfig.enableSSAO = true;
         sceneConfig.enablePBR = true;
         sceneConfig.enableIBL = true;
+        sceneConfig.phongDiffuseStrength = 0.55f;
+        sceneConfig.phongSpecularStrength = 0.18f;
+        sceneConfig.phongIBLDiffuseStrength = 1.25f;
+        sceneConfig.phongIBLSpecularStrength = 0.35f;
         enableFullMaterialMapping();
         sceneConfig.floorParallaxHeightScale = 0.005f;
         sceneConfig.modelBumpNormalStrength = 0.38f;
@@ -676,6 +684,10 @@ Shader basicModelShader(
             sceneConfig.fixedAmbientStrength = 0.1f;
             sceneConfig.iblAmbientTint = glm::vec3(1.0f);
             sceneConfig.iblAmbientStrength = 1.4f;
+            sceneConfig.phongDiffuseStrength = 0.42f;
+            sceneConfig.phongSpecularStrength = 0.10f;
+            sceneConfig.phongIBLDiffuseStrength = 1.15f;
+            sceneConfig.phongIBLSpecularStrength = 0.26f;
             sceneConfig.ssaoStrength = 1.5f;
             sceneConfig.exposure = 0.9f;
             sceneConfig.bloomStrength = 0.6f;
@@ -704,6 +716,10 @@ Shader basicModelShader(
             sceneConfig.fixedAmbientStrength = 0.0f;
             sceneConfig.iblAmbientTint = glm::vec3(1.0f, 0.6f, 0.9f);
             sceneConfig.iblAmbientStrength = 2.8f;
+            sceneConfig.phongDiffuseStrength = 0.48f;
+            sceneConfig.phongSpecularStrength = 0.12f;
+            sceneConfig.phongIBLDiffuseStrength = 0.95f;
+            sceneConfig.phongIBLSpecularStrength = 0.24f;
             sceneConfig.ssaoStrength = 1.8f;
             sceneConfig.exposure = 0.8f;
             sceneConfig.bloomStrength = 2.2f;
@@ -736,6 +752,10 @@ Shader basicModelShader(
             sceneConfig.fixedAmbientStrength = 0.05f;
             sceneConfig.iblAmbientTint = glm::vec3(1.0f);
             sceneConfig.iblAmbientStrength = 0.15f;
+            sceneConfig.phongDiffuseStrength = 0.55f;
+            sceneConfig.phongSpecularStrength = 0.16f;
+            sceneConfig.phongIBLDiffuseStrength = 1.65f;
+            sceneConfig.phongIBLSpecularStrength = 0.42f;
             sceneConfig.ssaoStrength = 2.5f;
             sceneConfig.exposure = 1.4f;
             sceneConfig.bloomStrength = 1.8f;
@@ -883,6 +903,11 @@ Shader basicModelShader(
         ImGui::DragFloat("Fixed Ambient Strength", &sceneConfig.fixedAmbientStrength, 0.01f, 0.0f, 4.0f);
         ImGui::ColorEdit3("IBL Ambient Tint", glm::value_ptr(sceneConfig.iblAmbientTint));
         ImGui::DragFloat("IBL Ambient Strength", &sceneConfig.iblAmbientStrength, 0.01f, 0.0f, 4.0f);
+        ImGui::SeparatorText("Phong Settings");
+        ImGui::DragFloat("Phong Diffuse Strength", &sceneConfig.phongDiffuseStrength, 0.01f, 0.0f, 2.0f);
+        ImGui::DragFloat("Phong Specular Strength", &sceneConfig.phongSpecularStrength, 0.01f, 0.0f, 2.0f);
+        ImGui::DragFloat("Phong IBL Diffuse", &sceneConfig.phongIBLDiffuseStrength, 0.01f, 0.0f, 6.0f);
+        ImGui::DragFloat("Phong IBL Specular", &sceneConfig.phongIBLSpecularStrength, 0.01f, 0.0f, 4.0f);
         ImGui::SliderFloat("SSAO Strength", &sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
         ImGui::Checkbox("Cube Normal Mapping", &sceneConfig.cubeEnableNormalMapping);
         ImGui::Checkbox("Cube Parallax Mapping", &sceneConfig.cubeEnableParallaxMapping);

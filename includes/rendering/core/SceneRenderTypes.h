@@ -44,6 +44,10 @@ struct SceneRenderConfig
     float fixedAmbientStrength = 1.0f;
     glm::vec3 iblAmbientTint = glm::vec3(1.0f);
     float iblAmbientStrength = 1.0f;
+    float phongDiffuseStrength = 0.55f;
+    float phongSpecularStrength = 0.18f;
+    float phongIBLDiffuseStrength = 1.25f;
+    float phongIBLSpecularStrength = 0.35f;
 
     // Cube
     bool cubeEnableNormalMapping = false;

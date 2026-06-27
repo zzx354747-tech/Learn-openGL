@@ -65,6 +65,10 @@ uniform vec3 fixedAmbientColor;
 uniform float fixedAmbientStrength;
 uniform vec3 iblAmbientTint;
 uniform float iblAmbientStrength;
+uniform float phongDiffuseStrength;
+uniform float phongSpecularStrength;
+uniform float phongIBLDiffuseStrength;
+uniform float phongIBLSpecularStrength;
 uniform float bloomThreshold;
 uniform float pointShadowStrength;
 uniform float sunShadowStrength;
@@ -282,12 +286,13 @@ vec3 calcPointLightPhong(PointLight light, vec3 normal, vec3 fragPos,
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 H = normalize(lightDir + viewDir);
     float diff = max(dot(normal, lightDir), 0.0);
-    float shininess = (1.0 - roughness) * (1.0 - roughness) * 128.0 + 1.0;
+    float shininess = mix(8.0, 96.0, pow(1.0 - roughness, 2.0));
     float spec = pow(max(dot(normal, H), 0.0), shininess);
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
-    vec3 diffuse  = light.diffuse * diff * albedo;
-    vec3 specular = light.diffuse * spec * metallic;
+    vec3 specularColor = mix(vec3(0.04), albedo, metallic);
+    vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
+    vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
     float shadow = PointShadowCalculation(fragPos) * pointShadowStrength;
     return (diffuse + specular) * attenuation * (1.0 - shadow);
 }
@@ -298,10 +303,11 @@ vec3 calcSunPhong(Sun light, vec3 normal, vec3 viewDir,
     vec3 lightDir = normalize(-light.direction);
     vec3 H = normalize(lightDir + viewDir);
     float diff = max(dot(normal, lightDir), 0.0);
-    float shininess = (1.0 - roughness) * (1.0 - roughness) * 128.0 + 1.0;
+    float shininess = mix(8.0, 96.0, pow(1.0 - roughness, 2.0));
     float spec = pow(max(dot(normal, H), 0.0), shininess);
-    vec3 diffuse  = light.diffuse * diff * albedo;
-    vec3 specular = light.diffuse * spec * metallic;
+    vec3 specularColor = mix(vec3(0.04), albedo, metallic);
+    vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
+    vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
     float shadow = ShadowCalculation(FragPosLightSpace) * sunShadowStrength;
     return (diffuse + specular) * (1.0 - shadow);
 }
@@ -313,15 +319,16 @@ vec3 calcFlashLightPhong(FlashLight light, vec3 normal, vec3 fragPos,
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 H = normalize(lightDir + viewDir);
     float diff = max(dot(normal, lightDir), 0.0);
-    float shininess = (1.0 - roughness) * (1.0 - roughness) * 128.0 + 1.0;
+    float shininess = mix(8.0, 96.0, pow(1.0 - roughness, 2.0));
     float spec = pow(max(dot(normal, H), 0.0), shininess);
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * distance * distance);
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-    vec3 diffuse  = light.diffuse * diff * albedo;
-    vec3 specular = light.diffuse * spec * metallic;
+    vec3 specularColor = mix(vec3(0.04), albedo, metallic);
+    vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
+    vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
     float shadow = SpotShadowCalculation(FragPosSpotLightSpace) * flashShadowStrength;
     return (diffuse + specular) * attenuation * intensity * (1.0 - shadow);
 }
@@ -498,6 +505,31 @@ vec3 ambient = (diffuse + specular) * ao * iblAmbientTint * iblAmbientStrength;
 return ambient;
 }
 
+vec3 calcPhongIBLAmbient(vec3 normal, vec3 fragPos,
+vec3 camPos, vec3 albedo,
+float metallic, float roughness,
+float ao)
+{
+    vec3 N = normalize(normal);
+    vec3 V = normalize(camPos - fragPos);
+    vec3 R = reflect(-V, N);
+    float NdotV = max(dot(N, V), 0.0);
+
+    vec3 specularColor = mix(vec3(0.04), albedo, metallic);
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse = irradiance * albedo * (phongIBLDiffuseStrength / PI);
+
+    const float MAX_REFLECTION_LOD = 4.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+    vec3 specular = prefilteredColor
+        * (specularColor * brdf.x + brdf.y)
+        * phongIBLSpecularStrength;
+
+    float phongIBLBaseStrength = max(iblAmbientStrength, 0.45);
+    return (diffuse + specular) * ao * iblAmbientTint * phongIBLBaseStrength;
+}
+
 vec3 calcFixedAmbient(vec3 albedo, float ao)
 {
     return fixedAmbientColor * fixedAmbientStrength * albedo * ao;
@@ -523,10 +555,17 @@ void main()
 
     vec3 result = vec3(0.0);
 
-    if (enablePBR && enableIBL)
-        result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
+    if (enableIBL)
+    {
+        if (enablePBR)
+            result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
+        else
+            result += calcPhongIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
+    }
     else
+    {
         result += calcFixedAmbient(albedo, ao);
+    }
 
     if (enablePointLight)
 {
