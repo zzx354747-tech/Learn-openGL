@@ -138,8 +138,8 @@ add_executable(backpack_demo
     src/demo/backpack_demo.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
-    includes/rendering/Model/Model.cpp
-    includes/rendering/Model/Mesh.cpp
+    includes/rendering/modelload/Model.cpp
+    includes/rendering/modelload/Mesh.cpp
     ${GLAD_SOURCES}
 )
 target_link_libraries(backpack_demo glfw assimp z ${PLATFORM_LIBS})
@@ -158,10 +158,10 @@ add_executable(newbackpack
     src/demo/newbackpack.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
-    includes/rendering/Model/Model.cpp
-    includes/rendering/Model/Mesh.cpp
+    includes/rendering/modelload/Model.cpp
+    includes/rendering/modelload/Mesh.cpp
     ${GLAD_SOURCES}
-    includes/rendering/assets/HDRTexture.cpp
+    includes/rendering/assets/texture/HDRTexture.cpp
 )
 target_link_libraries(newbackpack glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(newbackpack)
@@ -170,22 +170,53 @@ add_executable(fbo_demo
     src/demo/Frabuffer.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
-    includes/rendering/Model/Model.cpp
-    includes/rendering/Model/Mesh.cpp
-    includes/rendering/passes/SkyboxPass.cpp
-    includes/rendering/passes/LightVisualPass.cpp
-    includes/rendering/passes/SceneObjectPass.cpp
-    includes/rendering/passes/GeometryPass.cpp
-    includes/rendering/passes/LightingPass.cpp
-    includes/rendering/passes/SSAOCommonPass.cpp
-    includes/rendering/postprocess/SSAO.cpp
-    includes/rendering/passes/ShadowPass/PointShadowPass.cpp
+    includes/rendering/modelload/Model.cpp
+    includes/rendering/modelload/Mesh.cpp
+    includes/rendering/assets/mesh/CubeMesh.cpp
+    includes/rendering/assets/mesh/LightMesh.cpp
+    includes/rendering/assets/mesh/PlaneMesh.cpp
+    includes/rendering/assets/mesh/Screenquad.cpp
+    includes/rendering/assets/mesh/SkyboxMesh.cpp
+    includes/rendering/assets/mesh/SphereMesh.cpp
+    includes/rendering/assets/texture/CubeMap.cpp
+    includes/rendering/assets/texture/Texture.cpp
+    includes/rendering/core/ResourceRegistry.cpp
+    includes/rendering/core/SceneDrawer.cpp
+    includes/rendering/core/SceneRender.cpp
+    includes/rendering/passes/debug/LightVisualPass.cpp
+    includes/rendering/passes/debug/ShadowDebugPass.cpp
+    includes/rendering/passes/deferred/DeferredRenderPass.cpp
+    includes/rendering/passes/environment/SkyboxPass.cpp
+    includes/rendering/passes/forward/ForwardHDRPass.cpp
+    includes/rendering/passes/forward/ForwardOverlayPass.cpp
+    includes/rendering/passes/forward/SceneScenePass.cpp
+    includes/rendering/passes/geometry/GeometryPass.cpp
+    includes/rendering/passes/lighting/LightingPass.cpp
+    includes/rendering/passes/ssao/SSAOCommonPass.cpp
+    includes/rendering/passes/shadow/DirectionalShadowPass.cpp
+    includes/rendering/passes/shadow/PointShadowPass.cpp
+    includes/rendering/passes/shadow/SpotShadowPass.cpp
+    includes/rendering/postprocess/blur/BlurPass.cpp
+    includes/rendering/postprocess/screen/ScreenPass.cpp
+    includes/rendering/resources/framebuffer/Gbuffer.cpp
+    includes/rendering/resources/framebuffer/HDR_Framebuffer.cpp
+    includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
+    includes/rendering/resources/render/SceneRenderInputResources.cpp
+    includes/rendering/resources/render/SceneRenderResources.cpp
+    includes/rendering/resources/ssao/SSAO.cpp
+    includes/rendering/resources/shadow/DirectionalShadowMap.cpp
+    includes/rendering/resources/shadow/PointShadowMap.cpp
+    includes/rendering/resources/shadow/SpotShadowMap.cpp
+    includes/rendering/uniforms/CameraUniformSetter.cpp
+    includes/rendering/uniforms/LightUniformSetter.cpp
+    includes/rendering/uniforms/SSAOCameraUniformSetter.cpp
+    includes/rendering/uniforms/SkyboxCameraUniformSetter.cpp
     ${GLAD_SOURCES}
-    includes/rendering/assets/HDRTexture.cpp
-    includes/rendering/assets/EnvCubemap.cpp
-    includes/rendering/assets/IrradianceMap.cpp
-    includes/rendering/assets/PrefilterMap.cpp
-    includes/rendering/assets/BrdfLUT.cpp
+    includes/rendering/assets/texture/HDRTexture.cpp
+    includes/rendering/assets/texture/EnvCubemap.cpp
+    includes/rendering/assets/ibl/IrradianceMap.cpp
+    includes/rendering/assets/ibl/PrefilterMap.cpp
+    includes/rendering/assets/ibl/BrdfLUT.cpp
 )
 target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(fbo_demo)

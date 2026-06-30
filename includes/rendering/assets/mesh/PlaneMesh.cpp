@@ -1,0 +1,46 @@
+#include "rendering/assets/mesh/PlaneMesh.h"
+
+PlaneMesh::PlaneMesh()
+{
+    float planeVertices[] = 
+    {
+        // positions          // normals           // texCoords   // tangent        // bitangent
+
+        10.0f, -0.5f,  10.0f,   0.0f, 1.0f, 0.0f,   2.0f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, -1.0f,
+        -10.0f, -0.5f,  10.0f,   0.0f, 1.0f, 0.0f,   0.0f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, -1.0f,
+        -10.0f, -0.5f, -10.0f,   0.0f, 1.0f, 0.0f,   0.0f, 2.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, -1.0f,
+
+        10.0f, -0.5f,  10.0f,   0.0f, 1.0f, 0.0f,   2.0f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, -1.0f,
+        -10.0f, -0.5f, -10.0f,   0.0f, 1.0f, 0.0f,   0.0f, 2.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, -1.0f,
+        10.0f, -0.5f, -10.0f,   0.0f, 1.0f, 0.0f,   2.0f, 2.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, -1.0f
+    };
+
+        glGenVertexArrays(1, &planeVAO);
+        glGenBuffers(1, &planeVBO);
+        glBindVertexArray(planeVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(8 * sizeof(float)));
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
+        glEnableVertexAttribArray(4);
+    }
+
+void PlaneMesh::draw() const
+{
+        glBindVertexArray(planeVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+    }
+
+PlaneMesh::~PlaneMesh()
+{
+        glDeleteBuffers(1, &planeVBO);
+        glDeleteVertexArrays(1, &planeVAO);
+    }

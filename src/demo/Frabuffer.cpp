@@ -13,39 +13,39 @@
 #include <GLFW/glfw3.h>
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "rendering/assets/Texture.h"
-#include "rendering/postprocess/HDR_Framebuffer.h"
-#include "rendering/postprocess/PingPong_Framebuffer.h"
-#include "rendering/postprocess/Screenquad.h"
-#include "rendering/assets/CubeMesh.h"
-#include "rendering/assets/PlaneMesh.h"
-#include "rendering/assets/SphereMesh.h"
-#include "rendering/assets/LightMesh.h"
-#include "rendering/assets/LightSettings.h"
-#include "rendering/assets/CubeMap.h"
-#include "rendering/assets/SkyboxMesh.h"
+#include "rendering/assets/texture/Texture.h"
+#include "rendering/resources/framebuffer/HDR_Framebuffer.h"
+#include "rendering/resources/framebuffer/PingPong_Framebuffer.h"
+#include "rendering/assets/mesh/Screenquad.h"
+#include "rendering/assets/mesh/CubeMesh.h"
+#include "rendering/assets/mesh/PlaneMesh.h"
+#include "rendering/assets/mesh/SphereMesh.h"
+#include "rendering/assets/mesh/LightMesh.h"
+#include "rendering/assets/light/LightSettings.h"
+#include "rendering/assets/texture/CubeMap.h"
+#include "rendering/assets/mesh/SkyboxMesh.h"
 #include "rendering/core/SceneRender.h"
 #include "rendering/core/SceneDrawer.h"
-#include "rendering/postprocess/DirectionalShadowMap.h"
-#include "rendering/postprocess/PointShadowMap.h"
-#include "rendering/postprocess/SpotShadowMap.h"
-#include "rendering/passes/ShadowPass/DirectionalShadowPass.h"
-#include "rendering/passes/ShadowPass/PointShadowPass.h"
-#include "rendering/passes/ShadowPass/SpotShadowPass.h"
-#include "rendering/passes/GeometryPass.h"
-#include "rendering/passes/LightingPass.h"
-#include "rendering/passes/SSAOCommonPass.h"
-#include "rendering/postprocess/Gbuffer.h"
-#include "rendering/postprocess/SSAO.h"
-#include "rendering/Model/Mesh.h"
-#include "rendering/Model/Model.h"
-#include "rendering/core/SceneRenderResources.h"
-#include "rendering/passes/SceneObjectPass.h"
-#include "rendering/assets/HDRTexture.h"
-#include "rendering/assets/EnvCubemap.h"
-#include "rendering/assets/IrradianceMap.h"
-#include "rendering/assets/PrefilterMap.h"
-#include "rendering/assets/BrdfLUT.h"
+#include "rendering/resources/shadow/DirectionalShadowMap.h"
+#include "rendering/resources/shadow/PointShadowMap.h"
+#include "rendering/resources/shadow/SpotShadowMap.h"
+#include "rendering/passes/shadow/DirectionalShadowPass.h"
+#include "rendering/passes/shadow/PointShadowPass.h"
+#include "rendering/passes/shadow/SpotShadowPass.h"
+#include "rendering/passes/geometry/GeometryPass.h"
+#include "rendering/passes/lighting/LightingPass.h"
+#include "rendering/passes/ssao/SSAOCommonPass.h"
+#include "rendering/resources/framebuffer/Gbuffer.h"
+#include "rendering/resources/ssao/SSAO.h"
+#include "rendering/modelload/Mesh.h"
+#include "rendering/modelload/Model.h"
+#include "rendering/resources/render/SceneRenderResources.h"
+#include "rendering/passes/forward/SceneScenePass.h"
+#include "rendering/assets/texture/HDRTexture.h"
+#include "rendering/assets/texture/EnvCubemap.h"
+#include "rendering/assets/ibl/IrradianceMap.h"
+#include "rendering/assets/ibl/PrefilterMap.h"
+#include "rendering/assets/ibl/BrdfLUT.h"
 
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
@@ -411,6 +411,7 @@ Shader basicModelShader(
     Model modernCityModel("../3D_model/modern_city_block.glb");
 
     SceneRenderResources sceneResources;
+    sceneResources.declareLightingPassResources();
     sceneResources.basicCubeShader = &basicCubeShader;
     sceneResources.basicPlaneShader = &basicPlaneShader;
     sceneResources.lightingCubeShader = &lightingCubeShader;
@@ -550,7 +551,11 @@ Shader basicModelShader(
     DirectionalShadowMap shadowDebug(4096, 4096);
     DirectionalShadowMap shadowMap(4096, 4096);
     PointShadowMap pointShadowMap(1024, 1024, 1.0f, 50.0f);
-    PointShadowPass pointShadowPass(pointShadowMap, *sceneResources.pointShadowMapShader, sceneDrawer);
+    PointShadowPass pointShadowPass(pointShadowMap, 
+        *sceneResources.pointShadowMapShader, 
+        sceneDrawer,
+        sceneResources.registry,
+        sceneResources.lightingHandles.depthCubeMap);
     SpotShadowMap spotShadowMap(1024, 1024, 1.0f, 50.0f);
     LightSettings lightSettings;
     DirectionalShadowPass directionalShadowPass(
@@ -558,21 +563,31 @@ Shader basicModelShader(
         *sceneResources.shadowMapShader,
         sceneDrawer,
         sceneState,
-        lightSettings);
+        lightSettings,
+        sceneResources.registry,
+        sceneResources.lightingHandles.shadowMap);
     SpotShadowPass spotShadowPass(
         spotShadowMap,
         *sceneResources.shadowMapShader,
         sceneDrawer,
         camera,
         sceneState,
-        lightSettings);
+        lightSettings,
+        sceneResources.registry,
+        sceneResources.lightingHandles.spotShadowMap);
 
     ShadowResources shadowResources;
     shadowResources.shadowMap = &shadowMap;
     shadowResources.pointShadowMap = &pointShadowMap;
     shadowResources.spotShadowMap = &spotShadowMap;
 
+    // 资源类注册表做法
     BrdfLUT brdfLUT(brdfShader);
+    sceneResources.registry.setTexture(
+    sceneResources.lightingHandles.brdfLUT,
+    brdfLUT.GetID()
+    );
+
     std::unique_ptr<HDRTexture> hdrTexture;
     std::unique_ptr<EnvCubemap> skybox;
     std::unique_ptr<IrradianceMap> irradianceMap;
@@ -609,6 +624,15 @@ Shader basicModelShader(
         applyExtractedSun(hdrTexture->getExtractedSun());
     };
     loadEnvironment();
+
+    sceneResources.registry.setTexture(
+    sceneResources.lightingHandles.irradianceMap,
+    irradianceMap->GetID()
+    );
+    sceneResources.registry.setTexture(
+        sceneResources.lightingHandles.prefilterMap,
+        prefilterMap->GetID()
+);
 
     int renderModeIndex = 1;
     int sceneIndex = 0;
@@ -809,8 +833,7 @@ Shader basicModelShader(
         sceneConfig,
         sceneState,
         lightSettings,
-        camera,
-        sceneGBuffer);
+        camera);
 
     SSAOCommonPass ssaoCommonPass(
         sceneResources,
@@ -832,8 +855,7 @@ Shader basicModelShader(
         geometryPass,
         lightingPass,
         sceneGBuffer,
-        ssaoCommonPass,
-        sceneSSAO);
+        ssaoCommonPass);
 
     while (!glfwWindowShouldClose(window))
     {
