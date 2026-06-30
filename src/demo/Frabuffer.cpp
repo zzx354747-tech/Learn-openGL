@@ -612,27 +612,52 @@ Shader basicModelShader(
         HDRLoadOptions loadOptions = kEnvironmentOptions[environmentIndex].loadOptions;
         loadOptions.sunThreshold = sceneConfig.sunThreshold;
 
-        hdrTexture = std::make_unique<HDRTexture>();
-        hdrTexture->load(kEnvironmentOptions[environmentIndex].path, loadOptions);
-        skybox = std::make_unique<EnvCubemap>(*hdrTexture, *sceneResources.envCubemapShader);
-        irradianceMap = std::make_unique<IrradianceMap>(*skybox, irradianceShader);
-        prefilterMap = std::make_unique<PrefilterMap>(*skybox, prefilterShader);
+        auto nextHdrTexture = std::make_unique<HDRTexture>();
+        if (!nextHdrTexture->load(kEnvironmentOptions[environmentIndex].path, loadOptions))
+        {
+            std::cerr << "Failed to switch environment: "
+                      << kEnvironmentOptions[environmentIndex].name << std::endl;
+            return;
+        }
+
+        auto nextSkybox = std::make_unique<EnvCubemap>(
+            *nextHdrTexture,
+            *sceneResources.envCubemapShader);
+        auto nextIrradianceMap = std::make_unique<IrradianceMap>(
+            *nextSkybox,
+            irradianceShader);
+        auto nextPrefilterMap = std::make_unique<PrefilterMap>(
+            *nextSkybox,
+            prefilterShader);
+
+        if (!nextSkybox->isReady() ||
+            !nextIrradianceMap->isReady() ||
+            !nextPrefilterMap->isReady())
+        {
+            std::cerr << "Failed to build environment cubemaps: "
+                      << kEnvironmentOptions[environmentIndex].name << std::endl;
+            return;
+        }
+
+        hdrTexture = std::move(nextHdrTexture);
+        skybox = std::move(nextSkybox);
+        irradianceMap = std::move(nextIrradianceMap);
+        prefilterMap = std::move(nextPrefilterMap);
 
         sceneResources.skybox = skybox.get();
         sceneResources.irradianceMap = irradianceMap.get();
         sceneResources.prefilterMap = prefilterMap.get();
+        sceneResources.registry.setTexture(
+            sceneResources.lightingHandles.irradianceMap,
+            irradianceMap->GetID()
+        );
+        sceneResources.registry.setTexture(
+            sceneResources.lightingHandles.prefilterMap,
+            prefilterMap->GetID()
+        );
         applyExtractedSun(hdrTexture->getExtractedSun());
     };
     loadEnvironment();
-
-    sceneResources.registry.setTexture(
-    sceneResources.lightingHandles.irradianceMap,
-    irradianceMap->GetID()
-    );
-    sceneResources.registry.setTexture(
-        sceneResources.lightingHandles.prefilterMap,
-        prefilterMap->GetID()
-);
 
     int renderModeIndex = 1;
     int sceneIndex = 0;

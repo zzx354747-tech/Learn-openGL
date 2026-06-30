@@ -151,6 +151,11 @@ void EnvCubemap::convert(Shader &shader)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         RenderCube();
     }
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapID);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDepthFunc(GL_LESS);
     glDeleteRenderbuffers(1, &captureRBO);
