@@ -1,20 +1,20 @@
 #pragma once
 #include "core/Shader.h"
 #include "scene/Camera.h"
+#include "rendering/assets/light/LightSettings.h"
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "rendering/core/SphereDrawer.h"
-#include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
 #include "rendering/uniforms/RenderParams.h"
+#include "rendering/resources/framebuffer/Gbuffer.h"
 
-class GeometryPass
+class SceneObjectPass
 {
 public:
-    GeometryPass(
+    SceneObjectPass(
         SceneRenderResources& resources,
         SceneRenderConfig&    config,
-        SceneRenderState&     state,
         Camera&               camera,
         SphereDrawer&         sphereDrawer,
         GBuffer&              gBuffer,
@@ -25,12 +25,11 @@ public:
 private:
     SceneRenderResources& resources;
     SceneRenderConfig&    config;
-    SceneRenderState&     state;
     Camera&               camera;
     SphereDrawer&         sphereDrawer;
     GBuffer&              gBuffer;
     RenderParams&         renderParams;
 
-    void renderMaterialSpheres(int bfwidth, int bfheight);
+    void renderSpheres(int bfwidth, int bfheight);
     Shader* getGeometryShader();
 };

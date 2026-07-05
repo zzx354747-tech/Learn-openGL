@@ -1,6 +1,6 @@
 #include "rendering/passes/shadow/DirectionalShadowPass.h"
 
-DirectionalShadowPass::DirectionalShadowPass( DirectionalShadowMap& shadowMap, Shader& shadowShader, SceneDrawer& drawer, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle shadowMapHandle) : shadowMap(shadowMap), shadowShader(shadowShader), drawer(drawer), state(state), lightSettings(lightSettings), registry(registry), shadowMapHandle(shadowMapHandle)
+DirectionalShadowPass::DirectionalShadowPass( DirectionalShadowMap& shadowMap, Shader& shadowShader, SphereDrawer& sphereDrawer, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle shadowMapHandle) : shadowMap(shadowMap), shadowShader(shadowShader), sphereDrawer(sphereDrawer), state(state), lightSettings(lightSettings), registry(registry), shadowMapHandle(shadowMapHandle)
 {
     }
 
@@ -18,7 +18,7 @@ void DirectionalShadowPass::render()
         glBindFramebuffer(GL_FRAMEBUFFER, shadowMap.getFBO());
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        drawer.drawScene(shadowShader);
+        sphereDrawer.draw(shadowShader);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -28,12 +28,10 @@ void DirectionalShadowPass::render()
 
 glm::mat4 DirectionalShadowPass::createLightSpaceMatrix() const
 {
-        glm::vec3 sceneCenter = drawer.getActiveSceneWorldCenter();
-        glm::vec3 sceneSize = drawer.getActiveSceneWorldSize();
-        float sceneExtent = glm::max(sceneSize.x, glm::max(sceneSize.y, sceneSize.z));
-        float halfExtent = glm::max(sceneExtent * 0.75f, 10.0f);
+        glm::vec3 sceneCenter(0.0f, 0.6f, -4.8f);
+        float halfExtent = 10.0f;
         float nearPlane = 0.1f;
-        float farPlane = glm::max(sceneExtent * 2.5f, 30.0f);
+        float farPlane = 30.0f;
 
         glm::mat4 lightProjection = glm::ortho(
             -halfExtent,

@@ -8,7 +8,6 @@
 #include "rendering/passes/deferred/DeferredRenderPass.h"
 #include "rendering/passes/forward/ForwardHDRPass.h"
 #include "rendering/passes/forward/ForwardOverlayPass.h"
-#include "rendering/passes/forward/SceneScenePass.h"
 #include "rendering/passes/geometry/GeometryPass.h"
 #include "rendering/passes/lighting/LightingPass.h"
 #include "rendering/passes/ssao/SSAOCommonPass.h"
@@ -24,7 +23,7 @@
 class SceneRender
 {
 public:
-    SceneRender( Camera& camera, SceneObjectPass& objectPass, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass);
+    SceneRender( Camera& camera, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass);
 
     void render( int bfwidth, int bfheight, Shader& screenShader, Screenquad& screenQuad, Framebuffer& framebuffer);
 

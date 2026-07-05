@@ -8,14 +8,14 @@
 #include "scene/Camera.h"
 #include "rendering/assets/light/LightSettings.h"
 #include "rendering/resources/shadow/SpotShadowMap.h"
-#include "rendering/core/SceneDrawer.h"
+#include "rendering/core/SphereDrawer.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "rendering/core/ResourceRegistry.h"
 
 class SpotShadowPass
 {
 public:
-    SpotShadowPass( SpotShadowMap& spotShadowMap, Shader& spotShadowShader, SceneDrawer& drawer, Camera& camera, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle spotShadowMapHandle);
+    SpotShadowPass( SpotShadowMap& spotShadowMap, Shader& spotShadowShader, SphereDrawer& sphereDrawer, Camera& camera, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle spotShadowMapHandle);
 
     void render();
 
@@ -24,7 +24,7 @@ private:
     ResourceHandle spotShadowMapHandle;
     SpotShadowMap& spotShadowMap;
     Shader& spotShadowShader;
-    SceneDrawer& drawer;
+    SphereDrawer& sphereDrawer;
     Camera& camera;
     SceneRenderState& state;
     LightSettings& lightSettings;

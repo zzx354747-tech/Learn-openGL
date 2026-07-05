@@ -180,16 +180,16 @@ add_executable(fbo_demo
     includes/rendering/assets/mesh/SphereMesh.cpp
     includes/rendering/assets/texture/CubeMap.cpp
     includes/rendering/assets/texture/Texture.cpp
+    includes/rendering/assets/texture/PBRMaterial.cpp
     includes/rendering/core/ResourceRegistry.cpp
-    includes/rendering/core/SceneDrawer.cpp
     includes/rendering/core/SceneRender.cpp
+    includes/rendering/core/SphereDrawer.cpp
     includes/rendering/passes/debug/LightVisualPass.cpp
     includes/rendering/passes/debug/ShadowDebugPass.cpp
     includes/rendering/passes/deferred/DeferredRenderPass.cpp
     includes/rendering/passes/environment/SkyboxPass.cpp
     includes/rendering/passes/forward/ForwardHDRPass.cpp
     includes/rendering/passes/forward/ForwardOverlayPass.cpp
-    includes/rendering/passes/forward/SceneScenePass.cpp
     includes/rendering/passes/geometry/GeometryPass.cpp
     includes/rendering/passes/lighting/LightingPass.cpp
     includes/rendering/passes/ssao/SSAOCommonPass.cpp
@@ -201,7 +201,6 @@ add_executable(fbo_demo
     includes/rendering/resources/framebuffer/Gbuffer.cpp
     includes/rendering/resources/framebuffer/HDR_Framebuffer.cpp
     includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
-    includes/rendering/resources/render/SceneRenderInputResources.cpp
     includes/rendering/resources/render/SceneRenderResources.cpp
     includes/rendering/resources/ssao/SSAO.cpp
     includes/rendering/resources/shadow/DirectionalShadowMap.cpp
@@ -209,6 +208,7 @@ add_executable(fbo_demo
     includes/rendering/resources/shadow/SpotShadowMap.cpp
     includes/rendering/uniforms/CameraUniformSetter.cpp
     includes/rendering/uniforms/LightUniformSetter.cpp
+    includes/rendering/uniforms/RenderParams.cpp
     includes/rendering/uniforms/SSAOCameraUniformSetter.cpp
     includes/rendering/uniforms/SkyboxCameraUniformSetter.cpp
     ${GLAD_SOURCES}

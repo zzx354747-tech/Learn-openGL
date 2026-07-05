@@ -1,28 +1,25 @@
 #pragma once
-#include "stb_image.h"
 #include <string>
 #include <glad/gl.h>
-#include <iostream>
 
 class GLTexture
 {
 public:
-    GLTexture(const std::string& path);
-
-    GLTexture(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255);
+    explicit GLTexture(const std::string& path);
 
     ~GLTexture();
 
-    void bind(unsigned int unit = 0) const;
+    // 禁止拷贝
+    GLTexture(const GLTexture&)            = delete;
+    GLTexture& operator=(const GLTexture&) = delete;
+
+    // 允许 move
+    GLTexture(GLTexture&& other) noexcept;
+    GLTexture& operator=(GLTexture&& other) noexcept;
+
+    void bind(unsigned int unit) const;
+    GLuint getID() const { return id; }
 
 private:
-    unsigned int id;
-    int width, height, nrChannels;
-    std::string path;
-
-    void initTex();
-
-    void initData(const std::string& path);
-
-
+    GLuint id = 0;
 };

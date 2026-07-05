@@ -1,6 +1,6 @@
 #include "rendering/passes/shadow/SpotShadowPass.h"
 
-SpotShadowPass::SpotShadowPass( SpotShadowMap& spotShadowMap, Shader& spotShadowShader, SceneDrawer& drawer, Camera& camera, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle spotShadowMapHandle) : spotShadowMap(spotShadowMap), spotShadowShader(spotShadowShader), drawer(drawer), camera(camera), state(state), lightSettings(lightSettings), registry(registry), spotShadowMapHandle(spotShadowMapHandle)
+SpotShadowPass::SpotShadowPass( SpotShadowMap& spotShadowMap, Shader& spotShadowShader, SphereDrawer& sphereDrawer, Camera& camera, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle spotShadowMapHandle) : spotShadowMap(spotShadowMap), spotShadowShader(spotShadowShader), sphereDrawer(sphereDrawer), camera(camera), state(state), lightSettings(lightSettings), registry(registry), spotShadowMapHandle(spotShadowMapHandle)
 {
     }
 
@@ -25,7 +25,7 @@ void SpotShadowPass::render()
         glBindFramebuffer(GL_FRAMEBUFFER, spotShadowMap.getFBO());
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        drawer.drawScene(spotShadowShader);
+        sphereDrawer.draw(spotShadowShader);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
