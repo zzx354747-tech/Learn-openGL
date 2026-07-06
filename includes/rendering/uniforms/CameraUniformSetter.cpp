@@ -13,4 +13,5 @@ void CameraUniformSetter::apply( Shader& shader, Camera& camera, int width, int 
 
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
+        shader.setVec3("cameraPos", camera.Getposition());
     }

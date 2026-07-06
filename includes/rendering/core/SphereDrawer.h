@@ -1,7 +1,7 @@
 #pragma once
 #include "core/Shader.h"
 #include "rendering/assets/mesh/SphereMesh.h"
-#include "rendering/assets/texture/PBRMaterial.h"
+#include "rendering/assets/texture/Material.h"
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
@@ -15,6 +15,8 @@ public:
 
     void loadMaterials(const std::string& baseDir);
     void draw(Shader& shader);
+    void drawBasic(Shader& shader);
+    void drawReflect(Shader& shader);
 
 private:
     void drawOne(Shader& shader, unsigned int index);
@@ -24,5 +26,5 @@ private:
     SceneRenderState*  state;
     SceneRenderConfig* config;
 
-    PBRMaterial materials[MaterialSphereCount];
+    Material materials[MaterialSphereCount];
 };

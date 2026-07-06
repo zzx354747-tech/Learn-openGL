@@ -13,6 +13,8 @@
 struct SceneRenderInputResources
 {
     Shader* lightCubeShader = nullptr;
+    Shader* basicForwardShader = nullptr;
+    Shader* reflectForwardShader = nullptr;
     Shader* reflectShader = nullptr;
     Shader* shadowDebugShader = nullptr;
     Shader* shadowMapShader = nullptr;

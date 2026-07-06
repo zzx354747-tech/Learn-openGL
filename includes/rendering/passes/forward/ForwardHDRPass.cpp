@@ -1,39 +1,31 @@
 #include "rendering/passes/forward/ForwardHDRPass.h"
+#include "rendering/passes/forward/SceneObjectPass.h"
 
-void ForwardHDRPass::render(
-    int bfwidth,
-    int bfheight,
-    Framebuffer& framebuffer
-)
+ForwardHDRPass::ForwardHDRPass(
+    Camera& camera,
+    SceneRenderResources& resources,
+    SceneRenderConfig& config,
+    SceneRenderState& state,
+    SphereDrawer& sphereDrawer)
+    : camera(camera)
+    , resources(resources)
+    , config(config)
+    , state(state)
+    , sphereDrawer(sphereDrawer)
+{}
+
+void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
 {
     framebuffer.bind();
-
     glViewport(0, 0, bfwidth, bfheight);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    lightVisualPass::renderLightVisualPass(
-        camera,
-        resources,
-        state,
-        config,
-        bfwidth,
-        bfheight
-    );
+    SceneObjectPass::renderSceneObjectPass(camera, resources, config, sphereDrawer, bfwidth, bfheight);
 
-    SkyboxPass::renderSkyboxPass(
-        camera,
-        resources,
-        config,
-        bfwidth,
-        bfheight
-    );
+    lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
+    SkyboxPass::renderSkyboxPass(camera, resources, config, bfwidth, bfheight);
 
     framebuffer.unbind();
 }
-
-ForwardHDRPass::ForwardHDRPass( Camera& camera, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state ) : camera(camera), resources(resources), config(config), state(state)
-{
-    }

@@ -295,6 +295,11 @@ int main()
         "../src/shader/renderer/deferred/geometry.fs"
     );
 
+    Shader basicForwardShader(
+        "../src/shader/renderer/forward/unlit.vs",
+        "../src/shader/renderer/forward/unlit.fs"
+    );
+
     Shader lightingPassShader(
         "../src/shader/renderer/deferred/lighting.vs",
         "../src/shader/renderer/deferred/lighting.fs"
@@ -317,6 +322,8 @@ int main()
     SceneRenderResources sceneResources;
     sceneResources.declareLightingPassResources();
     sceneResources.reflectShader = &cubemapShader;
+    sceneResources.basicForwardShader = &basicForwardShader;
+    sceneResources.reflectForwardShader = &cubemapShader;
     sceneResources.shadowDebugShader = &shadowDebugShader;
     sceneResources.shadowMapShader = &shadowMapShader;
     sceneResources.pointShadowMapShader = &pointShadowMapShader;
@@ -352,6 +359,7 @@ int main()
 
     SceneRenderState sceneState;
     sceneConfig.renderMode = RenderMode::Lighting;
+    sceneConfig.forwardLightMode = ForwardLightMode::Light;
 
     SphereDrawer sphereDrawer(&sphereMesh, &sceneState, &sceneConfig);
     sphereDrawer.loadMaterials("../textures/PBR/");
@@ -471,6 +479,7 @@ int main()
     auto applyEnvironmentPreset = [&]()
     {
         sceneConfig.renderMode = RenderMode::Lighting;
+        sceneConfig.forwardLightMode = ForwardLightMode::Light;
         renderModeIndex = 0;
         sceneConfig.enableSkybox = true;
         sceneConfig.enableGammaCorrection = true;
@@ -588,7 +597,6 @@ int main()
     GeometryPass geometryPass(
         sceneResources,
         sceneConfig,
-        sceneState,
         camera,
         sphereDrawer,
         sceneGBuffer,
@@ -621,7 +629,8 @@ int main()
         geometryPass,
         lightingPass,
         sceneGBuffer,
-        ssaoCommonPass);
+        ssaoCommonPass,
+        sphereDrawer);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -641,12 +650,28 @@ int main()
         ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
 
         ImGui::SeparatorText("Render");
-        const char* renderModeNames[] = {"Lighting", "Shadow Debug"};
-        if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 2))
+        const char* renderModeNames[] = {"Lighting", "Forward Basic", "Forward Reflection", "Shadow Debug"};
+        if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 4))
         {
-            sceneConfig.renderMode = (renderModeIndex == 1)
-                ? RenderMode::ShadowDebug
-                : RenderMode::Lighting;
+            switch (renderModeIndex)
+            {
+                case 1:
+                    sceneConfig.renderMode = RenderMode::Basic;
+                    sceneConfig.forwardLightMode = ForwardLightMode::Basic;
+                    break;
+                case 2:
+                    sceneConfig.renderMode = RenderMode::Reflection;
+                    sceneConfig.forwardLightMode = ForwardLightMode::Reflect;
+                    break;
+                case 3:
+                    sceneConfig.renderMode = RenderMode::ShadowDebug;
+                    sceneConfig.forwardLightMode = ForwardLightMode::Light;
+                    break;
+                default:
+                    sceneConfig.renderMode = RenderMode::Lighting;
+                    sceneConfig.forwardLightMode = ForwardLightMode::Light;
+                    break;
+            }
         }
         const char* environmentNames[] = {"Night", "Sunny", "Night N8 3K"};
         if (ImGui::Combo("Environment", &environmentIndex, environmentNames, 3))

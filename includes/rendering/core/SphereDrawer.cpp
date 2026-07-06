@@ -22,7 +22,7 @@ void SphereDrawer::loadMaterials(const std::string& baseDir)
     };
 
     for (unsigned int i = 0; i < MaterialSphereCount; ++i)
-        materials[i] = PBRMaterial::loadFromDirectory(baseDir + dirs[i]);
+        materials[i] = Material::loadFromDirectory(baseDir + dirs[i]);
 }
 
 void SphereDrawer::draw(Shader& shader)
@@ -47,6 +47,41 @@ void SphereDrawer::drawOne(Shader& shader, unsigned int index)
     shader.setMat4("model", model);
 
     sphereMesh->draw();
+}
+
+void SphereDrawer::drawBasic(Shader& shader)
+{
+    if (!isDefaultScene() || !sphereMesh || !state)
+        return;
+
+    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    {
+        materials[i].bindAlbedoOnly(shader);   // 只绑 albedo，unlit forward 只需要这个
+
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, state->materialSpherePositions[i]);
+        model = glm::scale(model, glm::vec3(0.65f));
+        shader.setMat4("model", model);
+
+        sphereMesh->draw();
+    }
+}
+
+void SphereDrawer::drawReflect(Shader& shader)
+{
+    if (!isDefaultScene() || !sphereMesh || !state)
+        return;
+
+    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    {
+        // 纯反射：不需要材质贴图，只需要 model matrix 算法线
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, state->materialSpherePositions[i]);
+        model = glm::scale(model, glm::vec3(0.65f));
+        shader.setMat4("model", model);
+
+        sphereMesh->draw();
+    }
 }
 
 bool SphereDrawer::isDefaultScene() const

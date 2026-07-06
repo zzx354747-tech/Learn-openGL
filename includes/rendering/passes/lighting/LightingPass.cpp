@@ -99,29 +99,29 @@ void LightingPass::bindLightingInputTextures(Shader& shader)
     glBindTexture(GL_TEXTURE_2D, registry.resolveTexture(handles.ao));
     shader.setInt("AO", 3);
 
-    glActiveTexture(GL_TEXTURE10);
+    glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, registry.resolveTexture(handles.shadowMap));
-    shader.setInt("shadowMap", 10);
+    shader.setInt("shadowMap", 4);
 
-    glActiveTexture(GL_TEXTURE11);
+    glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_CUBE_MAP, registry.resolveTexture(handles.depthCubeMap));
-    shader.setInt("depthCubeMap", 11);
+    shader.setInt("depthCubeMap", 5);
 
-    glActiveTexture(GL_TEXTURE12);
+    glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, registry.resolveTexture(handles.spotShadowMap));
-    shader.setInt("spotShadowMap", 12);
+    shader.setInt("spotShadowMap", 6);
 
-    glActiveTexture(GL_TEXTURE13);
+    glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_2D, registry.resolveTexture(handles.brdfLUT));
-    shader.setInt("brdfLUT", 13);
+    shader.setInt("brdfLUT", 7);
 
-    glActiveTexture(GL_TEXTURE14);
+    glActiveTexture(GL_TEXTURE8);
     glBindTexture(GL_TEXTURE_CUBE_MAP, registry.resolveTexture(handles.irradianceMap));
-    shader.setInt("irradianceMap", 14);
+    shader.setInt("irradianceMap", 8);
 
-    glActiveTexture(GL_TEXTURE15);
+    glActiveTexture(GL_TEXTURE9);
     glBindTexture(GL_TEXTURE_CUBE_MAP, registry.resolveTexture(handles.prefilterMap));
-    shader.setInt("prefilterMap", 15);
+    shader.setInt("prefilterMap", 9);
 }
 
 LightingPass::LightingPass( SceneRenderResources& resources, ShadowResources& shadowResources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, Camera& camera ) : resources(resources), shadowResources(shadowResources), config(config), state(state), lightSettings(lightSettings), camera(camera)

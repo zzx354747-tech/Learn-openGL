@@ -5,11 +5,13 @@
 #include <optional>
 #include <string>
 
-class PBRMaterial
+class Material
 {
 public:
-    static PBRMaterial loadFromDirectory(const std::string& directoryPath);
+    static Material loadFromDirectory(const std::string& directoryPath);
     void bind(Shader& shader) const;
+    void bindPhong(Shader& shader) const;     
+    void bindAlbedoOnly(Shader& shader) const; 
 
     std::optional<GLTexture> albedoTex;
     std::optional<GLTexture> normalTex;

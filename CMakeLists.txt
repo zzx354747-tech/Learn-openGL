@@ -180,7 +180,7 @@ add_executable(fbo_demo
     includes/rendering/assets/mesh/SphereMesh.cpp
     includes/rendering/assets/texture/CubeMap.cpp
     includes/rendering/assets/texture/Texture.cpp
-    includes/rendering/assets/texture/PBRMaterial.cpp
+    includes/rendering/assets/texture/Material.cpp
     includes/rendering/core/ResourceRegistry.cpp
     includes/rendering/core/SceneRender.cpp
     includes/rendering/core/SphereDrawer.cpp
@@ -190,6 +190,7 @@ add_executable(fbo_demo
     includes/rendering/passes/environment/SkyboxPass.cpp
     includes/rendering/passes/forward/ForwardHDRPass.cpp
     includes/rendering/passes/forward/ForwardOverlayPass.cpp
+    includes/rendering/passes/forward/SceneObjectPass.cpp
     includes/rendering/passes/geometry/GeometryPass.cpp
     includes/rendering/passes/lighting/LightingPass.cpp
     includes/rendering/passes/ssao/SSAOCommonPass.cpp

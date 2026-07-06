@@ -1,63 +1,39 @@
 #include "rendering/passes/forward/SceneObjectPass.h"
+#include "rendering/uniforms/CameraUniformSetter.h"
 
-SceneObjectPass::SceneObjectPass(
+void SceneObjectPass::renderSceneObjectPass(
+    Camera&               camera,
     SceneRenderResources& resources,
     SceneRenderConfig&    config,
-    Camera&               camera,
     SphereDrawer&         sphereDrawer,
-    GBuffer&              gBuffer,
-    RenderParams&         renderParams)
-    : resources(resources)
-    , config(config)
-    , camera(camera)
-    , sphereDrawer(sphereDrawer)
-    , gBuffer(gBuffer)
-    , renderParams(renderParams)
+    int                   bfwidth,
+    int                   bfheight)
 {
-}
+    // Light 模式不归这个 pass 管——那是延迟管线（GeometryPass + LightingPass）的活
+    if (config.forwardLightMode == ForwardLightMode::Light)
+        return;
 
-void SceneObjectPass::render(int bfwidth, int bfheight)
-{
-    gBuffer.bind();
+    Shader* shader = config.forwardLightMode == ForwardLightMode::Basic
+        ? resources.basicForwardShader
+        : resources.reflectForwardShader;
 
-    glViewport(0, 0, bfwidth, bfheight);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glEnable(GL_DEPTH_TEST);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    renderSpheres(bfwidth, bfheight);
-
-    gBuffer.unbind();
-
-    resources.registry.setTexture(
-        resources.lightingHandles.gPosition,
-        gBuffer.getPositionTexture()
-    );
-    resources.registry.setTexture(
-        resources.lightingHandles.gNormalRoughness,
-        gBuffer.getNormalRoughnessTexture()
-    );
-    resources.registry.setTexture(
-        resources.lightingHandles.gAlbedoMetallic,
-        gBuffer.getAlbedoMetallicTexture()
-    );
-}
-
-void SceneObjectPass::renderSpheres(int bfwidth, int bfheight)
-{
-    Shader* shader = getGeometryShader();
     if (!shader)
         return;
 
     shader->use();
 
-    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
-    renderParams.apply(*shader);                                      // Owner B
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A，reflect 需要 cameraPos 算反射向量
+    if (config.forwardLightMode == ForwardLightMode::Reflect)
+    {
+        if (!resources.skybox)
+            return;
 
-    sphereDrawer.draw(*shader);                                       // Owner C
-}
+        shader->setBool("isSkybox", false);
+        shader->setInt("skybox", 0);
+        resources.skybox->bind(0);
+    }
 
-Shader* SceneObjectPass::getGeometryShader()
-{
-    return resources.geometryPBRShader;
+    config.forwardLightMode == ForwardLightMode::Basic
+        ? sphereDrawer.drawBasic(*shader)
+        : sphereDrawer.drawReflect(*shader);
 }

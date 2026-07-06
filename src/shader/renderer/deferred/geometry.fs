@@ -24,7 +24,7 @@ uniform float bumpNormalStrength;
 uniform int   numLayers;
 uniform float parallaxHeightScale;
 
-// 材质(PBRMaterial::bind 设)
+// 材质(Material::bind 设)
 uniform bool hasAlbedoMap;
 uniform bool hasNormalMap;
 uniform bool hasParallaxMap;

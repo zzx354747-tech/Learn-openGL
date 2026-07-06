@@ -3,14 +3,12 @@
 GeometryPass::GeometryPass(
     SceneRenderResources& resources,
     SceneRenderConfig&    config,
-    SceneRenderState&     state,
     Camera&               camera,
     SphereDrawer&         sphereDrawer,
     GBuffer&              gBuffer,
     RenderParams&         renderParams)
     : resources(resources)
     , config(config)
-    , state(state)
     , camera(camera)
     , sphereDrawer(sphereDrawer)
     , gBuffer(gBuffer)
@@ -26,7 +24,7 @@ void GeometryPass::render(int bfwidth, int bfheight)
     glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    renderMaterialSpheres(bfwidth, bfheight);
+    renderSpheres(bfwidth, bfheight);
 
     gBuffer.unbind();
 
@@ -44,21 +42,22 @@ void GeometryPass::render(int bfwidth, int bfheight)
     );
 }
 
-void GeometryPass::renderMaterialSpheres(int bfwidth, int bfheight)
+void GeometryPass::renderSpheres(int bfwidth, int bfheight)
 {
-    Shader* shader = getGeometryShader();
+    Shader* shader = getPBRShader();
+
     if (!shader)
         return;
 
     shader->use();
 
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
-    renderParams.apply(*shader);                                      // Owner B
+    renderParams.apply(*shader);                                     // Owner B
 
     sphereDrawer.draw(*shader);
 }
 
-Shader* GeometryPass::getGeometryShader()
+Shader* GeometryPass::getPBRShader()
 {
     return resources.geometryPBRShader;
 }

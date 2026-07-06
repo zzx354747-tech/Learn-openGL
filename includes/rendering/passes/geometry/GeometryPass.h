@@ -14,7 +14,6 @@ public:
     GeometryPass(
         SceneRenderResources& resources,
         SceneRenderConfig&    config,
-        SceneRenderState&     state,
         Camera&               camera,
         SphereDrawer&         sphereDrawer,
         GBuffer&              gBuffer,
@@ -25,12 +24,12 @@ public:
 private:
     SceneRenderResources& resources;
     SceneRenderConfig&    config;
-    SceneRenderState&     state;
     Camera&               camera;
     SphereDrawer&         sphereDrawer;
     GBuffer&              gBuffer;
     RenderParams&         renderParams;
 
-    void renderMaterialSpheres(int bfwidth, int bfheight);
-    Shader* getGeometryShader();
+    void renderSpheres(int bfwidth, int bfheight);
+
+    Shader* getPBRShader();
 };

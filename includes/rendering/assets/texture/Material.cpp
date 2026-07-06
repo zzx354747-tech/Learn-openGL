@@ -1,13 +1,13 @@
-#include "rendering/assets/texture/PBRMaterial.h"
+#include "rendering/assets/texture/Material.h"
 #include <filesystem>
 #include <stdexcept>
 #include <algorithm>
 
 namespace fs = std::filesystem;
 
-PBRMaterial PBRMaterial::loadFromDirectory(const std::string& directoryPath)
+Material Material::loadFromDirectory(const std::string& directoryPath)
 {
-    PBRMaterial mat;
+    Material mat;
     static const std::vector<std::string> validExtensions = { ".png", ".jpg", ".jpeg", ".tga" };
 
     for (const auto& entry : fs::directory_iterator(directoryPath))
@@ -29,7 +29,7 @@ PBRMaterial PBRMaterial::loadFromDirectory(const std::string& directoryPath)
             if (slot.has_value())
             {
                 throw std::runtime_error(
-                    "PBRMaterial::loadFromDirectory: duplicate match for '" +
+                    "Material::loadFromDirectory: duplicate match for '" +
                     std::string(keyword) + "' in " + directoryPath +
                     " (offending file: " + filename + ")"
                 );
@@ -49,7 +49,7 @@ PBRMaterial PBRMaterial::loadFromDirectory(const std::string& directoryPath)
     return mat;
 }
 
-void PBRMaterial::bind(Shader& shader) const
+void Material::bind(Shader& shader) const
 {
     // albedo
     bool hasAlbedo = albedoTex.has_value();
@@ -110,4 +110,55 @@ void PBRMaterial::bind(Shader& shader) const
     }
 
     // ao:暂不处理,GBuffer 改造后再接
+}
+
+void Material::bindPhong(Shader& shader) const
+{
+    // albedo
+    bool hasAlbedo = albedoTex.has_value();
+    shader.setBool("hasAlbedoMap", hasAlbedo);
+    if (hasAlbedo)
+    {
+        albedoTex->bind(0);
+        shader.setInt("albedoTexture", 0);
+    }
+    else
+    {
+        shader.setVec3("albedoColor", albedoValue);
+    }
+
+    // normal
+    bool hasNormal = normalTex.has_value();
+    shader.setBool("hasNormalMap", hasNormal);
+    if (hasNormal)
+    {
+        normalTex->bind(1);
+        shader.setInt("normalTexture", 1);
+    }
+
+    // height(parallax)
+    bool hasHeight = heightTex.has_value();
+    shader.setBool("hasParallaxMap", hasHeight);
+    if (hasHeight)
+    {
+        heightTex->bind(2);
+        shader.setInt("parallaxTexture", 2);
+    }
+
+    // roughness/metallic/ao 不设:Phong lighting pass 不读它们
+}
+
+void Material::bindAlbedoOnly(Shader& shader) const
+{
+    bool hasAlbedo = albedoTex.has_value();
+    shader.setBool("hasAlbedoMap", hasAlbedo);
+    if (hasAlbedo)
+    {
+        albedoTex->bind(0);
+        shader.setInt("albedoTexture", 0);
+    }
+    else
+    {
+        shader.setVec3("albedoColor", albedoValue);
+    }
 }

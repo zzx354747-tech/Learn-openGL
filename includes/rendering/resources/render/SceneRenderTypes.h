@@ -11,6 +11,11 @@ enum class RenderMode
     ShadowDebug,
 };
 
+enum class ForwardLightMode { 
+    Basic, 
+    Reflect, 
+    Light };
+
 enum class SceneSelection
 {
     Default,
@@ -57,6 +62,7 @@ struct SceneRenderConfig
     float directionalShadowMaxFilterRadius = 0.014f;
 
     RenderMode renderMode = RenderMode::Basic;
+    ForwardLightMode forwardLightMode = ForwardLightMode::Basic;
     SceneSelection sceneSelection = SceneSelection::Default;
     EnvironmentSelection environmentSelection = EnvironmentSelection::Night;
 };
