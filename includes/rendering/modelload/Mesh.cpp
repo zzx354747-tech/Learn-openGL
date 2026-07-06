@@ -1,66 +1,67 @@
-#include "Mesh.h"
+#include "rendering/modelload/Mesh.h"
 
-namespace
+#include <cstddef>
+#include <utility>
+
+Mesh::Mesh(std::vector<Vertex> vertices,
+           std::vector<unsigned int> indices,
+           std::vector<Texture> textures,
+           MaterialFlags flags,
+           const glm::mat4& localTransform)
+    : vertices(std::move(vertices))
+    , indices(std::move(indices))
+    , textures(std::move(textures))
+    , flags(flags)
+    , localTransform(localTransform)
 {
-unsigned int getDefaultWhiteTexture()
-{
-    static unsigned int textureID = 0;
-
-    if (textureID == 0)
-    {
-        unsigned char whitePixel[] = {255, 255, 255, 255};
-
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            1,
-            1,
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            whitePixel
-        );
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
-
-    return textureID;
+    setupMesh();
 }
 
-unsigned int getDefaultBlackTexture()
+Mesh::Mesh(Mesh&& other) noexcept
+    : vertices(std::move(other.vertices))
+    , indices(std::move(other.indices))
+    , textures(std::move(other.textures))
+    , flags(other.flags)
+    , localTransform(other.localTransform)
+    , VAO(other.VAO)
+    , VBO(other.VBO)
+    , EBO(other.EBO)
 {
-    static unsigned int textureID = 0;
-
-    if (textureID == 0)
-    {
-        unsigned char blackPixel[] = {0, 0, 0, 255};
-
-        glGenTextures(1, &textureID);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            1,
-            1,
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            blackPixel
-        );
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
-
-    return textureID;
+    other.VAO = 0;
+    other.VBO = 0;
+    other.EBO = 0;
 }
+
+Mesh& Mesh::operator=(Mesh&& other) noexcept
+{
+    if (this == &other)
+        return *this;
+
+    if (VAO) glDeleteVertexArrays(1, &VAO);
+    if (VBO) glDeleteBuffers(1, &VBO);
+    if (EBO) glDeleteBuffers(1, &EBO);
+
+    vertices = std::move(other.vertices);
+    indices  = std::move(other.indices);
+    textures = std::move(other.textures);
+    flags    = other.flags;
+    localTransform = other.localTransform;
+    VAO = other.VAO;
+    VBO = other.VBO;
+    EBO = other.EBO;
+
+    other.VAO = 0;
+    other.VBO = 0;
+    other.EBO = 0;
+
+    return *this;
+}
+
+Mesh::~Mesh()
+{
+    if (VAO) glDeleteVertexArrays(1, &VAO);
+    if (VBO) glDeleteBuffers(1, &VBO);
+    if (EBO) glDeleteBuffers(1, &EBO);
 }
 
 void Mesh::setupMesh()
@@ -70,192 +71,131 @@ void Mesh::setupMesh()
     glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
+
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,
+                 vertices.size() * sizeof(Vertex),
+                 vertices.data(),
+                 GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 indices.size() * sizeof(unsigned int),
+                 indices.data(),
+                 GL_STATIC_DRAW);
 
-    // position
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, position));
-    // normal
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Position));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, normal));
-    // texCoords
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, texCoords));
-
-    // texCoords1
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, texCoords1));
-
-    // tangent
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(
-        3,
-        3,
-        GL_FLOAT,
-        GL_FALSE,
-        sizeof(vertex),
-        (void*)offsetof(vertex, tangent)
-    );
-
-    // bitangent
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords1));
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(
-        4,
-        3,
-        GL_FLOAT,
-        GL_FALSE,
-        sizeof(vertex),
-        (void*)offsetof(vertex, bitangent)
-    );
-
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
     glBindVertexArray(0);
 }
 
-void Mesh::draw(Shader& shader)
+void Mesh::Draw(Shader& shader) const
 {
-    unsigned int diffuseNr = 1;
-    unsigned int specularNr = 1;
-    unsigned int normalNr = 1;
-    unsigned int heightNr = 1;
-    unsigned int roughnessNr = 1;
-    unsigned int metallicNr = 1;
-    unsigned int metallicRoughnessNr = 1;
-    bool hasNormalMap = false;
-    bool hasParallaxMap = false;
-    bool hasRoughnessMap = false;
-    bool hasMetallicMap = false;
-    unsigned int textureUnit = 2;
+    Draw(shader, glm::mat4(1.0f));
+}
 
-    shader.setBool("hasSpecularMap", false);
-    shader.setBool("usePackedMetallicRoughness", false);
+void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
+{
+    // 按类型分别绑定，固定 uniform 名，不再编号
+    bool hasBaseColor = false, hasNormal = false, hasMetallic = false, hasRoughness = false, hasParallax = false;
+    unsigned int metallicTexId = 0, roughnessTexId = 0;
+
+    shader.setBool("hasAlbedoMap", false);
+    shader.setBool("hasNormalMap", false);
+    shader.setBool("hasParallaxMap", false);
     shader.setBool("hasRoughnessMap", false);
     shader.setBool("hasMetallicMap", false);
-    shader.setVec4("baseColorFactor", materialFactors.baseColor);
-    shader.setFloat("roughnessFactor", materialFactors.roughness);
-    shader.setFloat("metallicFactor", materialFactors.metallic);
-    shader.setBool("alphaMask", materialFactors.alphaMask);
-    shader.setFloat("alphaCutoff", materialFactors.alphaCutoff);
-    shader.setInt("albedoTexCoordIndex", 0);
-    shader.setInt("normalTexCoordIndex", 0);
-    shader.setInt("parallaxTexCoordIndex", 0);
-    shader.setInt("roughnessTexCoordIndex", 0);
-    shader.setInt("metallicTexCoordIndex", 0);
-    shader.setInt("diffuseTexture", 0);
-    shader.setInt("albedoTexture", 0);
-    shader.setInt("roughnessTexture", 0);
-    shader.setInt("metallicTexture", 1);
-    shader.setInt("texture_diffuse1", 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, getDefaultWhiteTexture());
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, getDefaultBlackTexture());
+    shader.setBool("usePackedMetallicRoughness", false);
+    shader.setVec3("albedoColor", glm::vec3(flags.baseColorFactor));
+    shader.setFloat("roughnessFactor", flags.roughnessFactor);
+    shader.setFloat("metallicFactor", flags.metallicFactor);
 
-    for (unsigned int i = 0; i < textures.size(); i++)
+    for (unsigned int i = 0; i < textures.size(); ++i)
     {
-        glActiveTexture(GL_TEXTURE0 + textureUnit);
-
-        std::string number;
-        std::string name = textures[i].type;
-
-        if (name == "texture_diffuse" || name == "texture_basecolor")
-        {
-            number = std::to_string(diffuseNr++);
-            if (number == "1")
-            {
-                shader.setInt("diffuseTexture", textureUnit);
-                shader.setInt("albedoTexture", textureUnit);
-                shader.setInt("albedoTexCoordIndex", textures[i].uvIndex);
-            }
-        }
-        else if (name == "texture_specular")
-        {
-            number = std::to_string(specularNr++);
-            if (number == "1")
-            {
-                shader.setInt("specularTexture", textureUnit);
-                shader.setBool("hasSpecularMap", true);
-            }
-        }
-        else if (name == "texture_normal")
-        {
-            number = std::to_string(normalNr++);
-            hasNormalMap = true;
-            if (number == "1")
-            {
-                shader.setInt("normalTexture", textureUnit);
-                shader.setInt("normalTexCoordIndex", textures[i].uvIndex);
-            }
-        }
-        else if (name == "texture_height")
-        {
-            number = std::to_string(heightNr++);
-            hasParallaxMap = true;
-            if (number == "1")
-            {
-                shader.setInt("parallaxTexture", textureUnit);
-                shader.setInt("parallaxTexCoordIndex", textures[i].uvIndex);
-            }
-        }
-        else if (name == "texture_roughness")
-        {
-            number = std::to_string(roughnessNr++);
-            hasRoughnessMap = true;
-            if (number == "1")
-            {
-                shader.setInt("roughnessTexture", textureUnit);
-                shader.setInt("roughnessTexCoordIndex", textures[i].uvIndex);
-            }
-        }
-        else if (name == "texture_metallic")
-        {
-            number = std::to_string(metallicNr++);
-            hasMetallicMap = true;
-            if (number == "1")
-            {
-                shader.setInt("metallicTexture", textureUnit);
-                shader.setInt("metallicTexCoordIndex", textures[i].uvIndex);
-            }
-        }
-        else if (name == "texture_metallic_roughness")
-        {
-            number = std::to_string(metallicRoughnessNr++);
-            hasRoughnessMap = true;
-            hasMetallicMap = true;
-            if (number == "1")
-            {
-                shader.setInt("metallicTexture", textureUnit);
-                shader.setInt("roughnessTexture", textureUnit);
-                shader.setInt("metallicTexCoordIndex", textures[i].uvIndex);
-                shader.setInt("roughnessTexCoordIndex", textures[i].uvIndex);
-                shader.setBool("usePackedMetallicRoughness", true);
-            }
-        }
-
-        shader.setInt(name + number, textureUnit);
-
+        glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, textures[i].id);
-        textureUnit++;
+
+        const std::string& type = textures[i].type;
+
+        if (type == "texture_baseColor" || type == "texture_diffuse")
+        {
+            shader.setInt("albedoTexture", i);
+            shader.setBool("hasAlbedoMap", true);
+            hasBaseColor = true;
+        }
+        else if (type == "texture_normal")
+        {
+            shader.setInt("normalTexture", i);
+            shader.setBool("hasNormalMap", true);
+            hasNormal = true;
+        }
+        else if (type == "texture_metallicRoughness")
+        {
+            shader.setInt("metallicTexture", i);
+            shader.setInt("roughnessTexture", i);
+            shader.setBool("hasMetallicMap", true);
+            shader.setBool("hasRoughnessMap", true);
+            metallicTexId = textures[i].id;
+            roughnessTexId = textures[i].id;
+            hasMetallic = true;
+            hasRoughness = true;
+        }
+        else if (type == "texture_metallic")
+        {
+            shader.setInt("metallicTexture", i);
+            shader.setBool("hasMetallicMap", true);
+            metallicTexId = textures[i].id;
+            hasMetallic = true;
+        }
+        else if (type == "texture_roughness")
+        {
+            shader.setInt("roughnessTexture", i);
+            shader.setBool("hasRoughnessMap", true);
+            roughnessTexId = textures[i].id;
+            hasRoughness = true;
+        }
+        else if (type == "texture_height")
+        {
+            shader.setInt("parallaxTexture", i);
+            shader.setBool("hasParallaxMap", true);
+            hasParallax = true;
+        }
     }
 
-    shader.setBool("hasNormalMap", hasNormalMap);
-    shader.setBool("hasParallaxMap", hasParallaxMap);
-    shader.setBool("hasRoughnessMap", hasRoughnessMap);
-    shader.setBool("hasMetallicMap", hasMetallicMap);
+    // 检测是否是 ORM 打包（metallic 和 roughness 指向同一张贴图 id）
+    bool packedMR = hasMetallic && hasRoughness && (metallicTexId == roughnessTexId);
+    shader.setBool("usePackedMetallicRoughness", packedMR);
 
-    glBindVertexArray(VAO);
-
-    glDrawElements(
-        GL_TRIANGLES,
-        static_cast<unsigned int>(indices.size()),
-        GL_UNSIGNED_INT,
-        0
-    );
-
-    glBindVertexArray(0);
+    if (!hasBaseColor) shader.setBool("hasAlbedoMap", false);
+    if (!hasNormal)    shader.setBool("hasNormalMap", false);
+    if (!hasMetallic)  shader.setBool("hasMetallicMap", false);
+    if (!hasRoughness) shader.setBool("hasRoughnessMap", false);
+    if (!hasParallax)  shader.setBool("hasParallaxMap", false);
 
     glActiveTexture(GL_TEXTURE0);
+
+    shader.setBool("alphaMask", flags.alphaMask);
+    shader.setFloat("alphaCutoff", flags.alphaCutoff);
+    shader.setMat4("model", parentTransform * localTransform);
+
+    GLboolean cullFaceWasEnabled = glIsEnabled(GL_CULL_FACE);
+    if (flags.doubleSided)
+        glDisable(GL_CULL_FACE);
+
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    if (flags.doubleSided && cullFaceWasEnabled)
+        glEnable(GL_CULL_FACE);
 }

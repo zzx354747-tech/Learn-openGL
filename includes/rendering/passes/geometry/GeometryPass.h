@@ -4,6 +4,7 @@
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "rendering/core/SphereDrawer.h"
+#include "rendering/core/ModelDrawer.h"
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
 #include "rendering/uniforms/RenderParams.h"
@@ -16,6 +17,7 @@ public:
         SceneRenderConfig&    config,
         Camera&               camera,
         SphereDrawer&         sphereDrawer,
+        ModelDrawer&          modelDrawer,
         GBuffer&              gBuffer,
         RenderParams&         renderParams);
 
@@ -26,10 +28,12 @@ private:
     SceneRenderConfig&    config;
     Camera&               camera;
     SphereDrawer&         sphereDrawer;
+    ModelDrawer&          modelDrawer;
     GBuffer&              gBuffer;
     RenderParams&         renderParams;
 
     void renderSpheres(int bfwidth, int bfheight);
+    void renderModels(int bfwidth, int bfheight);
 
     Shader* getPBRShader();
 };

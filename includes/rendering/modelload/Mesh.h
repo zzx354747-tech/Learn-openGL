@@ -1,91 +1,64 @@
-#pragma once 
-
-#include <vector>
-#include <string>
-#include <cstddef>
+#pragma once
 
 #include <glad/gl.h>
 #include <glm/glm.hpp>
+#include <vector>
+#include <string>
 
 #include "core/Shader.h"
 
-struct vertex
-{
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec2 texCoords;
-    glm::vec2 texCoords1;
-
-    glm::vec3 tangent;
-    glm::vec3 bitangent;
-};
-
-struct texture
+struct Texture
 {
     unsigned int id;
-    std::string type;
-    std::string path;
-    unsigned int uvIndex = 0;
+    std::string  type;   // "texture_baseColor" / "texture_normal" / "texture_metallic" / ...
+    std::string  path;   // 用于跨 mesh 去重缓存的 key
 };
 
-struct MaterialFactors
+struct MaterialFlags
 {
-    glm::vec4 baseColor = glm::vec4(1.0f);
-    float metallic = 0.0f;
-    float roughness = 1.0f;
-    bool alphaMask = false;
-    float alphaCutoff = 0.5f;
+    bool  doubleSided = false;
+    bool  alphaMask   = false;
+    float alphaCutoff = 0.5f;   // glTF 规范默认值
+    glm::vec4 baseColorFactor = glm::vec4(1.0f);
+    float roughnessFactor = 1.0f;
+    float metallicFactor = 0.0f;
 };
 
 class Mesh
 {
 public:
-    std::vector<vertex> vertices;
-    std::vector<unsigned int> indices;
-    std::vector<texture> textures;
-    MaterialFactors materialFactors;
-
-    Mesh(
-        std::vector<vertex> vertices,
-        std::vector<unsigned int> indices,
-        std::vector<texture> textures,
-        MaterialFactors materialFactors = MaterialFactors()
-    )
-        : vertices(std::move(vertices)),
-          indices(std::move(indices)),
-          textures(std::move(textures)),
-          materialFactors(materialFactors)
+    struct Vertex
     {
-        setupMesh();
-    }
+        glm::vec3 Position;
+        glm::vec3 Normal;
+        glm::vec2 TexCoords;
+        glm::vec2 TexCoords1;
+        glm::vec3 Tangent;
+        glm::vec3 Bitangent;
+    };
 
-    void draw(Shader& shader);
+    Mesh(std::vector<Vertex> vertices,
+         std::vector<unsigned int> indices,
+         std::vector<Texture> textures,
+         MaterialFlags flags,
+         const glm::mat4& localTransform);
 
-    ~Mesh()
-    {
-        if (VAO != 0)
-            glDeleteVertexArrays(1, &VAO);
-        if (VBO != 0)
-            glDeleteBuffers(1, &VBO);
-        if (EBO != 0)
-            glDeleteBuffers(1, &EBO);
-    }
+    Mesh(Mesh&& other) noexcept;
+    Mesh& operator=(Mesh&& other) noexcept;
 
-    Mesh(Mesh&& other) noexcept
-    : vertices(std::move(other.vertices)),
-      indices(std::move(other.indices)),
-      textures(std::move(other.textures)),
-      materialFactors(other.materialFactors),
-      VAO(other.VAO), VBO(other.VBO), EBO(other.EBO)
-    {
-        other.VAO = 0;
-        other.VBO = 0;
-        other.EBO = 0;
-    }
-
-    // 禁止拷贝
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
+
+    ~Mesh();
+
+    void Draw(Shader& shader) const;
+    void Draw(Shader& shader, const glm::mat4& parentTransform) const;
+
+    std::vector<Vertex>       vertices;
+    std::vector<unsigned int> indices;
+    std::vector<Texture>      textures;
+    MaterialFlags             flags;   // 新增成员
+    glm::mat4                 localTransform = glm::mat4(1.0f);
 
 private:
     unsigned int VAO = 0;

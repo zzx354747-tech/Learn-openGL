@@ -27,13 +27,17 @@ void ScreenPass::render(
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID(0));
 
+    glActiveTexture(GL_TEXTURE1);
     if (config.enableBloom && resources.pingpongFBO)
     {
-        glActiveTexture(GL_TEXTURE1);
         glBindTexture(
             GL_TEXTURE_2D,
             resources.pingpongFBO->getTextureID(1)
         );
+    }
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID(0));
     }
 
     screenQuad.draw();

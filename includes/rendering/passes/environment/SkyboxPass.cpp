@@ -19,6 +19,9 @@ void SkyboxPass::renderSkyboxPass(
     shader.setInt("skybox", 0);
     bindSkyboxTexture(resources.skybox);
 
+    GLboolean cullFaceWasEnabled = glIsEnabled(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
+
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
 
@@ -29,6 +32,8 @@ void SkyboxPass::renderSkyboxPass(
 
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE); 
+    if (cullFaceWasEnabled)
+        glEnable(GL_CULL_FACE);
 
 }
 

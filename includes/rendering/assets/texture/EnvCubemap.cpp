@@ -142,6 +142,8 @@ void EnvCubemap::convert(Shader &shader)
     glBindFramebuffer(GL_FRAMEBUFFER, cubeMapFBO);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
+    GLboolean cullFaceWasEnabled = glIsEnabled(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
 
     for (unsigned int i = 0; i < 6; ++i)
     {
@@ -158,6 +160,8 @@ void EnvCubemap::convert(Shader &shader)
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDepthFunc(GL_LESS);
+    if (cullFaceWasEnabled)
+        glEnable(GL_CULL_FACE);
     glDeleteRenderbuffers(1, &captureRBO);
 }
 

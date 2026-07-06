@@ -28,6 +28,7 @@ void PointShadowPass::render(const glm::vec3& lightpos)
     glClear(GL_DEPTH_BUFFER_BIT);
 
     sphereDrawer.draw(shadowShader);
+    modelDrawer.draw(shadowShader);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -67,5 +68,10 @@ std::vector<glm::mat4> PointShadowPass::createShadowTransforms(const glm::vec3& 
     return matrices;
 }
 
-PointShadowPass::PointShadowPass(PointShadowMap& shadowMap, Shader& shadowShader, SphereDrawer& sphereDrawer, ResourceRegistry& registry, ResourceHandle depthCubeMapHandle) :pointShadowMap(shadowMap), shadowShader(shadowShader), sphereDrawer(sphereDrawer), registry(registry), depthCubeMapHandle(depthCubeMapHandle)
+PointShadowPass::PointShadowPass(PointShadowMap& shadowMap, Shader& shadowShader, 
+    SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
+    ResourceRegistry& registry, ResourceHandle depthCubeMapHandle)
+    :pointShadowMap(shadowMap), shadowShader(shadowShader), 
+    sphereDrawer(sphereDrawer), modelDrawer(modelDrawer),
+    registry(registry), depthCubeMapHandle(depthCubeMapHandle)
 {}

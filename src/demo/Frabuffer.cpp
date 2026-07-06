@@ -25,6 +25,7 @@
 #include "rendering/assets/texture/CubeMap.h"
 #include "rendering/assets/mesh/SkyboxMesh.h"
 #include "rendering/core/SceneRender.h"
+#include "rendering/core/ModelDrawer.h"
 #include "rendering/resources/shadow/DirectionalShadowMap.h"
 #include "rendering/resources/shadow/PointShadowMap.h"
 #include "rendering/resources/shadow/SpotShadowMap.h"
@@ -338,6 +339,7 @@ int main()
     sceneResources.skyboxMesh = &skyboxMesh;
 
     SceneRenderConfig sceneConfig;
+    sceneConfig.sceneSelection = SceneSelection::LivingRoom;
     sceneConfig.enableSkybox = true;
     sceneConfig.enablePointLight = true;
     sceneConfig.enableDirectionalLight = false;
@@ -363,12 +365,21 @@ int main()
 
     SphereDrawer sphereDrawer(&sphereMesh, &sceneState, &sceneConfig);
     sphereDrawer.loadMaterials("../textures/PBR/");
+
+    ModelDrawer livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig);
+    livingRoomDrawer.setVisibleInScene(SceneSelection::LivingRoom);
+    glm::mat4 livingRoomTransform(1.0f);
+    livingRoomTransform = glm::translate(livingRoomTransform, glm::vec3(0.0f, 0.0f, -3.0f));
+    livingRoomTransform = glm::scale(livingRoomTransform, glm::vec3(0.2f));
+    livingRoomDrawer.setTransform(livingRoomTransform);
+
     DirectionalShadowMap shadowDebug(4096, 4096);
     DirectionalShadowMap shadowMap(4096, 4096);
     PointShadowMap pointShadowMap(1024, 1024, 1.0f, 50.0f);
     PointShadowPass pointShadowPass(pointShadowMap, 
         *sceneResources.pointShadowMapShader, 
         sphereDrawer,
+        livingRoomDrawer,
         sceneResources.registry,
         sceneResources.lightingHandles.depthCubeMap);
     SpotShadowMap spotShadowMap(1024, 1024, 1.0f, 50.0f);
@@ -377,6 +388,7 @@ int main()
         shadowMap,
         *sceneResources.shadowMapShader,
         sphereDrawer,
+        livingRoomDrawer,
         sceneState,
         lightSettings,
         sceneResources.registry,
@@ -385,6 +397,7 @@ int main()
         spotShadowMap,
         *sceneResources.shadowMapShader,
         sphereDrawer,
+        livingRoomDrawer,
         camera,
         sceneState,
         lightSettings,
@@ -599,6 +612,7 @@ int main()
         sceneConfig,
         camera,
         sphereDrawer,
+        livingRoomDrawer,
         sceneGBuffer,
         renderParams);
 
@@ -650,6 +664,15 @@ int main()
         ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
 
         ImGui::SeparatorText("Render");
+        const char* sceneNames[] = {"Default", "Living Room"};
+        int sceneIndex = sceneConfig.sceneSelection == SceneSelection::LivingRoom ? 1 : 0;
+        if (ImGui::Combo("Scene", &sceneIndex, sceneNames, 2))
+        {
+            sceneConfig.sceneSelection = sceneIndex == 1
+                ? SceneSelection::LivingRoom
+                : SceneSelection::Default;
+        }
+
         const char* renderModeNames[] = {"Lighting", "Forward Basic", "Forward Reflection", "Shadow Debug"};
         if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 4))
         {

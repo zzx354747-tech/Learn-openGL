@@ -31,10 +31,12 @@ uniform bool hasParallaxMap;
 uniform bool hasRoughnessMap;
 uniform bool hasMetallicMap;
 uniform bool usePackedMetallicRoughness;
+uniform bool alphaMask;
 
 uniform vec3  albedoColor;
 uniform float roughnessFactor;
 uniform float metallicFactor;
+uniform float alphaCutoff;
 
 vec2 parallaxMapping(vec2 texCoords, vec3 viewDir)
 {
@@ -90,6 +92,20 @@ void main()
         texCoords += parallaxOffset;
     }
 
+    vec3 albedo;
+    if (hasAlbedoMap)
+        albedo = pow(texture(albedoTexture, texCoords).rgb, vec3(2.2));
+    else
+        albedo = pow(albedoColor, vec3(2.2));
+
+     // 新增：alpha discard，注意这里要用未经 gamma 处理的原始 alpha 通道
+    if (alphaMask && hasAlbedoMap)
+    {
+        float alpha = texture(albedoTexture, texCoords).a;
+        if (alpha < alphaCutoff)
+            discard;
+    }
+
     gPosition = FragPos;
 
     if (enableNormalMapping && hasNormalMap)
@@ -127,12 +143,6 @@ void main()
     }
     roughness = clamp(roughness, 0.04, 1.0);
     metallic  = clamp(metallic,  0.0,  1.0);
-
-    vec3 albedo;
-    if (hasAlbedoMap)
-        albedo = pow(texture(albedoTexture, texCoords).rgb, vec3(2.2));
-    else
-        albedo = pow(albedoColor, vec3(2.2));
 
     gNormalRoughness = vec4(normal,  roughness);
     gAlbedoMetallic  = vec4(albedo,  metallic);

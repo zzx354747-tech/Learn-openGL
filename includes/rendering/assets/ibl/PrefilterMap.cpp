@@ -115,6 +115,8 @@ void PrefilterMap::Prefilter(unsigned int envCubemapID, Shader& shader)
     glBindFramebuffer(GL_FRAMEBUFFER, m_captureFBO);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
+    GLboolean cullFaceWasEnabled = glIsEnabled(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
     for (unsigned int mip = 0; mip < MIP_LEVELS; ++mip)
     {
         // 当前 mip 级的分辨率
@@ -138,6 +140,8 @@ void PrefilterMap::Prefilter(unsigned int envCubemapID, Shader& shader)
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDepthFunc(GL_LESS);
+    if (cullFaceWasEnabled)
+        glEnable(GL_CULL_FACE);
     glDeleteRenderbuffers(1, &captureRBO);
 }
 

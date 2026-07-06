@@ -1,6 +1,13 @@
 #include "rendering/passes/shadow/DirectionalShadowPass.h"
 
-DirectionalShadowPass::DirectionalShadowPass( DirectionalShadowMap& shadowMap, Shader& shadowShader, SphereDrawer& sphereDrawer, SceneRenderState& state, LightSettings& lightSettings, ResourceRegistry& registry, ResourceHandle shadowMapHandle) : shadowMap(shadowMap), shadowShader(shadowShader), sphereDrawer(sphereDrawer), state(state), lightSettings(lightSettings), registry(registry), shadowMapHandle(shadowMapHandle)
+DirectionalShadowPass::DirectionalShadowPass( DirectionalShadowMap& shadowMap, Shader& shadowShader, 
+    SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
+    SceneRenderState& state, LightSettings& lightSettings, 
+    ResourceRegistry& registry, ResourceHandle shadowMapHandle) 
+    : shadowMap(shadowMap), shadowShader(shadowShader), 
+    sphereDrawer(sphereDrawer), modelDrawer(modelDrawer),
+    state(state),  lightSettings(lightSettings), 
+    registry(registry), shadowMapHandle(shadowMapHandle)
 {
     }
 
@@ -19,6 +26,7 @@ void DirectionalShadowPass::render()
         glClear(GL_DEPTH_BUFFER_BIT);
 
         sphereDrawer.draw(shadowShader);
+        modelDrawer.draw(shadowShader);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

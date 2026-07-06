@@ -1,525 +1,362 @@
-#include "Model.h"
-#include "stb_image.h"
+#include "rendering/modelload/Model.h"
 
-#include <algorithm>
-#include <chrono>
+#include <assimp/GltfMaterial.h>
+#include <stb_image.h>
+#include <iostream>
+#include <stdexcept>
 
-// processNode递归便利节点
-// processMesh遍历节点中的mesh
-// loadMaterialTextures遍历材质的所有纹理，加载到纹理数组里
+namespace
+{
+glm::mat4 toGlm(const aiMatrix4x4& m)
+{
+    glm::mat4 result(1.0f);
+    result[0][0] = m.a1; result[1][0] = m.a2; result[2][0] = m.a3; result[3][0] = m.a4;
+    result[0][1] = m.b1; result[1][1] = m.b2; result[2][1] = m.b3; result[3][1] = m.b4;
+    result[0][2] = m.c1; result[1][2] = m.c2; result[2][2] = m.c3; result[3][2] = m.c4;
+    result[0][3] = m.d1; result[1][3] = m.d2; result[2][3] = m.d3; result[3][3] = m.d4;
+    return result;
+}
+}
 
-// Model构造函数,负责加载模型，里面包含processNode,processMesh,loadMaterialTextures整个流程
+Model::Model(const std::string& path)
+{
+    loadModel(path);
+}
+
+void Model::Draw(Shader& shader) const
+{
+    Draw(shader, glm::mat4(1.0f));
+}
+
+void Model::Draw(Shader& shader, const glm::mat4& transform) const
+{
+    for (const auto& mesh : meshes)
+        mesh.Draw(shader, transform);
+}
 
 void Model::loadModel(const std::string& path)
 {
-    boundsMin = glm::vec3(0.0f);
-    boundsMax = glm::vec3(0.0f);
-    hasBounds = false;
-
     Assimp::Importer importer;
 
-    unsigned int importFlags =
+    const aiScene* scene = importer.ReadFile(
+        path,
         aiProcess_Triangulate |
         aiProcess_GenSmoothNormals |
-        aiProcess_FlipUVs |
         aiProcess_CalcTangentSpace |
-        aiProcess_PreTransformVertices;
-
-    // ↓ 计时包裹 ReadFile
-    auto t0 = std::chrono::high_resolution_clock::now();
-
-    const aiScene* scene = importer.ReadFile(path, importFlags);
-
-    auto t1 = std::chrono::high_resolution_clock::now();
-    // ↑ 计时结束
+        aiProcess_JoinIdenticalVertices
+    );
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
-        std::cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
+        std::cerr << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
         return;
     }
 
     directory = path.substr(0, path.find_last_of('/'));
 
-    // ↓ 计时包裹 processNode
-    processNode(scene->mRootNode, scene);
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-    // ↑ 计时结束
-
-    auto msReadFile = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
-    auto msProcess  = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-
-    std::cout << "ReadFile:    " << msReadFile << " ms\n";
-    std::cout << "processNode: " << msProcess  << " ms\n";
+    processNode(scene->mRootNode, scene, glm::mat4(1.0f));
 }
 
-    // 第二个参数: processNode可以读取scene,但不能修改scene
-    // 递归处理节点和子节点
-void Model::processNode(aiNode* node, const aiScene* scene)
+void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform)
 {
+    glm::mat4 nodeTransform = parentTransform * toGlm(node->mTransformation);
+
     // 处理当前节点的所有网格
-    for (unsigned int i = 0; i < node->mNumMeshes; i++)
+    for (unsigned int i = 0; i < node->mNumMeshes; ++i)
     {
         // 保存每个网格的索引编号
         unsigned int meshIndex = node->mMeshes[i];
         // 从scene的mMeshes数组中获取对应索引的aiMesh对象指针
         aiMesh* mesh = scene->mMeshes[meshIndex];
         // 将aimesh转化为你自己的mesh,并保存到meshes数组中
-        meshes.push_back(processMesh(mesh, scene));
+        meshes.push_back(processMesh(mesh, scene, nodeTransform));
     }
 
     // 递归处理所有子节点
-    for (unsigned int i = 0; i < node->mNumChildren; i++)
-    {
-        processNode(node->mChildren[i], scene);
-    }
+    for (unsigned int i = 0; i < node->mNumChildren; ++i)
+        processNode(node->mChildren[i], scene, nodeTransform);
 }
 
-// 遍历节点中的mesh
-Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
+Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& nodeTransform)
 {
-    std::vector<vertex> vertices;
+    std::vector<Mesh::Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<texture> textures;
-    MaterialFactors materialFactors;
+    std::vector<Texture> textures;
 
     vertices.reserve(mesh->mNumVertices);
     indices.reserve(mesh->mNumFaces * 3);
 
     // 1. 处理顶点数据
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+    for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
     {
-        vertex v{};
+        Mesh::Vertex vertex{};
 
-        v.position = glm::vec3(
-            mesh->mVertices[i].x,
-            mesh->mVertices[i].y,
-            mesh->mVertices[i].z
-        );
-
-        if (!hasBounds)
-        {
-            boundsMin = v.position;
-            boundsMax = v.position;
-            hasBounds = true;
-        }
-        else
-        {
-            boundsMin = glm::min(boundsMin, v.position);
-            boundsMax = glm::max(boundsMax, v.position);
-        }
+        vertex.Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
 
         if (mesh->HasNormals())
-        {
-            v.normal = glm::vec3(
-                mesh->mNormals[i].x,
-                mesh->mNormals[i].y,
-                mesh->mNormals[i].z
-            );
-        }
+            vertex.Normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
 
         if (mesh->mTextureCoords[0])
         {
-            v.texCoords = glm::vec2(
-                mesh->mTextureCoords[0][i].x,
-                mesh->mTextureCoords[0][i].y
-            );
+            vertex.TexCoords = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y };
+
+            if (mesh->HasTangentsAndBitangents())
+            {
+                vertex.Tangent   = { mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z };
+                vertex.Bitangent = { mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z };
+            }
         }
         else
         {
-            v.texCoords = glm::vec2(0.0f, 0.0f);
+            vertex.TexCoords = { 0.0f, 0.0f };
         }
 
+        // 新增：读取第二套 UV（不是所有 mesh 都有，要判空）
         if (mesh->mTextureCoords[1])
-        {
-            v.texCoords1 = glm::vec2(
-                mesh->mTextureCoords[1][i].x,
-                mesh->mTextureCoords[1][i].y
-            );
-        }
+            vertex.TexCoords1 = { mesh->mTextureCoords[1][i].x, mesh->mTextureCoords[1][i].y };
         else
-        {
-            v.texCoords1 = v.texCoords;
-        }
+            vertex.TexCoords1 = vertex.TexCoords;   // 没有就退化成用 UV0，至少不会是垃圾值
 
-        if (mesh->HasTangentsAndBitangents())
-        {
-            v.tangent = glm::vec3(
-                mesh->mTangents[i].x,
-                mesh->mTangents[i].y,
-                mesh->mTangents[i].z
-            );
-
-            v.bitangent = glm::vec3(
-                mesh->mBitangents[i].x,
-                mesh->mBitangents[i].y,
-                mesh->mBitangents[i].z
-            );
-        }
-        else
-        {
-            v.tangent = glm::vec3(0.0f);
-            v.bitangent = glm::vec3(0.0f);
-        }
-
-        vertices.push_back(v);
+        vertices.push_back(vertex);
     }
 
     // 2. 处理索引数据
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+    for (unsigned int i = 0; i < mesh->mNumFaces; ++i)
     {
-        aiFace face = mesh->mFaces[i];
-
-        for (unsigned int j = 0; j < face.mNumIndices; j++)
-        {
+        const aiFace& face = mesh->mFaces[i];
+        for (unsigned int j = 0; j < face.mNumIndices; ++j)
             indices.push_back(face.mIndices[j]);
-        }
     }
 
-    // 处理材质数据
+    // 3. 处理材质数据（贴图 + 标量属性）
+    MaterialFlags flags;   // 默认值：单面、不透明，即使没有材质也安全
+
     if (mesh->mMaterialIndex >= 0)
     {
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-        aiColor4D baseColor;
-        if (material->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS)
-        {
-            materialFactors.baseColor = glm::vec4(
-                baseColor.r,
-                baseColor.g,
-                baseColor.b,
-                baseColor.a
-            );
-        }
-        else if (material->Get(AI_MATKEY_COLOR_DIFFUSE, baseColor) == AI_SUCCESS)
-        {
-            materialFactors.baseColor = glm::vec4(
-                baseColor.r,
-                baseColor.g,
-                baseColor.b,
-                baseColor.a
-            );
-        }
-
-        material->Get(AI_MATKEY_METALLIC_FACTOR, materialFactors.metallic);
-        material->Get(AI_MATKEY_ROUGHNESS_FACTOR, materialFactors.roughness);
-
-        aiString alphaMode;
-        if (material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS)
-        {
-            materialFactors.alphaMask = std::string(alphaMode.C_Str()) == "MASK";
-        }
-        material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, materialFactors.alphaCutoff);
-
-        std::vector<texture> diffuseMaps = loadMaterialTextures(
-            material,
-            aiTextureType_DIFFUSE,
-            "texture_diffuse",
-            scene
-        );
-        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-
-        std::vector<texture> baseColorMaps = loadMaterialTextures(
-            material,
-            aiTextureType_BASE_COLOR,
-            "texture_basecolor",
-            scene
-        );
+        auto baseColorMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, "texture_baseColor", scene, true);
         textures.insert(textures.end(), baseColorMaps.begin(), baseColorMaps.end());
 
-        std::vector<texture> specularMaps = loadMaterialTextures(
-            material,
-            aiTextureType_SPECULAR,
-            "texture_specular",
-            scene
-        );
-        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-
-        std::vector<texture> normalMaps = loadMaterialTextures(
-            material,
-            aiTextureType_NORMALS,
-            "texture_normal",
-            scene
-        );
+        auto normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", scene, false);
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 
-        std::vector<texture> heightMaps = loadMaterialTextures(
-            material,
-            aiTextureType_HEIGHT,
-            "texture_height",
-            scene
-        );
-        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        auto metalnessMaps = loadMaterialTextures(material, aiTextureType_METALNESS, "texture_metallic", scene, false);
+        textures.insert(textures.end(), metalnessMaps.begin(), metalnessMaps.end());
 
-        std::vector<texture> displacementMaps = loadMaterialTextures(
-            material,
-            aiTextureType_DISPLACEMENT,
-            "texture_height",
-            scene
-        );
-        textures.insert(textures.end(), displacementMaps.begin(), displacementMaps.end());
-
-        std::vector<texture> roughnessMaps = loadMaterialTextures(
-            material,
-            aiTextureType_DIFFUSE_ROUGHNESS,
-            "texture_roughness",
-            scene
-        );
+        auto roughnessMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", scene, false);
         textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
 
-        std::vector<texture> metallicMaps = loadMaterialTextures(
-            material,
-            aiTextureType_METALNESS,
-            "texture_metallic",
-            scene
-        );
-        textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
-
-        std::vector<texture> metallicRoughnessMaps = loadMaterialTextures(
-            material,
-            aiTextureType_GLTF_METALLIC_ROUGHNESS,
-            "texture_metallic_roughness",
-            scene
-        );
+        auto metallicRoughnessMaps = loadMaterialTextures(material, aiTextureType_GLTF_METALLIC_ROUGHNESS, "texture_metallicRoughness", scene, false);
         textures.insert(textures.end(), metallicRoughnessMaps.begin(), metallicRoughnessMaps.end());
+
+        auto aoMaps = loadMaterialTextures(material, aiTextureType_LIGHTMAP, "texture_ao", scene, false);
+        textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
+
+        auto emissiveMaps = loadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive", scene, true);
+        textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
+
+        // 兼容旧 Phong 槽位（非 glTF 模型）
+        auto diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene, true);
+        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+
+        auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene, true);
+        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+
+        flags = loadMaterialFlags(material);
     }
 
-    return Mesh(std::move(vertices), std::move(indices), std::move(textures), materialFactors);
+    return Mesh(std::move(vertices), std::move(indices), std::move(textures), flags, nodeTransform);
 }
-
-void Model::draw(Shader& shader)
+MaterialFlags Model::loadMaterialFlags(aiMaterial* mat)
 {
-    for (Mesh& mesh : meshes)
+    MaterialFlags flags;
+
+    // doubleSided：通用 key，非 glTF 格式材质也可能有
+    mat->Get(AI_MATKEY_TWOSIDED, flags.doubleSided);
+
+    // alphaMode：glTF 专有，返回字符串 "OPAQUE" / "MASK" / "BLEND"
+    aiString alphaMode;
+    if (mat->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS)
+        flags.alphaMask = (std::string(alphaMode.C_Str()) == "MASK");
+
+    // alphaCutoff：glTF 专有，MASK 模式下的判定阈值
+    mat->Get(AI_MATKEY_GLTF_ALPHACUTOFF, flags.alphaCutoff);
+
+    aiColor4D baseColor;
+    if (mat->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS)
     {
-        mesh.draw(shader);
+        flags.baseColorFactor = glm::vec4(
+            baseColor.r,
+            baseColor.g,
+            baseColor.b,
+            baseColor.a);
     }
+    else
+    {
+        aiColor3D diffuseColor;
+        if (mat->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColor) == AI_SUCCESS)
+        {
+            flags.baseColorFactor = glm::vec4(
+                diffuseColor.r,
+                diffuseColor.g,
+                diffuseColor.b,
+                1.0f);
+        }
+    }
+
+    mat->Get(AI_MATKEY_METALLIC_FACTOR, flags.metallicFactor);
+    mat->Get(AI_MATKEY_ROUGHNESS_FACTOR, flags.roughnessFactor);
+
+    return flags;
 }
 
 // 返回textureID
-// 纹理在scene -> mTextures数组里， 所以需要scene指针来访问
-// 处理单个纹理
-unsigned int TextureFromFile(const char* path, const std::string& directory, const aiScene* scene)
-{
-    std::string filename = std::string(path);
-    std::replace(filename.begin(), filename.end(), '\\', '/');
-
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-
-    int width, height, nrComponents;
-    unsigned char* data = nullptr;
-
-    // 情况 1：glb / gltf 的嵌入式纹理
-    if (filename.size() > 0 && filename[0] == '*')
-    {
-        int textureIndex = std::stoi(filename.substr(1));
-
-        if (scene && textureIndex >= 0 && textureIndex < scene->mNumTextures)
-        {
-            aiTexture* aiTex = scene->mTextures[textureIndex];
-
-            // 压缩格式，例如 png / jpg 嵌入在 glb 里
-            if (aiTex->mHeight == 0)
-            {
-                auto tDecodeStart = std::chrono::high_resolution_clock::now();
-                data = stbi_load_from_memory(
-                    reinterpret_cast<unsigned char*>(aiTex->pcData),
-                    aiTex->mWidth,
-                    &width,
-                    &height,
-                    &nrComponents,
-                    0
-                );
-                auto tDecodeEnd = std::chrono::high_resolution_clock::now();
-                std::cout << "  stbi_load_from_memory: "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(tDecodeEnd - tDecodeStart).count()
-                 << " ms  (" << width << "x" << height << ")\n";
-            }
-            // 非压缩格式，Assimp 已经解成像素
-            else
-            {
-                width = aiTex->mWidth;
-                height = aiTex->mHeight;
-                nrComponents = 4;
-                 auto tUploadStart = std::chrono::high_resolution_clock::now();
-
-                glBindTexture(GL_TEXTURE_2D, textureID);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-                glTexImage2D(
-                    GL_TEXTURE_2D,
-                    0,
-                    GL_RGBA,
-                    width,
-                    height,
-                    0,
-                    GL_RGBA,
-                    GL_UNSIGNED_BYTE,
-                    aiTex->pcData
-                );
-
-                auto tMipStart = std::chrono::high_resolution_clock::now();
-
-                glGenerateMipmap(GL_TEXTURE_2D);
-
-                auto tEnd = std::chrono::high_resolution_clock::now();
-
-                auto msUpload = std::chrono::duration_cast<std::chrono::milliseconds>(tMipStart - tUploadStart).count();
-                auto msMip    = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tMipStart).count();
-
-                std::cout << "  [" << path << "]\n";
-                std::cout << "    glTexImage2D:     " << msUpload << " ms\n";
-                std::cout << "    glGenerateMipmap: " << msMip    << " ms\n";
-
-
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-                return textureID;
-            }
-        }
-    }
-    // 情况 2：普通外部贴图，例如 obj / fbx
-    else
-    {
-        filename = directory + "/" + filename;
-
-        data = stbi_load(
-            filename.c_str(),
-            &width,
-            &height,
-            &nrComponents,
-            0
-        );
-    }
-
-    if (data)
-    {
-        GLenum format = GL_RGB;
-        bool isLuminanceAlpha = nrComponents == 2;
-        auto tUploadStart = std::chrono::high_resolution_clock::now();
-
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 2)
-            format = GL_RG;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
-
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            format,
-            width,
-            height,
-            0,
-            format,
-            GL_UNSIGNED_BYTE,
-            data
-        );
-
-        auto tMipStart = std::chrono::high_resolution_clock::now();
-
-        if (isLuminanceAlpha)
-        {
-            GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_GREEN};
-            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-        }
-
-        glGenerateMipmap(GL_TEXTURE_2D);
-
-        auto tEnd = std::chrono::high_resolution_clock::now();
-
-        auto msUpload = std::chrono::duration_cast<std::chrono::milliseconds>(tMipStart - tUploadStart).count();
-        auto msMip    = std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tMipStart).count();
-
-        std::cout << "  [" << path << "]\n";
-        std::cout << "    glTexImage2D:     " << msUpload << " ms\n";
-        std::cout << "    glGenerateMipmap: " << msMip    << " ms\n";
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        stbi_image_free(data);
-    }
-    else
-    {
-        std::cout << "Texture failed to load: " << filename << std::endl;
-        stbi_image_free(data);
-    }
-
-    return textureID;
-}
-
+// 纹理在scene -> mTextures数组里，但这一版还没处理内嵌纹理，只走外部文件路径
 // 遍历材质的所有纹理，加载到纹理数组里
-std::vector<texture> Model::loadMaterialTextures(
+std::vector<Texture> Model::loadMaterialTextures(
     aiMaterial* mat,
     aiTextureType type,
     const std::string& typeName,
-    const aiScene* scene
-)
+    const aiScene* scene,
+    bool isColorData)
 {
-    std::vector<texture> textures;
+    std::vector<Texture> textures;
 
-    for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
+    for (unsigned int i = 0; i < mat->GetTextureCount(type); ++i)
     {
         aiString str;
-        unsigned int uvIndex = 0;
-        mat->GetTexture(type, i, &str, nullptr, &uvIndex);
+        mat->GetTexture(type, i, &str);
+        std::cout << str.C_Str() << std::endl;
 
-        auto it = textures_loaded.find(str.C_Str());
-        if (it != textures_loaded.end())
+        std::string key = str.C_Str();
+        bool isEmbedded = !key.empty() && key[0] == '*';
+
+        std::string cacheKey = isEmbedded ? key : (directory + '/' + key);
+
+        auto cached = textureCache.find(cacheKey);
+        if (cached != textureCache.end())
         {
-            textures.push_back(it->second);
+            textures.push_back(cached->second);
+            continue;
+        }
+
+        int width = 0, height = 0, channels = 0;
+        unsigned char* data = nullptr;
+        bool ownsData = true; // true -> stbi_image_free 释放；false -> delete[] 释放
+
+        if (isEmbedded)
+        {
+            int index = -1;
+            try
+            {
+                index = std::stoi(key.substr(1)); // "*3" -> 3
+            }
+            catch (const std::exception&)
+            {
+                std::cerr << "Invalid embedded texture key: " << key << std::endl;
+                continue;
+            }
+
+            if (index < 0 || static_cast<unsigned int>(index) >= scene->mNumTextures)
+            {
+                std::cerr << "Embedded texture index out of range: " << key << std::endl;
+                continue;
+            }
+
+            const aiTexture* embeddedTex = scene->mTextures[index];
+
+            if (embeddedTex->mHeight == 0)
+            {
+                // 压缩格式(PNG/JPEG)，pcData 是原始文件字节流，长度是 mWidth
+                data = stbi_load_from_memory(
+                    reinterpret_cast<unsigned char*>(embeddedTex->pcData),
+                    embeddedTex->mWidth,
+                    &width, &height, &channels, 0);
+            }
+            else
+            {
+                // 未压缩的原始像素(aiTexel，BGRA 顺序)，重排为 RGBA
+                width = embeddedTex->mWidth;
+                height = embeddedTex->mHeight;
+                channels = 4;
+                data = new unsigned char[width * height * 4];
+                for (int p = 0; p < width * height; ++p)
+                {
+                    data[p * 4 + 0] = embeddedTex->pcData[p].r;
+                    data[p * 4 + 1] = embeddedTex->pcData[p].g;
+                    data[p * 4 + 2] = embeddedTex->pcData[p].b;
+                    data[p * 4 + 3] = embeddedTex->pcData[p].a;
+                }
+                ownsData = false;
+            }
         }
         else
         {
-            auto tDecode = std::chrono::high_resolution_clock::now();
-            texture tex;
-            tex.id = TextureFromFile(str.C_Str(), directory, scene);
-            auto tDone = std::chrono::high_resolution_clock::now();
-            std::cout << "Total texture: " 
-            << std::chrono::duration_cast<std::chrono::milliseconds>(tDone - tDecode).count() 
-            << " ms\n";
+            data = stbi_load(cacheKey.c_str(), &width, &height, &channels, 0);
+        }
 
-            tex.type = typeName;
-            tex.path = str.C_Str();
-            tex.uvIndex = uvIndex;
+        Texture texture{};
+        texture.type = typeName;
+        texture.path = cacheKey;
 
-            textures.push_back(tex);
-            textures_loaded[tex.path] = tex;
+        if (data)
+        {
+            // sourceFormat：告诉 GL 传入 data 的实际通道排布，必须和 channels 对应
+            GLenum sourceFormat = channels == 1 ? GL_RED
+                     : channels == 2 ? GL_RG
+                     : channels == 3 ? GL_RGB
+                     : GL_RGBA;
+
+            // internalFormat：GPU 内部存储格式，颜色数据需要 sRGB 解码，线性数据不需要
+            GLenum internalFormat;
+            if (isColorData && channels == 4)
+                internalFormat = GL_SRGB_ALPHA;
+            else if (isColorData && channels == 3)
+                internalFormat = GL_SRGB;
+            else
+                internalFormat = sourceFormat;
+
+            GLint previousUnpackAlignment = 4;
+            glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+            glGenTextures(1, &texture.id);
+            glBindTexture(GL_TEXTURE_2D, texture.id);
+            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, sourceFormat, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            if (isColorData && channels == 2)
+            {
+                GLint swizzle[] = {GL_RED, GL_RED, GL_RED, GL_GREEN};
+                glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+            }
+
+            if (ownsData) stbi_image_free(data);
+            else delete[] data;
+        }
+        else
+        {
+            std::cerr << "Texture failed to load: " << cacheKey << std::endl;
+            texture.id = 0;
+        }
+
+        if (texture.id != 0)
+        {
+            textureCache[cacheKey] = texture;
+            textures.push_back(texture);
+        }
+        else
+        {
+            if (ownsData && data) stbi_image_free(data);
+            else if (!ownsData && data) delete[] data;
         }
     }
 
     return textures;
 }
-
-Model::Model(const std::string& path)
-{
-        loadModel(path);
-    }
-
-glm::vec3 Model::getBoundsMin() const
-{ return boundsMin; }
-
-glm::vec3 Model::getBoundsMax() const
-{ return boundsMax; }
-
-glm::vec3 Model::getBoundsCenter() const
-{ return (boundsMin + boundsMax) * 0.5f; }
-
-glm::vec3 Model::getBoundsSize() const
-{ return boundsMax - boundsMin; }
-
-bool Model::hasValidBounds() const
-{ return hasBounds; }

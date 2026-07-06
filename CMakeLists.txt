@@ -182,6 +182,7 @@ add_executable(fbo_demo
     includes/rendering/assets/texture/Texture.cpp
     includes/rendering/assets/texture/Material.cpp
     includes/rendering/core/ResourceRegistry.cpp
+    includes/rendering/core/ModelDrawer.cpp
     includes/rendering/core/SceneRender.cpp
     includes/rendering/core/SphereDrawer.cpp
     includes/rendering/passes/debug/LightVisualPass.cpp

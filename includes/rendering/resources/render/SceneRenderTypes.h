@@ -19,7 +19,7 @@ enum class ForwardLightMode {
 enum class SceneSelection
 {
     Default,
-    ModernCity,
+    LivingRoom,
 };
 
 enum class EnvironmentSelection
