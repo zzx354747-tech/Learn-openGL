@@ -77,6 +77,8 @@ uniform float directionalShadowLightSize;
 uniform float directionalShadowBlockerSearchRadius;
 uniform float directionalShadowMinFilterRadius;
 uniform float directionalShadowMaxFilterRadius;
+uniform float directionalShadowBiasSlope;
+uniform float directionalShadowBiasMin;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -225,7 +227,7 @@ float filterPCSSShadow(vec3 projCoords, float bias, float filterRadius)
     return shadow / float(PCSS_SAMPLE_COUNT);
 }
 
-float ShadowCalculation(vec4 fragPosLightSpace)
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
 {
     // 将片段位置从裁剪空间转换到[0,1]范围内，告诉去哪里采样阴影贴图
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -237,7 +239,7 @@ float ShadowCalculation(vec4 fragPosLightSpace)
         projCoords.y < 0.0 || projCoords.y > 1.0)
         return 0.0;
 
-    float bias = 0.005;
+    float bias = max(directionalShadowBiasSlope * (1.0 - dot(normal, lightDir)), directionalShadowBiasMin);
     float avgBlockerDepth = findAverageBlockerDepth(projCoords, bias);
     if (avgBlockerDepth < 0.0)
         return 0.0;
@@ -308,7 +310,7 @@ vec3 calcSunPhong(Sun light, vec3 normal, vec3 viewDir,
     vec3 specularColor = mix(vec3(0.04), albedo, metallic);
     vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
     vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
-    float shadow = ShadowCalculation(FragPosLightSpace) * sunShadowStrength;
+    float shadow = ShadowCalculation(FragPosLightSpace, normal, lightDir) * sunShadowStrength;
     return (diffuse + specular) * (1.0 - shadow);
 }
 
@@ -414,7 +416,7 @@ float metallic)
     // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
     vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
-    float shadow = ShadowCalculation(FragPosLightSpace);
+    float shadow = ShadowCalculation(FragPosLightSpace, normal, lightDir);
 
     shadow *= sunShadowStrength; // 将阴影强度应用到阴影值上
 

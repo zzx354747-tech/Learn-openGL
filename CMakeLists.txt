@@ -170,6 +170,8 @@ add_executable(fbo_demo
     src/demo/Frabuffer.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
+    includes/rendering/core/EnvironmentController.cpp
+    includes/rendering/imgui/ui_import.cpp
     includes/rendering/modelload/Model.cpp
     includes/rendering/modelload/Mesh.cpp
     includes/rendering/assets/mesh/CubeMesh.cpp

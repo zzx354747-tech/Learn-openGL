@@ -7,6 +7,7 @@
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/core/SphereDrawer.h"
+#include "rendering/core/ModelDrawer.h"
 #include "rendering/passes/debug/LightVisualPass.h"
 #include "rendering/passes/environment/SkyboxPass.h"
 
@@ -18,7 +19,8 @@ public:
         SceneRenderResources& resources,
         SceneRenderConfig& config,
         SceneRenderState& state,
-        SphereDrawer& sphereDrawer);
+        SphereDrawer& sphereDrawer,
+        ModelDrawer& modelDrawer);
 
     void render(
         int bfwidth,
@@ -32,4 +34,5 @@ private:
     SceneRenderConfig& config;
     SceneRenderState& state;
     SphereDrawer& sphereDrawer;
+    ModelDrawer& modelDrawer;
 };

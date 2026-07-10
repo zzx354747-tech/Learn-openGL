@@ -53,6 +53,8 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("directionalShadowBlockerSearchRadius", config.directionalShadowBlockerSearchRadius);
     shader.setFloat("directionalShadowMinFilterRadius", config.directionalShadowMinFilterRadius);
     shader.setFloat("directionalShadowMaxFilterRadius", config.directionalShadowMaxFilterRadius);
+    shader.setFloat("directionalShadowBiasSlope", config.directionalShadowBiasSlope);
+    shader.setFloat("directionalShadowBiasMin", config.directionalShadowBiasMin);
     shader.setMat4("lightSpaceMatrix", state.dirLightSpaceMatrix);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);

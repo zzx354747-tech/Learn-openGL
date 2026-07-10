@@ -29,7 +29,11 @@ void lightVisualPass::renderLightVisualPass(
     {
         if (!resources.lightCubeShader || 
             !resources.lightMesh)
+        {
+            std::cerr << "LightVisualPass: Missing resources for light visualization." << std::endl;
             return;
+        }
+
         resources.lightCubeShader->use();
         CameraUniformSetter::apply(*resources.lightCubeShader, camera, bfwidth, bfheight);
 

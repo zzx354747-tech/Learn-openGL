@@ -60,6 +60,8 @@ struct SceneRenderConfig
     float directionalShadowBlockerSearchRadius = 0.006f;
     float directionalShadowMinFilterRadius = 0.0005f;
     float directionalShadowMaxFilterRadius = 0.014f;
+    float directionalShadowBiasSlope = 0.005f;
+    float directionalShadowBiasMin = 0.0005f;
 
     RenderMode renderMode = RenderMode::Basic;
     ForwardLightMode forwardLightMode = ForwardLightMode::Basic;

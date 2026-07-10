@@ -6,6 +6,7 @@ void SceneObjectPass::renderSceneObjectPass(
     SceneRenderResources& resources,
     SceneRenderConfig&    config,
     SphereDrawer&         sphereDrawer,
+    ModelDrawer&          modelDrawer,
     int                   bfwidth,
     int                   bfheight)
 {
@@ -33,7 +34,14 @@ void SceneObjectPass::renderSceneObjectPass(
         resources.skybox->bind(0);
     }
 
-    config.forwardLightMode == ForwardLightMode::Basic
-        ? sphereDrawer.drawBasic(*shader)
-        : sphereDrawer.drawReflect(*shader);
+    if (config.forwardLightMode == ForwardLightMode::Basic)
+    {
+        sphereDrawer.drawBasic(*shader);
+    }
+    else
+    {
+        sphereDrawer.drawReflect(*shader);
+    }
+
+    modelDrawer.draw(*shader);
 }

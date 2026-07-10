@@ -4,6 +4,7 @@
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/core/SphereDrawer.h"
+#include "rendering/core/ModelDrawer.h"
 
 class SceneObjectPass
 {
@@ -13,6 +14,7 @@ public:
         SceneRenderResources& resources,
         SceneRenderConfig&    config,
         SphereDrawer&         sphereDrawer,
+        ModelDrawer&          modelDrawer,
         int                   bfwidth,
         int                   bfheight
     );

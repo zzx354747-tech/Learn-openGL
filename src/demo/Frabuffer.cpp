@@ -46,6 +46,9 @@
 #include "rendering/assets/ibl/PrefilterMap.h"
 #include "rendering/assets/ibl/BrdfLUT.h"
 #include "rendering/uniforms/RenderParams.h"
+#include "rendering/resources/environment/EnvironmentOpition.h"
+#include "rendering/imgui/ui_import.h"
+#include "rendering/core/EnvironmentController.h"
 
 Framebuffer* framebuffer = nullptr;
 PingPongFramebuffer* pingpongFramebuffer = nullptr;
@@ -59,49 +62,6 @@ float lastFrame = 0.0f;
 float swapWaitMs = 0.0f;
 unsigned int fbo;
 int bfwidth, bfheight;
-
-struct EnvironmentOption
-{
-    const char* name;
-    const char* path;
-    EnvironmentSelection selection;
-    HDRLoadOptions loadOptions;
-};
-
-static const EnvironmentOption kEnvironmentOptions[] =
-{
-    {
-        "Night",
-        "../textures/skybox/night.hdr",
-        EnvironmentSelection::Night,
-        HDRLoadOptions{true, 100.0f}
-    },
-    {
-        "Sunny",
-        "../textures/skybox/sunny.hdr",
-        EnvironmentSelection::Sunny,
-        HDRLoadOptions{true, 100.0f}
-    },
-    {
-        "Night N8 3K",
-        "../textures/skybox/Night_08_3K.hdr",
-        EnvironmentSelection::NightN8_3K,
-        HDRLoadOptions{true, 100.0f}
-    },
-};
-
-static int getEnvironmentIndex(EnvironmentSelection selection)
-{
-    for (int i = 0; i < static_cast<int>(sizeof(kEnvironmentOptions) / sizeof(kEnvironmentOptions[0])); ++i)
-    {
-        if (kEnvironmentOptions[i].selection == selection)
-        {
-            return i;
-        }
-    }
-
-    return 0;
-}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -265,6 +225,10 @@ int main()
     "../src/shader/renderer/shadow/point.fs"
     );
 
+    Shader lightCubeShader(
+        "../src/shader/pratice/scenerender/light_cube.vs",
+        "../src/shader/pratice/scenerender/light_cube.fs"
+    );
 
     Shader envCubemapShader(
         "../src/shader/renderer/ibl/env_cubemap.vs",
@@ -322,6 +286,7 @@ int main()
 
     SceneRenderResources sceneResources;
     sceneResources.declareLightingPassResources();
+    sceneResources.lightCubeShader = &lightCubeShader;
     sceneResources.reflectShader = &cubemapShader;
     sceneResources.basicForwardShader = &basicForwardShader;
     sceneResources.reflectForwardShader = &cubemapShader;
@@ -424,188 +389,22 @@ int main()
     sceneResources.brdfLUT = &brdfLUT;
     sceneResources.pingpongFBO = &pingpongFBO;
 
-    auto applyExtractedSun = [&](const ExtractedLight& extractedSun)
-    {
-        const glm::vec3 sunSourceDirection = extractedSun.valid
-            ? extractedSun.direction
-            : extractedSun.brightestDirection;
-
-        lightSettings.sunDirection = -sunSourceDirection;
-        lightSettings.sunExtractedFromEnvironment = extractedSun.valid;
-    };
-
-    auto loadEnvironment = [&]()
-    {
-        int environmentIndex = getEnvironmentIndex(sceneConfig.environmentSelection);
-        HDRLoadOptions loadOptions = kEnvironmentOptions[environmentIndex].loadOptions;
-        loadOptions.sunThreshold = sceneConfig.sunThreshold;
-
-        auto nextHdrTexture = std::make_unique<HDRTexture>();
-        if (!nextHdrTexture->load(kEnvironmentOptions[environmentIndex].path, loadOptions))
-        {
-            std::cerr << "Failed to switch environment: "
-                      << kEnvironmentOptions[environmentIndex].name << std::endl;
-            return;
-        }
-
-        auto nextSkybox = std::make_unique<EnvCubemap>(
-            *nextHdrTexture,
-            *sceneResources.envCubemapShader);
-        auto nextIrradianceMap = std::make_unique<IrradianceMap>(
-            *nextSkybox,
-            irradianceShader);
-        auto nextPrefilterMap = std::make_unique<PrefilterMap>(
-            *nextSkybox,
-            prefilterShader);
-
-        if (!nextSkybox->isReady() ||
-            !nextIrradianceMap->isReady() ||
-            !nextPrefilterMap->isReady())
-        {
-            std::cerr << "Failed to build environment cubemaps: "
-                      << kEnvironmentOptions[environmentIndex].name << std::endl;
-            return;
-        }
-
-        hdrTexture = std::move(nextHdrTexture);
-        skybox = std::move(nextSkybox);
-        irradianceMap = std::move(nextIrradianceMap);
-        prefilterMap = std::move(nextPrefilterMap);
-
-        sceneResources.skybox = skybox.get();
-        sceneResources.irradianceMap = irradianceMap.get();
-        sceneResources.prefilterMap = prefilterMap.get();
-        sceneResources.registry.setTexture(
-            sceneResources.lightingHandles.irradianceMap,
-            irradianceMap->GetID()
-        );
-        sceneResources.registry.setTexture(
-            sceneResources.lightingHandles.prefilterMap,
-            prefilterMap->GetID()
-        );
-        applyExtractedSun(hdrTexture->getExtractedSun());
-    };
-    loadEnvironment();
+    EnvironmentController environmentController
+    (
+    sceneConfig,
+    renderParams,
+    lightSettings,
+    sceneResources,
+    irradianceShader,
+    prefilterShader
+    );
 
     int renderModeIndex = 0;
-    int environmentIndex = getEnvironmentIndex(sceneConfig.environmentSelection);
-    auto applyEnvironmentPreset = [&]()
-    {
-        sceneConfig.renderMode = RenderMode::Lighting;
-        sceneConfig.forwardLightMode = ForwardLightMode::Light;
-        renderModeIndex = 0;
-        sceneConfig.enableSkybox = true;
-        sceneConfig.enableGammaCorrection = true;
-        sceneConfig.enableHDR = true;
-        sceneConfig.enableBloom = true;
-        sceneConfig.enableSSAO = true;
-        sceneConfig.enablePBR = true;
-        sceneConfig.enableIBL = true;
-        sceneConfig.phongDiffuseStrength = 0.55f;
-        sceneConfig.phongSpecularStrength = 0.18f;
-        sceneConfig.phongIBLDiffuseStrength = 1.25f;
-        sceneConfig.phongIBLSpecularStrength = 0.35f;
-        renderParams.enableNormalMapping = true;
-        renderParams.enableParallaxMapping = false;
-        renderParams.bumpNormalStrength = 1.0f;
-        renderParams.numLayers = 32;
-        renderParams.parallaxHeightScale = 0.1f;
+    int environmentIndex =
+        getEnvironmentIndex(sceneConfig.environmentSelection);
 
-        switch (sceneConfig.environmentSelection)
-        {
-        case EnvironmentSelection::Sunny:
-            sceneConfig.enablePointLight = false;
-            sceneConfig.enableDirectionalLight = true;
-            sceneConfig.enableFlashlight = false;
-            sceneConfig.fixedAmbientStrength = 0.1f;
-            sceneConfig.iblAmbientTint = glm::vec3(1.0f);
-            sceneConfig.iblAmbientStrength = 1.4f;
-            sceneConfig.phongDiffuseStrength = 0.42f;
-            sceneConfig.phongSpecularStrength = 0.10f;
-            sceneConfig.phongIBLDiffuseStrength = 1.15f;
-            sceneConfig.phongIBLSpecularStrength = 0.26f;
-            sceneConfig.ssaoStrength = 1.5f;
-            sceneConfig.exposure = 0.9f;
-            sceneConfig.bloomStrength = 0.6f;
-            sceneConfig.bloomThreshold = 1.3f;
-            lightSettings.sunDiffuse = glm::vec3(38.0f, 31.0f, 15.0f);
-            lightSettings.sunSpecular = lightSettings.sunDiffuse;
-            lightSettings.sunAmbient = glm::vec3(1.0f, 1.5f, 2.5f);
-            lightSettings.sunIntensity = 0.7f;
-            lightSettings.sunIntensityScale = 0.52f;
-            lightSettings.sunShadowStrength = 0.94f;
-            sceneConfig.directionalShadowLightSize = 0.004f;
-            sceneConfig.directionalShadowBlockerSearchRadius = 0.006f;
-            sceneConfig.directionalShadowMinFilterRadius = 0.001f;
-            sceneConfig.directionalShadowMaxFilterRadius = 0.005f;
-            break;
-
-        case EnvironmentSelection::NightN8_3K:
-            sceneConfig.enablePointLight = false;
-            sceneConfig.enableDirectionalLight = true;
-            sceneConfig.enableFlashlight = false;
-            sceneConfig.fixedAmbientStrength = 0.0f;
-            sceneConfig.iblAmbientTint = glm::vec3(1.0f, 0.6f, 0.9f);
-            sceneConfig.iblAmbientStrength = 2.8f;
-            sceneConfig.phongDiffuseStrength = 0.48f;
-            sceneConfig.phongSpecularStrength = 0.12f;
-            sceneConfig.phongIBLDiffuseStrength = 0.95f;
-            sceneConfig.phongIBLSpecularStrength = 0.24f;
-            sceneConfig.ssaoStrength = 1.8f;
-            sceneConfig.exposure = 0.8f;
-            sceneConfig.bloomStrength = 2.2f;
-            sceneConfig.bloomThreshold = 0.9f;
-            renderParams.numLayers = 48;
-            lightSettings.sunDiffuse = glm::vec3(2.0f, 14.0f, 25.0f);
-            lightSettings.sunSpecular = lightSettings.sunDiffuse;
-            lightSettings.sunAmbient = glm::vec3(0.5f, 0.0f, 0.8f);
-            lightSettings.sunIntensity = 0.45f;
-            lightSettings.sunIntensityScale = 0.5f;
-            lightSettings.sunShadowStrength = 0.81f;
-            sceneConfig.directionalShadowLightSize = 0.015f;
-            sceneConfig.directionalShadowBlockerSearchRadius = 0.015f;
-            sceneConfig.directionalShadowMinFilterRadius = 0.002f;
-            sceneConfig.directionalShadowMaxFilterRadius = 0.012f;
-            break;
-
-        case EnvironmentSelection::Night:
-        default:
-            sceneConfig.enablePointLight = true;
-            sceneConfig.enableDirectionalLight = false;
-            sceneConfig.enableFlashlight = false;
-            sceneConfig.fixedAmbientStrength = 0.05f;
-            sceneConfig.iblAmbientTint = glm::vec3(1.0f);
-            sceneConfig.iblAmbientStrength = 0.15f;
-            sceneConfig.phongDiffuseStrength = 0.55f;
-            sceneConfig.phongSpecularStrength = 0.16f;
-            sceneConfig.phongIBLDiffuseStrength = 1.65f;
-            sceneConfig.phongIBLSpecularStrength = 0.42f;
-            sceneConfig.ssaoStrength = 2.5f;
-            sceneConfig.exposure = 1.4f;
-            sceneConfig.bloomStrength = 1.8f;
-            sceneConfig.bloomThreshold = 0.7f;
-            lightSettings.pointDiffuse = glm::vec3(1.0f, 0.5f, 0.1f);
-            lightSettings.pointSpecular = glm::vec3(1.0f, 0.6f, 0.25f);
-            lightSettings.pointIntensity = 15.0f;
-            lightSettings.pointAmbientIntensity = 0.2f;
-            lightSettings.pointShadowStrength = 0.98f;
-            lightSettings.pointConstant = 1.0f;
-            lightSettings.pointLinear = 0.09f;
-            lightSettings.pointQuadratic = 0.032f;
-            lightSettings.flashDiffuse = glm::vec3(0.8f, 0.9f, 1.0f);
-            lightSettings.flashSpecular = glm::vec3(1.0f);
-            lightSettings.flashIntensity = 12.0f;
-            lightSettings.flashShadowStrength = 0.9f;
-            lightSettings.flashConstant = 1.0f;
-            lightSettings.flashLinear = 0.045f;
-            lightSettings.flashQuadratic = 0.0075f;
-            lightSettings.flashCutOff = 0.96f;
-            lightSettings.flashOuterCutOff = 0.91f;
-            break;
-        }
-
-    };
-    applyEnvironmentPreset();
+    environmentController.load();
+    environmentController.applyPreset();
 
     GeometryPass geometryPass(
         sceneResources,
@@ -644,7 +443,27 @@ int main()
         lightingPass,
         sceneGBuffer,
         ssaoCommonPass,
-        sphereDrawer);
+        sphereDrawer,
+        livingRoomDrawer);
+
+    SceneRenderUI sceneRenderUI;
+
+    SceneRenderUIState uiState
+    {
+        renderModeIndex,
+        environmentIndex,
+        sceneConfig,
+        renderParams,
+        lightSettings,
+
+        [&environmentController]() {
+            return environmentController.load();
+        },
+
+        [&environmentController]() {
+            environmentController.applyPreset();
+        }
+    };
 
     while (!glfwWindowShouldClose(window))
     {
@@ -659,153 +478,7 @@ int main()
 
         float FPS = 1.0f / deltaTime;
 
-        ImGui::Begin("Deferred PBR Renderer");
-        ImGui::Text("FPS: %.2f", FPS);
-        ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
-
-        ImGui::SeparatorText("Render");
-        const char* sceneNames[] = {"Default", "Living Room"};
-        int sceneIndex = sceneConfig.sceneSelection == SceneSelection::LivingRoom ? 1 : 0;
-        if (ImGui::Combo("Scene", &sceneIndex, sceneNames, 2))
-        {
-            sceneConfig.sceneSelection = sceneIndex == 1
-                ? SceneSelection::LivingRoom
-                : SceneSelection::Default;
-        }
-
-        const char* renderModeNames[] = {"Lighting", "Forward Basic", "Forward Reflection", "Shadow Debug"};
-        if (ImGui::Combo("Render Mode", &renderModeIndex, renderModeNames, 4))
-        {
-            switch (renderModeIndex)
-            {
-                case 1:
-                    sceneConfig.renderMode = RenderMode::Basic;
-                    sceneConfig.forwardLightMode = ForwardLightMode::Basic;
-                    break;
-                case 2:
-                    sceneConfig.renderMode = RenderMode::Reflection;
-                    sceneConfig.forwardLightMode = ForwardLightMode::Reflect;
-                    break;
-                case 3:
-                    sceneConfig.renderMode = RenderMode::ShadowDebug;
-                    sceneConfig.forwardLightMode = ForwardLightMode::Light;
-                    break;
-                default:
-                    sceneConfig.renderMode = RenderMode::Lighting;
-                    sceneConfig.forwardLightMode = ForwardLightMode::Light;
-                    break;
-            }
-        }
-        const char* environmentNames[] = {"Night", "Sunny", "Night N8 3K"};
-        if (ImGui::Combo("Environment", &environmentIndex, environmentNames, 3))
-        {
-            sceneConfig.environmentSelection = kEnvironmentOptions[environmentIndex].selection;
-            loadEnvironment();
-            applyEnvironmentPreset();
-        }
-        ImGui::Checkbox("Skybox", &sceneConfig.enableSkybox);
-        ImGui::Checkbox("Gamma Correction", &sceneConfig.enableGammaCorrection);
-        ImGui::Checkbox("HDR", &sceneConfig.enableHDR);
-        ImGui::Checkbox("PBR", &sceneConfig.enablePBR);
-        ImGui::Checkbox("IBL", &sceneConfig.enableIBL);
-
-        ImGui::SeparatorText("Ambient");
-        ImGui::ColorEdit3("Fixed Ambient Color", glm::value_ptr(sceneConfig.fixedAmbientColor));
-        ImGui::DragFloat("Fixed Ambient Strength", &sceneConfig.fixedAmbientStrength, 0.01f, 0.0f, 4.0f);
-        ImGui::ColorEdit3("IBL Ambient Tint", glm::value_ptr(sceneConfig.iblAmbientTint));
-        ImGui::DragFloat("IBL Ambient Strength", &sceneConfig.iblAmbientStrength, 0.01f, 0.0f, 4.0f);
-
-        ImGui::SeparatorText("Phong Settings");
-        ImGui::DragFloat("Phong Diffuse Strength", &sceneConfig.phongDiffuseStrength, 0.01f, 0.0f, 2.0f);
-        ImGui::DragFloat("Phong Specular Strength", &sceneConfig.phongSpecularStrength, 0.01f, 0.0f, 2.0f);
-        ImGui::DragFloat("Phong IBL Diffuse", &sceneConfig.phongIBLDiffuseStrength, 0.01f, 0.0f, 6.0f);
-        ImGui::DragFloat("Phong IBL Specular", &sceneConfig.phongIBLSpecularStrength, 0.01f, 0.0f, 4.0f);
-
-        ImGui::SeparatorText("Material Mapping");
-        ImGui::Checkbox("Normal Mapping", &renderParams.enableNormalMapping);
-        ImGui::Checkbox("Parallax Mapping", &renderParams.enableParallaxMapping);
-        ImGui::SliderFloat("Parallax Height Scale", &renderParams.parallaxHeightScale, 0.0f, 0.1f, "%.3f");
-        ImGui::SliderFloat("Bump Normal Strength", &renderParams.bumpNormalStrength, 0.0f, 10.0f, "%.2f");
-        ImGui::SliderInt("Parallax Layers", &renderParams.numLayers, 1, 64);
-
-        ImGui::SeparatorText("Post Process");
-        ImGui::Checkbox("SSAO", &sceneConfig.enableSSAO);
-        ImGui::SliderFloat("SSAO Strength", &sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
-        ImGui::Checkbox("Bloom", &sceneConfig.enableBloom);
-        ImGui::SliderFloat("Exposure", &sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
-        ImGui::SliderFloat("Bloom Strength", &sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
-        ImGui::SliderFloat("Bloom Threshold", &sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
-        ImGui::SliderInt("Number of Blur Passes", &sceneConfig.numBlurPasses, 1, 20);
-
-        ImGui::SeparatorText("Lights");
-        ImGui::Checkbox("Point Light", &sceneConfig.enablePointLight);
-        ImGui::Checkbox("Directional Light", &sceneConfig.enableDirectionalLight);
-        ImGui::Checkbox("Flashlight", &sceneConfig.enableFlashlight);
-        ImGui::DragFloat("Sun Threshold", &sceneConfig.sunThreshold, 1.0f, 0.0f, 1000.0f, "%.1f");
-        if (ImGui::IsItemDeactivatedAfterEdit())
-        {
-            loadEnvironment();
-        }
-
-        if (sceneConfig.enablePointLight)
-        {
-            ImGui::SeparatorText("Point Light Settings");
-
-            ImGui::ColorEdit3("Point Light Ambient", glm::value_ptr(lightSettings.pointAmbient));
-            ImGui::ColorEdit3("Point Light Diffuse", glm::value_ptr(lightSettings.pointDiffuse));
-            ImGui::ColorEdit3("Point Light Specular", glm::value_ptr(lightSettings.pointSpecular));
-            ImGui::DragFloat("Light Brightness", &lightSettings.pointIntensity, 0.05f, 0.0f, 20.0f);
-            ImGui::DragFloat("Ambient Brightness", &lightSettings.pointAmbientIntensity, 0.05f, 0.0f, 20.0f);
-            ImGui::SliderFloat("Point Shadow Strength", &lightSettings.pointShadowStrength, 0.0f, 1.0f, "%.2f");
-            ImGui::DragFloat("Point Light Constant", &lightSettings.pointConstant, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Point Light Linear", &lightSettings.pointLinear, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Point Light Quadratic", &lightSettings.pointQuadratic, 0.001f, 0.0f, 1.0f);
-        }
-
-        if (sceneConfig.enableDirectionalLight)
-        {
-            ImGui::SeparatorText("Directional Light Settings");
-
-            constexpr ImGuiColorEditFlags lightColorFlags =
-                ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR;
-            if (ImGui::ColorEdit3(
-                    "Directional Light Color",
-                    glm::value_ptr(lightSettings.sunDiffuse),
-                    lightColorFlags))
-            {
-                lightSettings.sunSpecular = lightSettings.sunDiffuse;
-            }
-            ImGui::ColorEdit3(
-                "Directional Light Ambient",
-                glm::value_ptr(lightSettings.sunAmbient),
-                lightColorFlags);
-            ImGui::DragFloat("Directional Light Intensity", &lightSettings.sunIntensity, 0.05f, 0.0f, 20.0f);
-            ImGui::SliderFloat("Sun Intensity", &lightSettings.sunIntensityScale, 0.0f, 5.0f, "%.2f");
-            ImGui::SliderFloat("Directional Shadow Strength", &lightSettings.sunShadowStrength, 0.0f, 1.0f, "%.2f");
-            ImGui::SliderFloat("PCSS Light Size", &sceneConfig.directionalShadowLightSize, 0.0f, 0.03f, "%.4f");
-            ImGui::SliderFloat("PCSS Blocker Search", &sceneConfig.directionalShadowBlockerSearchRadius, 0.0f, 0.03f, "%.4f");
-            ImGui::SliderFloat("PCSS Min Filter", &sceneConfig.directionalShadowMinFilterRadius, 0.0f, 0.01f, "%.4f");
-            ImGui::SliderFloat("PCSS Max Filter", &sceneConfig.directionalShadowMaxFilterRadius, 0.0f, 0.04f, "%.4f");
-            ImGui::Text("Sun from HDR: %s", lightSettings.sunExtractedFromEnvironment ? "yes" : "no");
-        }
-
-        if (sceneConfig.enableFlashlight)
-        {
-            ImGui::SeparatorText("Flashlight Settings");
-
-            ImGui::ColorEdit3("Flashlight Ambient", glm::value_ptr(lightSettings.flashAmbient));
-            ImGui::ColorEdit3("Flashlight Diffuse", glm::value_ptr(lightSettings.flashDiffuse));
-            ImGui::ColorEdit3("Flashlight Specular", glm::value_ptr(lightSettings.flashSpecular));
-            ImGui::DragFloat("Flashlight Intensity", &lightSettings.flashIntensity, 0.05f, 0.0f, 20.0f);
-            ImGui::SliderFloat("Flashlight Shadow Strength", &lightSettings.flashShadowStrength, 0.0f, 1.0f, "%.2f");
-            ImGui::DragFloat("Flashlight Constant", &lightSettings.flashConstant, 0.01f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight Linear", &lightSettings.flashLinear, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight Quadratic", &lightSettings.flashQuadratic, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight CutOff", &lightSettings.flashCutOff, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Flashlight OuterCutOff", &lightSettings.flashOuterCutOff, 0.001f, 0.0f, 1.0f);
-        }
-
-        ImGui::End();
+        sceneRenderUI.renderUI(uiState, FPS, swapWaitMs);
 
         processInput(window, deltaTime);
 
