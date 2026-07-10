@@ -1,7 +1,7 @@
 #include "ui_import.h"
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "rendering/resources/environment/EnvironmentOpition.h"
+#include "rendering/resources/environment/EnvironmentOption.h"
 
 void SceneRenderUI::renderUI(
     SceneRenderUIState& uiState,
@@ -11,6 +11,12 @@ void SceneRenderUI::renderUI(
      ImGui::Begin("Deferred PBR Renderer");
         ImGui::Text("FPS: %.2f", FPS);
         ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
+        if (uiState.environmentLoadFailed)
+        {
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                "Environment load failed! Check console.");
+        }
 
         ImGui::SeparatorText("Render");
         const char* sceneNames[] = {"Default", "Living Room"};
@@ -23,6 +29,24 @@ void SceneRenderUI::renderUI(
         }
 
         const char* renderModeNames[] = {"Lighting", "Forward Basic", "Forward Reflection", "Shadow Debug"};
+
+        switch (uiState.sceneConfig.renderMode)
+        {
+            case RenderMode::Basic:
+                uiState.renderModeIndex = 1;
+                break;
+            case RenderMode::Reflection:
+                uiState.renderModeIndex = 2;
+                break;
+            case RenderMode::ShadowDebug:
+                uiState.renderModeIndex = 3;
+                break;
+            case RenderMode::Lighting:
+            default:
+                uiState.renderModeIndex = 0;
+                break;
+        }
+
         if (ImGui::Combo("Render Mode", &uiState.renderModeIndex, renderModeNames, 4))
         {
             switch (uiState.renderModeIndex)
@@ -49,8 +73,12 @@ void SceneRenderUI::renderUI(
         if (ImGui::Combo("Environment", &uiState.environmentIndex, environmentNames, 3))
         {
             uiState.sceneConfig.environmentSelection = kEnvironmentOptions[uiState.environmentIndex].selection;
-            uiState.loadEnvironment();
-            uiState.applyEnvironmentPreset();
+            uiState.environmentLoadFailed = !uiState.loadEnvironment();
+            if (!uiState.environmentLoadFailed)
+            {
+                uiState.applyEnvironmentPreset();
+                uiState.renderModeIndex = 0;
+            }
         }
         ImGui::Checkbox("Skybox", &uiState.sceneConfig.enableSkybox);
         ImGui::Checkbox("Gamma Correction", &uiState.sceneConfig.enableGammaCorrection);
@@ -94,7 +122,7 @@ void SceneRenderUI::renderUI(
         if (ImGui::IsItemDeactivatedAfterEdit())
         {
             // 按照代码顺序进行检测
-            uiState.loadEnvironment();
+            uiState.environmentLoadFailed = !uiState.loadEnvironment();
         }
 
         if (uiState.sceneConfig.enablePointLight)

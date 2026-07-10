@@ -15,7 +15,9 @@ struct SceneRenderUIState
     RenderParams& renderParams;
     LightSettings& lightSettings;
 
-    std::function<void()> loadEnvironment;
+    bool environmentLoadFailed = false;
+
+    std::function<bool()> loadEnvironment;
     std::function<void()> applyEnvironmentPreset;
 };
 

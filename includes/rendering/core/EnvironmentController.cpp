@@ -1,5 +1,5 @@
 #include "rendering/core/EnvironmentController.h"
-#include "rendering/resources/environment/EnvironmentOpition.h"
+#include "rendering/resources/environment/EnvironmentOption.h"
 
 #include <iostream>
 

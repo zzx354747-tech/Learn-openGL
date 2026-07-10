@@ -46,7 +46,7 @@
 #include "rendering/assets/ibl/PrefilterMap.h"
 #include "rendering/assets/ibl/BrdfLUT.h"
 #include "rendering/uniforms/RenderParams.h"
-#include "rendering/resources/environment/EnvironmentOpition.h"
+#include "rendering/resources/environment/EnvironmentOption.h"
 #include "rendering/imgui/ui_import.h"
 #include "rendering/core/EnvironmentController.h"
 
@@ -455,6 +455,8 @@ int main()
         sceneConfig,
         renderParams,
         lightSettings,
+
+        false,
 
         [&environmentController]() {
             return environmentController.load();
