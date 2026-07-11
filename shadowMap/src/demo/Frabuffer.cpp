@@ -31,7 +31,6 @@ bool gravePresslastFrame = false; // 上一帧是否按下了`键
 float currentFrame = 0.0f;
 float lastFrame = 0.0f;
 float swapWaitMs = 0.0f;
-unsigned int fbo;
 int bfwidth, bfheight;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -194,7 +193,6 @@ int main()
     SceneRenderState sceneState;
     SceneDrawer sceneDrawer(&cubeMesh, &planeMesh, &sceneState);
 
-    DirectionalShadowMap shadowDebug(*sceneResources.shadowDebugShader, sceneDrawer, 2048, 2048);
     DirectionalShadowMap shadowMap(*sceneResources.shadowMapShader, sceneDrawer, 2048, 2048);
 
     ShadowResources shadowResources;
