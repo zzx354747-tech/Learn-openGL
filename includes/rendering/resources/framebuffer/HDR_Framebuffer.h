@@ -7,6 +7,9 @@ class Framebuffer
 public:
     Framebuffer(int width, int height);
 
+    Framebuffer(const Framebuffer&) = delete;
+    Framebuffer& operator=(const Framebuffer&) = delete;
+
     void resize(int width, int height);
 
     void bind();

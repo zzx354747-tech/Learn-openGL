@@ -77,5 +77,5 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
 
 Shader* GeometryPass::getPBRShader()
 {
-    return resources.geometryPBRShader;
+    return resources.shaderLibrary ? &resources.shaderLibrary->geometryPBR : nullptr;
 }

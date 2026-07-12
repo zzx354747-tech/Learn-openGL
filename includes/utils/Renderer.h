@@ -1,7 +1,7 @@
 #include "core/Shader.h"
 #include "vector"
 #include "scene/Camera.h"
-#include "rendering/Model/Model.h"
+#include "rendering/modelload/Model.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -187,7 +187,7 @@ private:
         model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
         lightingShader.setMat4("model", model);
         lightingShader.setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
-        backpack -> draw(lightingShader);
+        backpack -> Draw(lightingShader);
 
     }
         void drawLightCube(const FrameData& frameData)

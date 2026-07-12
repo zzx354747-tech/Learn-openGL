@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
+// 编译期常量，无法在运行时修改
 constexpr unsigned int MaterialSphereCount = 8;
 
 enum class RenderMode
@@ -38,7 +39,7 @@ struct SceneRenderConfig
     bool enableGammaCorrection = false;
     bool enableHDR = false;
     bool enableBloom = false;
-    bool enableSSAO = true;
+    bool enableSSAO = false;
     bool enablePBR = false;
     bool enableIBL = false;
     float ssaoStrength = 1.0f;

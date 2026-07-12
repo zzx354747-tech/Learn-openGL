@@ -45,6 +45,9 @@
 #include "rendering/imgui/ui_import.h"
 #include "rendering/core/EnvironmentController.h"
 #include "rendering/core/WindowContext.h"
+#include "rendering/resources/shader/ShaderLibrary.h"
+#include "rendering/resources/scene/ScenePresets.h"
+#include "rendering/core/RendererScene.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -182,282 +185,13 @@ int main()
 
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
-    Screenquad screenQuad;
+    RendererScene scene(bfwidth, bfheight);
 
-    Framebuffer fb(bfwidth, bfheight);
-    PingPongFramebuffer pingpongFBO(bfwidth, bfheight);
-    GBuffer sceneGBuffer(bfwidth, bfheight);
-    SSAO sceneSSAO(bfwidth, bfheight);
-    Camera camera;
-
-    Shader screenShader(
-    "../src/shader/renderer/postprocess/screen.vs",
-    "../src/shader/renderer/postprocess/screen.fs"
-    );
-
-    Shader cubemapShader(
-    "../src/shader/renderer/forward/reflection.vs",
-    "../src/shader/renderer/forward/reflection.fs"
-    );
-
-    Shader shadowDebugShader(
-    "../src/shader/renderer/shadow/debug.vs",
-    "../src/shader/renderer/shadow/debug.fs"
-    );
-
-    Shader shadowMapShader(
-    "../src/shader/renderer/shadow/directional.vs",
-    "../src/shader/renderer/shadow/directional.fs"
-    );
-
-    Shader pointShadowMapShader(
-    "../src/shader/renderer/shadow/point.vs",
-    "../src/shader/renderer/shadow/point.gs",
-    "../src/shader/renderer/shadow/point.fs"
-    );
-
-    Shader lightCubeShader(
-        "../src/shader/pratice/scenerender/light_cube.vs",
-        "../src/shader/pratice/scenerender/light_cube.fs"
-    );
-
-    Shader envCubemapShader(
-        "../src/shader/renderer/ibl/env_cubemap.vs",
-        "../src/shader/renderer/ibl/env_cubemap.fs"
-    );
-
-    Shader irradianceShader(
-        "../src/shader/renderer/ibl/env_cubemap.vs",
-        "../src/shader/renderer/ibl/irradiance.fs"
-    );
-
-    Shader prefilterShader(
-        "../src/shader/renderer/ibl/env_cubemap.vs",
-        "../src/shader/renderer/ibl/prefilter.fs"
-    );
-
-    Shader brdfShader(
-        "../src/shader/renderer/ibl/brdf.vs",
-        "../src/shader/renderer/ibl/brdf.fs"
-    );
-
-    Shader blurShader(
-        "../src/shader/renderer/postprocess/blur.vs",
-        "../src/shader/renderer/postprocess/blur.fs"
-    );
-
-    Shader geometryPBRShader(
-        "../src/shader/renderer/deferred/geometry.vs",
-        "../src/shader/renderer/deferred/geometry.fs"
-    );
-
-    Shader basicForwardShader(
-        "../src/shader/renderer/forward/unlit.vs",
-        "../src/shader/renderer/forward/unlit.fs"
-    );
-
-    Shader lightingPassShader(
-        "../src/shader/renderer/deferred/lighting.vs",
-        "../src/shader/renderer/deferred/lighting.fs"
-    );
-
-    Shader ssaoShader(
-        "../src/shader/renderer/ssao/common.vs",
-        "../src/shader/renderer/ssao/ssao.fs"
-    );
-
-    Shader ssaoBlurShader(
-        "../src/shader/renderer/ssao/common.vs",
-        "../src/shader/renderer/ssao/blur.fs"
-    );
-
-    SphereMesh sphereMesh;
-    LightMesh lightMesh;
-    SkyboxMesh skyboxMesh;
-
-    SceneRenderResources sceneResources;
-    sceneResources.declareLightingPassResources();
-    sceneResources.lightCubeShader = &lightCubeShader;
-    sceneResources.reflectShader = &cubemapShader;
-    sceneResources.basicForwardShader = &basicForwardShader;
-    sceneResources.reflectForwardShader = &cubemapShader;
-    sceneResources.shadowDebugShader = &shadowDebugShader;
-    sceneResources.shadowMapShader = &shadowMapShader;
-    sceneResources.pointShadowMapShader = &pointShadowMapShader;
-    sceneResources.blurShader = &blurShader;
-    sceneResources.geometryPBRShader = &geometryPBRShader;
-    sceneResources.lightingPassShader = &lightingPassShader;
-    sceneResources.ssaoShader = &ssaoShader;
-    sceneResources.ssaoBlurShader = &ssaoBlurShader;
-    sceneResources.envCubemapShader = &envCubemapShader;
-    sceneResources.sphereMesh = &sphereMesh;
-    sceneResources.lightMesh = &lightMesh;
-    sceneResources.skyboxMesh = &skyboxMesh;
-
-    SceneRenderConfig sceneConfig;
-    sceneConfig.sceneSelection = SceneSelection::LivingRoom;
-    sceneConfig.enableSkybox = true;
-    sceneConfig.enablePointLight = true;
-    sceneConfig.enableDirectionalLight = false;
-    sceneConfig.enableFlashlight = false;
-    sceneConfig.enableGammaCorrection = false;
-    sceneConfig.enableBloom = false;
-    sceneConfig.enableSSAO = true;
-    sceneConfig.enablePBR = true;
-    sceneConfig.enableIBL = true;
-    sceneConfig.fixedAmbientColor = glm::vec3(0.08f);
-    sceneConfig.fixedAmbientStrength = 1.0f;
-    sceneConfig.iblAmbientTint = glm::vec3(1.0f);
-    sceneConfig.iblAmbientStrength = 1.0f;
-    sceneConfig.phongDiffuseStrength = 0.55f;
-    sceneConfig.phongSpecularStrength = 0.18f;
-    sceneConfig.phongIBLDiffuseStrength = 1.25f;
-    sceneConfig.phongIBLSpecularStrength = 0.35f;
-    RenderParams renderParams;
-
-    SceneRenderState sceneState;
-    sceneConfig.renderMode = RenderMode::Lighting;
-    sceneConfig.forwardLightMode = ForwardLightMode::Light;
-
-    SphereDrawer sphereDrawer(&sphereMesh, &sceneState, &sceneConfig);
-    sphereDrawer.loadMaterials("../textures/PBR/");
-
-    ModelDrawer livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig);
-    livingRoomDrawer.setVisibleInScene(SceneSelection::LivingRoom);
-    glm::mat4 livingRoomTransform(1.0f);
-    livingRoomTransform = glm::translate(livingRoomTransform, glm::vec3(0.0f, 0.0f, -3.0f));
-    livingRoomTransform = glm::scale(livingRoomTransform, glm::vec3(0.2f));
-    livingRoomDrawer.setTransform(livingRoomTransform);
-
-    DirectionalShadowMap shadowMap(4096, 4096);
-    PointShadowMap pointShadowMap(1024, 1024, 1.0f, 50.0f);
-
-    ctx.framebuffer = &fb;
-    ctx.pingpongFBO = &pingpongFBO;
-    ctx.gBuffer = &sceneGBuffer;
-    ctx.ssao = &sceneSSAO;
-    ctx.camera = &camera;
-
-    PointShadowPass pointShadowPass(pointShadowMap, 
-        *sceneResources.pointShadowMapShader, 
-        sphereDrawer,
-        livingRoomDrawer,
-        sceneResources.registry,
-        sceneResources.lightingHandles.depthCubeMap);
-    SpotShadowMap spotShadowMap(1024, 1024, 1.0f, 50.0f);
-    LightSettings lightSettings;
-    DirectionalShadowPass directionalShadowPass(
-        shadowMap,
-        *sceneResources.shadowMapShader,
-        sphereDrawer,
-        livingRoomDrawer,
-        sceneState,
-        lightSettings,
-        sceneResources.registry,
-        sceneResources.lightingHandles.shadowMap);
-    SpotShadowPass spotShadowPass(
-        spotShadowMap,
-        *sceneResources.shadowMapShader,
-        sphereDrawer,
-        livingRoomDrawer,
-        camera,
-        sceneState,
-        lightSettings,
-        sceneResources.registry,
-        sceneResources.lightingHandles.spotShadowMap);
-
-    ShadowResources shadowResources;
-    shadowResources.shadowMap = &shadowMap;
-    shadowResources.pointShadowMap = &pointShadowMap;
-    shadowResources.spotShadowMap = &spotShadowMap;
-
-    // 资源类注册表做法
-    BrdfLUT brdfLUT(brdfShader);
-    sceneResources.registry.setTexture(
-    sceneResources.lightingHandles.brdfLUT,
-    brdfLUT.GetID()
-    );
-
-    sceneResources.brdfLUT = &brdfLUT;
-    sceneResources.pingpongFBO = &pingpongFBO;
-
-    EnvironmentController environmentController
-    (
-    sceneConfig,
-    renderParams,
-    lightSettings,
-    sceneResources,
-    irradianceShader,
-    prefilterShader
-    );
-
-    int renderModeIndex = 0;
-    int environmentIndex =
-        getEnvironmentIndex(sceneConfig.environmentSelection);
-
-    environmentController.load();
-    environmentController.applyPreset();
-
-    GeometryPass geometryPass(
-        sceneResources,
-        sceneConfig,
-        camera,
-        sphereDrawer,
-        livingRoomDrawer,
-        sceneGBuffer,
-        renderParams);
-
-    LightingPass lightingPass(
-        sceneResources,
-        shadowResources,
-        sceneConfig,
-        sceneState,
-        lightSettings,
-        camera);
-
-    SSAOCommonPass ssaoCommonPass(
-        sceneResources,
-        sceneSSAO,
-        screenQuad,
-        camera,
-        sceneGBuffer);
-
-    SceneRender sceneRender(camera, 
-        shadowResources, 
-        sceneResources, 
-        sceneConfig, 
-        sceneState, 
-        lightSettings, 
-        directionalShadowPass,
-        pointShadowPass, 
-        spotShadowPass,
-        geometryPass,
-        lightingPass,
-        sceneGBuffer,
-        ssaoCommonPass,
-        sphereDrawer,
-        livingRoomDrawer);
-
-    SceneRenderUI sceneRenderUI;
-
-    SceneRenderUIState uiState
-    {
-        renderModeIndex,
-        environmentIndex,
-        sceneConfig,
-        renderParams,
-        lightSettings,
-
-        false,
-
-        [&environmentController]() {
-            return environmentController.load();
-        },
-
-        [&environmentController]() {
-            environmentController.applyPreset();
-        }
-    };
+    ctx.framebuffer = &scene.fb;
+    ctx.pingpongFBO = &scene.pingpongFBO;
+    ctx.gBuffer = &scene.sceneGBuffer;
+    ctx.ssao = &scene.sceneSSAO;
+    ctx.camera = &scene.camera;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -472,18 +206,18 @@ int main()
 
         float FPS = 1.0f / deltaTime;
 
-        sceneRenderUI.renderUI(uiState, FPS, swapWaitMs);
+        scene.sceneRenderUI.renderUI(scene.uiState, FPS, swapWaitMs);
 
         processInput(window, ctx, deltaTime);
 
         glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
-        sceneRender.render(
+        scene.sceneRender.render(
             bfwidth, 
             bfheight, 
-            screenShader, 
-            screenQuad, 
-            fb
+            scene.shaderLibrary.screen,
+            scene.screenQuad,
+            scene.fb
         );
 
         // 渲染ImGui界面

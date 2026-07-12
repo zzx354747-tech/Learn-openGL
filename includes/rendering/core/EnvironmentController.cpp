@@ -36,7 +36,7 @@ bool EnvironmentController::load()
 
     auto nextSkybox = std::make_unique<EnvCubemap>(
         *nextHdrTexture,
-        *sceneResources_.envCubemapShader);
+        sceneResources_.shaderLibrary->envCubemap);
     auto nextIrradianceMap = std::make_unique<IrradianceMap>(
         *nextSkybox,
         irradianceShader_);

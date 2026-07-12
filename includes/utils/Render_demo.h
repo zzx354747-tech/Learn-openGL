@@ -1,7 +1,7 @@
 #include "core/Shader.h"
 #include "vector"
 #include "scene/Camera.h"
-#include "rendering/Model/Model.h"
+#include "rendering/modelload/Model.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -395,7 +395,7 @@ private:
 
         if (settings.enableAssimp)
         {
-            assimpModel -> draw(shader);
+            assimpModel -> Draw(shader);
         }
         else 
         {

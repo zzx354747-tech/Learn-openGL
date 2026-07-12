@@ -10,10 +10,10 @@ void SkyboxPass::renderSkyboxPass(
     if (!resources.skyboxMesh||
             !resources.skybox||
             !config.enableSkybox||
-            !resources.reflectShader)
+            !resources.shaderLibrary)
             return;
 
-    Shader& shader = *resources.reflectShader;
+    Shader& shader = resources.shaderLibrary->cubemap;
     shader.use();
 
     shader.setInt("skybox", 0);

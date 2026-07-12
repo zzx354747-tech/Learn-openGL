@@ -9,6 +9,9 @@ class SSAO
 public:
     SSAO(int width, int height);
 
+    SSAO(const SSAO&) = delete;
+    SSAO& operator=(const SSAO&) = delete;
+
     void resize (int width, int height);
 
     unsigned int getNoiseTexture() const;

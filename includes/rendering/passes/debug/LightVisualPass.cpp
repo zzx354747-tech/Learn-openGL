@@ -27,20 +27,20 @@ void lightVisualPass::renderLightVisualPass(
     int bfwidth, 
     int bfheight)
     {
-        if (!resources.lightCubeShader || 
+        if (!resources.shaderLibrary ||
             !resources.lightMesh)
         {
             std::cerr << "LightVisualPass: Missing resources for light visualization." << std::endl;
             return;
         }
 
-        resources.lightCubeShader->use();
-        CameraUniformSetter::apply(*resources.lightCubeShader, camera, bfwidth, bfheight);
+        resources.shaderLibrary->lightCube.use();
+        CameraUniformSetter::apply(resources.shaderLibrary->lightCube, camera, bfwidth, bfheight);
 
         if (config.enablePointLight)
         {
             drawLightCube(
-                *resources.lightCubeShader,
+                resources.shaderLibrary->lightCube,
                 *resources.lightMesh,
                 state.lightPositions,
                 glm::vec3(6.0f),

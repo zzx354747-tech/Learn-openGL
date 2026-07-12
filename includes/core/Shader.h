@@ -11,6 +11,9 @@
 
 class Shader {
 public:
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
+
     //程序ID
     unsigned int ID;
     //构造函数读取并构建着色器（构造函数即调用时就执行）

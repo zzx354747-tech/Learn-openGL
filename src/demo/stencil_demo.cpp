@@ -8,8 +8,8 @@
 #include <GLFW/glfw3.h>
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "rendering/core/Render_demo.h"
-#include "rendering/assets/Texture.h"
+#include "utils/Render_demo.h"
+#include "rendering/assets/texture/Texture.h"
 
 Camera camera;
 bool cursorLocked = true; // 光标是否被锁定
@@ -224,7 +224,6 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    stbi_set_flip_vertically_on_load(true);
     GLTexture cubeTexture("../textures/marble.jpg");
     GLTexture floorTexture("../textures/metal.png");
     GLTexture grassTexture("../textures/grass.png");
@@ -270,7 +269,7 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         glStencilMask(0x00);
         glBindVertexArray(planeVAO);
-        floorTexture.bind();
+        floorTexture.bind(0);
         shader.setMat4("model", glm::mat4(1.0f));
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -284,12 +283,12 @@ int main()
             glStencilMask(0xFF);
             shader.setMat4("model", model);
             glBindVertexArray(cubeVAO);
-            cubeTexture.bind();
+            cubeTexture.bind(0);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         };
 
         glBindVertexArray(grassVAO);
-        grassTexture.bind();
+        grassTexture.bind(0);
         for (unsigned int i = 0; i < vegetation.size(); i++)
         {
             glm::mat4 model = glm::mat4(1.0f);
@@ -314,7 +313,7 @@ int main()
             model = glm::translate(model, it->second);
             shader.setMat4("model", model);
             glBindVertexArray(glassVAO);
-            glassTexture.bind();
+            glassTexture.bind(0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 

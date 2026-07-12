@@ -3,7 +3,7 @@
 void LightingPass::render(Framebuffer& framebuffer,
     Screenquad& screenQuad)
 {
-    if (!resources.lightingPassShader)
+    if (!resources.shaderLibrary)
         return;
 
     framebuffer.bind();
@@ -77,7 +77,7 @@ void LightingPass::setupSpotShadowUniform(Shader& shader)
 
 Shader* LightingPass::getLightingShader()
 {
-    return resources.lightingPassShader;
+    return resources.shaderLibrary ? &resources.shaderLibrary->lightingPass : nullptr;
 }
 
 void LightingPass::bindLightingInputTextures(Shader& shader)

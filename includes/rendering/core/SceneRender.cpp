@@ -11,7 +11,7 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         pointShadowPass.render(state.lightPositions);
         spotShadowPass.render();
 
-        if (config.renderMode == RenderMode::ShadowDebug && resources.shadowDebugShader)
+        if (config.renderMode == RenderMode::ShadowDebug && resources.shaderLibrary)
         {
             shadowDebugPass.render(bfwidth, bfheight, screenQuad);
             return;
@@ -27,12 +27,12 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
             forwardHDRPass.render(bfwidth, bfheight, framebuffer);
         }
 
-        if (config.enableBloom && resources.pingpongFBO && resources.blurShader)
+        if (config.enableBloom && resources.pingpongFBO && resources.shaderLibrary)
         {
             blurPass.render(
                 framebuffer,
                 *resources.pingpongFBO,
-                *resources.blurShader,
+                resources.shaderLibrary->blur,
                 screenQuad,
                 config.numBlurPasses);
         }

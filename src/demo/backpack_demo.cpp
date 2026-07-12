@@ -1,6 +1,6 @@
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "rendering/core/Renderer.h"
+#include "utils/Renderer.h"
 #include "stb_image.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>

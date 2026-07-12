@@ -14,9 +14,11 @@ void SceneObjectPass::renderSceneObjectPass(
     if (config.forwardLightMode == ForwardLightMode::Light)
         return;
 
-    Shader* shader = config.forwardLightMode == ForwardLightMode::Basic
-        ? resources.basicForwardShader
-        : resources.reflectForwardShader;
+    Shader* shader = resources.shaderLibrary
+        ? (config.forwardLightMode == ForwardLightMode::Basic
+            ? &resources.shaderLibrary->basicForward
+            : &resources.shaderLibrary->cubemap)
+        : nullptr;
 
     if (!shader)
         return;

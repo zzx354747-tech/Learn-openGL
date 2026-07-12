@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/Shader.h"
 #include "rendering/assets/mesh/CubeMesh.h"
 #include "rendering/assets/mesh/PlaneMesh.h"
 #include "rendering/assets/mesh/SphereMesh.h"
@@ -12,20 +11,6 @@
 
 struct SceneRenderInputResources
 {
-    Shader* lightCubeShader = nullptr;
-    Shader* basicForwardShader = nullptr;
-    Shader* reflectForwardShader = nullptr;
-    Shader* reflectShader = nullptr;
-    Shader* shadowDebugShader = nullptr;
-    Shader* shadowMapShader = nullptr;
-    Shader* pointShadowMapShader = nullptr;
-    Shader* blurShader = nullptr;
-    Shader* geometryPBRShader = nullptr;
-    Shader* lightingPassShader = nullptr;
-    Shader* ssaoShader = nullptr;
-    Shader* ssaoBlurShader = nullptr;
-    Shader* envCubemapShader = nullptr;
-
     LightMesh* lightMesh = nullptr;
     SphereMesh* sphereMesh = nullptr;
     SkyboxMesh* skyboxMesh = nullptr;

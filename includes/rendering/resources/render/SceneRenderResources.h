@@ -8,11 +8,15 @@
 
 #include "rendering/core/ResourceRegistry.h"
 #include "rendering/passes/lighting/LightingPassResourceHandles.h"
+#include "rendering/resources/shader/ShaderLibrary.h"
 
 struct SceneRenderResources : SceneRenderInputResources, SceneRenderOutputResources
 {
     ResourceRegistry registry;
     LightingPassResourceHandles lightingHandles;
+    ShaderLibrary* shaderLibrary = nullptr;
+
+    SceneRenderResources();
 
     void declareLightingPassResources();
 };

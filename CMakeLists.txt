@@ -149,6 +149,7 @@ add_executable(stencil_demo
     src/demo/stencil_demo.cpp
     src/camera.cpp
     src/stb_image_impl.cpp
+    includes/rendering/assets/texture/Texture.cpp
     ${GLAD_SOURCES}
 )
 target_link_libraries(stencil_demo glfw assimp z ${PLATFORM_LIBS})
@@ -207,6 +208,8 @@ add_executable(fbo_demo
     includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
     includes/rendering/resources/render/SceneRenderResources.cpp
     includes/rendering/resources/ssao/SSAO.cpp
+    includes/rendering/resources/scene/ScenePresets.cpp
+    includes/rendering/resources/shader/ShaderLibrary.cpp
     includes/rendering/resources/shadow/DirectionalShadowMap.cpp
     includes/rendering/resources/shadow/PointShadowMap.cpp
     includes/rendering/resources/shadow/SpotShadowMap.cpp
@@ -221,6 +224,7 @@ add_executable(fbo_demo
     includes/rendering/assets/ibl/IrradianceMap.cpp
     includes/rendering/assets/ibl/PrefilterMap.cpp
     includes/rendering/assets/ibl/BrdfLUT.cpp
+    includes/rendering/core/RendererScene.cpp
 )
 target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(fbo_demo)

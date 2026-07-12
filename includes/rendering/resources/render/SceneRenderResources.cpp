@@ -1,5 +1,10 @@
 #include "rendering/resources/render/SceneRenderResources.h"
 
+SceneRenderResources::SceneRenderResources()
+{
+    declareLightingPassResources();
+}
+
 void SceneRenderResources::declareLightingPassResources()
 {
         lightingHandles.gPosition = registry.declareTexture("gPosition");

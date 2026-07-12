@@ -54,7 +54,11 @@ void Model::loadModel(const std::string& path)
 
     directory = path.substr(0, path.find_last_of('/'));
 
+    // glTF 的 UV 原点与 OpenGL 上传后的纹理方向相反；不翻转时，
+    // 图集会采到上下镜像位置的另一块区域，表现为材质贴图错乱。
+    stbi_set_flip_vertically_on_load(true);
     processNode(scene->mRootNode, scene, glm::mat4(1.0f));
+    stbi_set_flip_vertically_on_load(false);
 }
 
 void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform)

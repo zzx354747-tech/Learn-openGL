@@ -15,29 +15,29 @@ void SSAOCommonPass::render(int width, int height)
 
 void SSAOCommonPass::renderSSAOPass()
 {
-    if (!resources.ssaoShader)
+    if (!resources.shaderLibrary)
         return;
 
     glBindFramebuffer(GL_FRAMEBUFFER, ssao.getSSAOFBO());
     glViewport(0, 0, static_cast<int>(width), static_cast<int>(height));
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
-    setupSSAOUniforms(*resources.ssaoShader);
+    setupSSAOUniforms(resources.shaderLibrary->ssao);
     screenQuad.draw();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void SSAOCommonPass::renderSSAOBlurPass()
 {
-    if (!resources.ssaoBlurShader)
+    if (!resources.shaderLibrary)
         return;
 
     glBindFramebuffer(GL_FRAMEBUFFER, ssao.getSSAOBlurFBO());
     glViewport(0, 0, static_cast<int>(width), static_cast<int>(height));
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
-    resources.ssaoBlurShader->use();
-    bindSSAOInputTexture(*resources.ssaoBlurShader);
+    resources.shaderLibrary->ssaoBlur.use();
+    bindSSAOInputTexture(resources.shaderLibrary->ssaoBlur);
     screenQuad.draw();
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

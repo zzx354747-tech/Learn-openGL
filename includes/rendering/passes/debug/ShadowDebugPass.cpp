@@ -6,7 +6,7 @@ ShadowDebugPass::ShadowDebugPass( SceneRenderResources& resources, ShadowResourc
 
 void ShadowDebugPass::render(int bfwidth, int bfheight, Screenquad& screenQuad)
 {
-        if (!resources.shadowDebugShader || !shadowResources.shadowMap)
+        if (!resources.shaderLibrary || !shadowResources.shadowMap)
             return;
 
         glViewport(0, 0, bfwidth, bfheight);
@@ -16,8 +16,8 @@ void ShadowDebugPass::render(int bfwidth, int bfheight, Screenquad& screenQuad)
         // Debug Pass 是全屏 quad，不需要深度测试
         glDisable(GL_DEPTH_TEST);
 
-        resources.shadowDebugShader->use();
-        resources.shadowDebugShader->setInt("depthMap", 0);
+        resources.shaderLibrary->shadowDebug.use();
+        resources.shaderLibrary->shadowDebug.setInt("depthMap", 0);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(
