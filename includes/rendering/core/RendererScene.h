@@ -29,6 +29,9 @@
 #include "rendering/passes/ssao/SSAOCommonPass.h"
 #include "rendering/core/SceneRender.h"
 #include "rendering/imgui/ui_import.h"
+#include "rendering/resources/scene/ScenePresets.h"
+#include "rendering/resources/environment/EnvironmentOption.h"
+#include "rendering/core/SceneRender.h"
 
 // 第一轮:仅第 0 层(无依赖对象)。
 // 顺序为main栈上对象的构造顺序
@@ -83,6 +86,14 @@ struct RendererScene
     int renderModeIndex = 0;
     int environmentIndex = 0;
     SceneRenderUIState uiState;
+
+    void resize(int width, int height);
+
+    void render(int width, int height);
+
+    void renderUI(float FPS, float swapWaitMs);
+
+    Camera& getCamera();
 
     RendererScene(int width, int height);
 };

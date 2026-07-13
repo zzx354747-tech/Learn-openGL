@@ -1,7 +1,5 @@
 // rendering/core/RendererScene.cpp
 #include "rendering/core/RendererScene.h"
-#include "rendering/resources/scene/ScenePresets.h"
-#include "rendering/resources/environment/EnvironmentOption.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 RendererScene::RendererScene(int width, int height)
@@ -117,4 +115,33 @@ RendererScene::RendererScene(int width, int height)
 
     environmentController.load();
     environmentController.applyPreset();
+}
+
+void RendererScene::resize(int width, int height)
+{
+    fb.resize(width, height);
+    pingpongFBO.resize(width, height);
+    sceneGBuffer.resize(width, height);
+    sceneSSAO.resize(width, height);
+}
+
+void RendererScene::render(int width, int height)
+{
+    sceneRender.render(
+        width,
+        height,
+        shaderLibrary.screen,
+        screenQuad,
+        fb
+    );
+}
+
+void RendererScene::renderUI(float fps, float swapWaitMs)
+{
+    sceneRenderUI.renderUI(uiState, fps, swapWaitMs);
+}
+
+Camera& RendererScene::getCamera()
+{
+    return camera;
 }
