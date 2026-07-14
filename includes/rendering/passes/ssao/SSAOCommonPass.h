@@ -21,10 +21,10 @@ private:
     Screenquad& screenQuad;
     Camera& camera;
     GBuffer& gBuffer;
-    float width = 0.0f;
-    float height = 0.0f;
+    int width = 0;
+    int height = 0;
     void setupSSAOUniforms(Shader& shader);
     void bindGBufferTextures(Shader& shader);
-    void bindSSAOInputTexture(Shader& shader);
+    void bindSSAOBilateralBlurTextures(Shader& shader, unsigned int aoInput);
     void bindNoiseTexture(Shader& shader);
 };

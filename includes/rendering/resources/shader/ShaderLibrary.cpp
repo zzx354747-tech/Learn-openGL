@@ -49,5 +49,5 @@ ShaderLibrary::ShaderLibrary()
         "../src/shader/renderer/ssao/ssao.fs")
     , ssaoBlur(
         "../src/shader/renderer/ssao/common.vs",
-        "../src/shader/renderer/ssao/blur.fs")
+        "../src/shader/renderer/ssao/ssao_bilateral_blur.fs")
 {}

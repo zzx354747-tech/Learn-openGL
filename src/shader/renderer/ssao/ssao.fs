@@ -7,7 +7,8 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D texNoise;
 
-uniform vec3 samples[64];
+const int SAMPLE_COUNT = 16;
+uniform vec3 samples[SAMPLE_COUNT];
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat3 normalMatrix;
@@ -34,7 +35,7 @@ void main()
     // 初始化环境光遮蔽值
     float occlusion = 0.0;
     // 遮蔽计算
-    for (int i = 0; i < 64; ++i)
+    for (int i = 0; i < SAMPLE_COUNT; ++i)
     {
         // 将样本点从切线空间转换到观察空间
         vec3 samplePos = TBN * samples[i]; // 切线空间 -> 观察空间
@@ -55,6 +56,6 @@ void main()
         if (sampleDepth >= samplePos.z + bias)
             occlusion += rangeCheck;
     }
-    occlusion = 1.0 - (occlusion / 64.0); // 归一化遮蔽值
+    occlusion = 1.0 - (occlusion / float(SAMPLE_COUNT)); // 归一化遮蔽值
     FragColor = occlusion;
 }

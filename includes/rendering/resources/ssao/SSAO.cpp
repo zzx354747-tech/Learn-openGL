@@ -3,6 +3,7 @@
 #include <iostream>
 
 SSAO::SSAO(int width, int height)
+    : bilateralBlurPingPong(width, height)
 {
     init(width, height);
 }
@@ -14,8 +15,10 @@ void SSAO::init(int width, int height)
     // 创建一个随机数生成器的分布规则，范围在0.0到1.0之间
     std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
 
-    // 生成一个矩形随机采样核，包含64个采样点
-    for (int i = 0; i < 64; ++i)
+    constexpr int kernelSize = 16;
+
+    // 生成一个半球随机采样核。低采样数配合旋转噪声和双边滤波使用。
+    for (int i = 0; i < kernelSize; ++i)
     {
         // 这一步+normalize  随机的意义在于：采样点在半球面上随机分布
         glm::vec3 sample(
@@ -30,7 +33,7 @@ void SSAO::init(int width, int height)
         sample *= randomFloats(generator);
 
         // 线性插值过程，将采样点按二次函数分布在半球内，靠近中心的采样点更密集
-        float scale = static_cast<float>(i) / 64.0f;
+        float scale = static_cast<float>(i) / static_cast<float>(kernelSize);
         scale = 0.1f + 0.9f * (scale * scale); // 线性插值，范围从0.1到1.0
         sample *= scale;
 
@@ -65,7 +68,7 @@ void SSAO::init(int width, int height)
         // 创建SSAO_ColorBuffer纹理
         glGenTextures(1, &SSAO_ColorBuffer);
         glBindTexture(GL_TEXTURE_2D, SSAO_ColorBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, width, height, 0, GL_RED, GL_FLOAT, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         // 将SSAO_ColorBuffer纹理附加到SSAO_FBO的颜色附件上
@@ -78,30 +81,6 @@ void SSAO::init(int width, int height)
         // 检查SSAO_FBO是否完整
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         {
-            std::cerr << "SSAO Blur Framebuffer not complete!" << std::endl;
-        }
-
-        // 创建SSAO_BlurFBO
-        glGenFramebuffers(1, &SSAO_BlurFBO);
-        glBindFramebuffer(GL_FRAMEBUFFER, SSAO_BlurFBO);
-
-        // 创建SSAO_BlurColorBuffer纹理
-        glGenTextures(1, &SSAO_BlurColorBuffer);
-        glBindTexture(GL_TEXTURE_2D, SSAO_BlurColorBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        // 将SSAO_BlurColorBuffer纹理附加到SSAO_BlurFBO的颜色附件上
-        glFramebufferTexture2D(GL_FRAMEBUFFER,
-            GL_COLOR_ATTACHMENT0,
-            GL_TEXTURE_2D,
-            SSAO_BlurColorBuffer,
-            0);
-
-        // 检查SSAO_BlurFBO是否完整
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        {
             std::cerr << "SSAO Framebuffer not complete!" << std::endl;
         }
 
@@ -111,23 +90,18 @@ void SSAO::init(int width, int height)
 
 void SSAO::resize(int width, int height)
 {
-    // 重新创建SSAO_ColorBuffer纹理
+    // 重新创建原始 SSAO 纹理
     glBindTexture(GL_TEXTURE_2D, SSAO_ColorBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, nullptr);
-
-    // 重新创建SSAO_BlurColorBuffer纹理
-    glBindTexture(GL_TEXTURE_2D, SSAO_BlurColorBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, width, height, 0, GL_RED, GL_FLOAT, nullptr);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+    bilateralBlurPingPong.resize(width, height);
 }
 
 SSAO::~SSAO()
 {
     glDeleteFramebuffers(1, &SSAO_FBO);
-    glDeleteFramebuffers(1, &SSAO_BlurFBO);
     glDeleteTextures(1, &SSAO_ColorBuffer);
-    glDeleteTextures(1, &SSAO_BlurColorBuffer);
     glDeleteTextures(1, &noiseTexture);
 }
 
@@ -137,14 +111,14 @@ unsigned int SSAO::getNoiseTexture() const
 unsigned int SSAO::getSSAOFBO() const
 { return SSAO_FBO; }
 
-unsigned int SSAO::getSSAOBlurFBO() const
-{ return SSAO_BlurFBO; }
-
 unsigned int SSAO::getSSAOColorBuffer() const
 { return SSAO_ColorBuffer; }
 
-unsigned int SSAO::getSSAOBlurColorBuffer() const
-{ return SSAO_BlurColorBuffer; }
+unsigned int SSAO::getBilateralBlurTexture() const
+{ return bilateralBlurPingPong.getTextureID(1); }
+
+SSAOPingPongFramebuffer& SSAO::getBilateralBlurPingPong()
+{ return bilateralBlurPingPong; }
 
 const std::vector<glm::vec3>& SSAO::getSSAOKernel() const
 { return ssaoKernel; }

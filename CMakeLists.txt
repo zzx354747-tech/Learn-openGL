@@ -206,6 +206,7 @@ add_executable(fbo_demo
     includes/rendering/resources/framebuffer/Gbuffer.cpp
     includes/rendering/resources/framebuffer/HDR_Framebuffer.cpp
     includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
+    includes/rendering/resources/framebuffer/SSAOPingPongFramebuffer.cpp
     includes/rendering/resources/render/SceneRenderResources.cpp
     includes/rendering/resources/ssao/SSAO.cpp
     includes/rendering/resources/scene/ScenePresets.cpp

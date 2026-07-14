@@ -3,6 +3,7 @@
 #include <glad/gl.h>
 #include <vector>
 #include <glm/glm.hpp>
+#include "rendering/resources/framebuffer/SSAOPingPongFramebuffer.h"
 
 class SSAO
 {
@@ -17,19 +18,21 @@ public:
     unsigned int getNoiseTexture() const;
 
     unsigned int getSSAOFBO() const;
-    unsigned int getSSAOBlurFBO() const;
     unsigned int getSSAOColorBuffer() const;
-    unsigned int getSSAOBlurColorBuffer() const;
+    unsigned int getBilateralBlurTexture() const;
+
+    SSAOPingPongFramebuffer& getBilateralBlurPingPong();
 
     const std::vector<glm::vec3>& getSSAOKernel() const;
 
     ~SSAO();
 
 private:
-    unsigned int SSAO_FBO, SSAO_BlurFBO;
-    unsigned int SSAO_ColorBuffer, SSAO_BlurColorBuffer;
+    unsigned int SSAO_FBO = 0;
+    unsigned int SSAO_ColorBuffer = 0;
     unsigned int noiseTexture;
     std::vector<glm::vec3> ssaoKernel;
+    SSAOPingPongFramebuffer bilateralBlurPingPong;
 
     void init(int width, int height);
 };

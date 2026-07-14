@@ -2,14 +2,14 @@
 
 void SSAOCommonPass::render(int width, int height)
 {
-    this->width = static_cast<float>(width);
-    this->height = static_cast<float>(height);
+    this->width = width;
+    this->height = height;
     renderSSAOPass();
     renderSSAOBlurPass();
 
     resources.registry.setTexture(
         resources.lightingHandles.ao,
-        ssao.getSSAOBlurColorBuffer()
+        ssao.getBilateralBlurTexture()
     );
 }
 
@@ -19,7 +19,7 @@ void SSAOCommonPass::renderSSAOPass()
         return;
 
     glBindFramebuffer(GL_FRAMEBUFFER, ssao.getSSAOFBO());
-    glViewport(0, 0, static_cast<int>(width), static_cast<int>(height));
+    glViewport(0, 0, width, height);
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
     setupSSAOUniforms(resources.shaderLibrary->ssao);
@@ -32,14 +32,32 @@ void SSAOCommonPass::renderSSAOBlurPass()
     if (!resources.shaderLibrary)
         return;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, ssao.getSSAOBlurFBO());
-    glViewport(0, 0, static_cast<int>(width), static_cast<int>(height));
+    Shader& shader = resources.shaderLibrary->ssaoBlur;
+    SSAOPingPongFramebuffer& pingPong = ssao.getBilateralBlurPingPong();
+
     glDisable(GL_DEPTH_TEST);
+
+    shader.use();
+    shader.setMat4("view", camera.GetViewMatrix());
+
+    // X pass: 原始 SSAO -> pingPong[0]
+    pingPong.bind(0);
+    glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT);
-    resources.shaderLibrary->ssaoBlur.use();
-    bindSSAOInputTexture(resources.shaderLibrary->ssaoBlur);
+
+    shader.setVec2("u_Direction", glm::vec2(1.0f, 0.0f));
+    bindSSAOBilateralBlurTextures(shader, ssao.getSSAOColorBuffer());
     screenQuad.draw();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Y pass: pingPong[0] -> pingPong[1]，后者是最终 AO
+    pingPong.bind(1);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    shader.setVec2("u_Direction", glm::vec2(0.0f, 1.0f));
+    bindSSAOBilateralBlurTextures(shader, pingPong.getTextureID(0));
+    screenQuad.draw();
+
+    pingPong.unbind();
 }
 
 void SSAOCommonPass::setupSSAOUniforms(Shader& shader)
@@ -68,11 +86,21 @@ void SSAOCommonPass::bindGBufferTextures(Shader& shader)
     glBindTexture(GL_TEXTURE_2D, gBuffer.getNormalRoughnessTexture());
 }
 
-void SSAOCommonPass::bindSSAOInputTexture(Shader& shader)
+void SSAOCommonPass::bindSSAOBilateralBlurTextures(
+    Shader& shader,
+    unsigned int aoInput)
 {
     glActiveTexture(GL_TEXTURE0);
-    shader.setInt("SSAOInput", 0);
-    glBindTexture(GL_TEXTURE_2D, ssao.getSSAOColorBuffer());
+    glBindTexture(GL_TEXTURE_2D, aoInput);
+    shader.setInt("u_AOInput", 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, gBuffer.getPositionTexture());
+    shader.setInt("gPosition", 1);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, gBuffer.getNormalRoughnessTexture());
+    shader.setInt("gNormalRoughness", 2);
 }
 
 void SSAOCommonPass::bindNoiseTexture(Shader& shader)
