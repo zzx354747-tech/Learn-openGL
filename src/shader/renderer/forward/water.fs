@@ -14,6 +14,47 @@ uniform vec3 sunDirection;
 uniform vec3 sunColor;
 uniform vec2 viewportSize;
 uniform float waterTime;
+uniform float cloudAmbientTransmission;
+uniform bool enableStormShaftLighting;
+uniform vec2 stormHeroHolePosition;
+uniform vec2 stormShaftLean;
+uniform float stormHoleSize;
+uniform float stormPoolHoleSize;
+uniform float stormHoleSoftness;
+uniform vec3 stormShaftColor;
+uniform float stormShaftSurfaceIntensity;
+
+const int STORM_LARGE_HOLE_COUNT = 3;
+const vec2 STORM_LARGE_HOLE_OFFSETS[STORM_LARGE_HOLE_COUNT] = vec2[](
+    vec2(-3000.0, -15000.0),
+    vec2( 3500.0, -18000.0),
+    vec2(    0.0, -22000.0));
+
+float sampleStormShaftCluster(vec2 worldXZ)
+{
+    if (!enableStormShaftLighting || stormShaftSurfaceIntensity <= 0.001)
+        return 0.0;
+
+    float poolRadius = max(stormPoolHoleSize, 1.0);
+    float poolInnerRadius = poolRadius *
+        (1.0 - clamp(stormHoleSoftness, 0.05, 0.80));
+    float poolDistance = length(
+        (worldXZ - stormHeroHolePosition) * vec2(0.84, 1.0));
+    float mask = 1.0 - smoothstep(
+        poolInnerRadius, poolRadius, poolDistance);
+
+    float largeRadius = max(stormHoleSize, 1.0);
+    float largeInnerRadius = largeRadius *
+        (1.0 - clamp(stormHoleSoftness, 0.05, 0.80));
+    for (int i = 0; i < STORM_LARGE_HOLE_COUNT; ++i)
+    {
+        vec2 center = stormHeroHolePosition + STORM_LARGE_HOLE_OFFSETS[i];
+        float distanceToShaft = length((worldXZ - center) * vec2(0.88, 1.12));
+        mask = max(mask, 1.0 - smoothstep(
+            largeInnerRadius, largeRadius, distanceToShaft));
+    }
+    return mask;
+}
 
 vec3 samplePositionSmooth(vec2 uv)
 {
@@ -49,13 +90,17 @@ void main()
     vec3 shallowColor = vec3(0.025, 0.30, 0.27);
     vec3 deepColor = vec3(0.008, 0.055, 0.115);
     vec3 bodyColor = mix(shallowColor, deepColor, depthFactor);
-    vec3 reflection = textureLod(prefilterMap, R, 0.75).rgb;
+    vec3 reflection = textureLod(prefilterMap, R, 0.75).rgb *
+                      cloudAmbientTransmission;
 
     vec3 L = normalize(-sunDirection);
     vec3 H = normalize(L + V);
     float sunGlint = pow(max(dot(N, H), 0.0), 180.0);
     vec3 color = mix(bodyColor, reflection, clamp(fresnel * 0.82, 0.0, 0.9));
     color += sunColor * sunGlint * 0.16;
+    float shaftMask = sampleStormShaftCluster(WorldPos.xz);
+    color += stormShaftColor * shaftMask * stormShaftSurfaceIntensity *
+             mix(0.18, 0.42, max(N.y, 0.0));
 
     // Smooth directional foam replaces the former multiplied sine checkerboard.
     float depthAA = max(fwidth(opticalDepth) * 2.0, 0.025);

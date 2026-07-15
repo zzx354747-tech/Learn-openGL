@@ -5,6 +5,20 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(glfw3 REQUIRED)
+find_package(assimp CONFIG QUIET)
+find_package(ZLIB QUIET)
+
+if(TARGET assimp::assimp)
+    set(ASSIMP_LINK_TARGET assimp::assimp)
+else()
+    set(ASSIMP_LINK_TARGET assimp)
+endif()
+
+if(TARGET ZLIB::ZLIB)
+    set(ZLIB_LINK_TARGET ZLIB::ZLIB)
+else()
+    set(ZLIB_LINK_TARGET z)
+endif()
 
 set(ASSIMP_INSTALL_DIR ${CMAKE_SOURCE_DIR}/third_party/assimp/install)
 if(EXISTS ${ASSIMP_INSTALL_DIR}/include AND EXISTS ${ASSIMP_INSTALL_DIR}/lib)
@@ -131,7 +145,7 @@ add_executable(diffuse_demo
     src/Graphics.cpp
     ${GLAD_SOURCES}
 )
-target_link_libraries(diffuse_demo glfw assimp z ${PLATFORM_LIBS})
+target_link_libraries(diffuse_demo glfw ${ASSIMP_LINK_TARGET} ${ZLIB_LINK_TARGET} ${PLATFORM_LIBS})
 set_output_dir(diffuse_demo)
 
 add_executable(backpack_demo
@@ -142,7 +156,7 @@ add_executable(backpack_demo
     includes/rendering/modelload/Mesh.cpp
     ${GLAD_SOURCES}
 )
-target_link_libraries(backpack_demo glfw assimp z ${PLATFORM_LIBS})
+target_link_libraries(backpack_demo glfw ${ASSIMP_LINK_TARGET} ${ZLIB_LINK_TARGET} ${PLATFORM_LIBS})
 set_output_dir(backpack_demo)
 
 add_executable(stencil_demo
@@ -152,7 +166,7 @@ add_executable(stencil_demo
     includes/rendering/assets/texture/Texture.cpp
     ${GLAD_SOURCES}
 )
-target_link_libraries(stencil_demo glfw assimp z ${PLATFORM_LIBS})
+target_link_libraries(stencil_demo glfw ${ASSIMP_LINK_TARGET} ${ZLIB_LINK_TARGET} ${PLATFORM_LIBS})
 set_output_dir(stencil_demo)
 
 add_executable(newbackpack
@@ -164,7 +178,7 @@ add_executable(newbackpack
     ${GLAD_SOURCES}
     includes/rendering/assets/texture/HDRTexture.cpp
 )
-target_link_libraries(newbackpack glfw assimp z ${PLATFORM_LIBS})
+target_link_libraries(newbackpack glfw ${ASSIMP_LINK_TARGET} ${ZLIB_LINK_TARGET} ${PLATFORM_LIBS})
 set_output_dir(newbackpack)
 
 add_executable(fbo_demo
@@ -206,10 +220,12 @@ add_executable(fbo_demo
     includes/rendering/passes/shadow/SpotShadowPass.cpp
     includes/rendering/postprocess/blur/BlurPass.cpp
     includes/rendering/postprocess/screen/ScreenPass.cpp
+    includes/rendering/postprocess/taa/TemporalAAPass.cpp
     includes/rendering/resources/framebuffer/Gbuffer.cpp
     includes/rendering/resources/framebuffer/HDR_Framebuffer.cpp
     includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
     includes/rendering/resources/framebuffer/SSAOPingPongFramebuffer.cpp
+    includes/rendering/resources/framebuffer/TemporalAAFramebuffer.cpp
     includes/rendering/resources/render/SceneRenderResources.cpp
     includes/rendering/resources/ssao/SSAO.cpp
     includes/rendering/resources/scene/ScenePresets.cpp
@@ -230,5 +246,6 @@ add_executable(fbo_demo
     includes/rendering/assets/ibl/BrdfLUT.cpp
     includes/rendering/core/RendererScene.cpp
 )
-target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
+target_link_libraries(fbo_demo imgui glfw ${ASSIMP_LINK_TARGET} ${ZLIB_LINK_TARGET} ${PLATFORM_LIBS})
+target_compile_definitions(fbo_demo PRIVATE OPENGL_PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
 set_output_dir(fbo_demo)

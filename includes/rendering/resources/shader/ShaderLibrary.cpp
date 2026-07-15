@@ -4,6 +4,9 @@ ShaderLibrary::ShaderLibrary()
     : screen(
         "../src/shader/renderer/postprocess/screen.vs",
         "../src/shader/renderer/postprocess/screen.fs")
+    , taa(
+        "../src/shader/renderer/postprocess/taa.vs",
+        "../src/shader/renderer/postprocess/taa.fs")
     , cubemap(
         "../src/shader/renderer/forward/reflection.vs",
         "../src/shader/renderer/forward/reflection.fs")

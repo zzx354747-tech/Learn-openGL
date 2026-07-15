@@ -31,6 +31,8 @@
 #include "rendering/passes/lighting/LightingPass.h"
 #include "rendering/passes/ssao/SSAOCommonPass.h"
 #include "rendering/core/SceneRender.h"
+#include "rendering/assets/texture/Texture.h"
+#include <memory>
 #include "rendering/imgui/ui_import.h"
 #include "rendering/resources/scene/ScenePresets.h"
 #include "rendering/resources/environment/EnvironmentOption.h"
@@ -72,6 +74,7 @@ struct RendererScene
 
     // 第二轮新增:第 1 层
     SceneRenderResources sceneResources;
+    std::unique_ptr<GLTexture> sunTexture;
     SphereDrawer sphereDrawer;
     ModelDrawer livingRoomDrawer;
 
@@ -93,6 +96,13 @@ struct RendererScene
     int environmentIndex = 0;
     SceneRenderUIState uiState;
 
+    SceneRenderConfig cloudWeatherTransitionStart;
+    CloudWeatherPreset activeCloudWeatherPreset = CloudWeatherPreset::Sunny;
+    unsigned int activeCloudWeatherTransitionRequest = 0;
+    float cloudWeatherTransitionElapsed = 0.0f;
+    double cloudWeatherLastUpdateSeconds = 0.0;
+    bool cloudWeatherTransitionActive = false;
+
     void resize(int width, int height);
 
     void render(int width, int height);
@@ -100,6 +110,8 @@ struct RendererScene
     void renderUI(float FPS, float swapWaitMs);
 
     Camera& getCamera();
+
+    void updateCloudWeatherEvolution();
 
     RendererScene(int width, int height);
 };

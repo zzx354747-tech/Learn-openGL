@@ -9,6 +9,7 @@
 struct SceneRenderOutputResources
 {
     EnvCubemap* skybox = nullptr;
+    unsigned int sunTexture = 0;
     IrradianceMap* irradianceMap = nullptr;
     PrefilterMap* prefilterMap = nullptr;
     BrdfLUT* brdfLUT = nullptr;

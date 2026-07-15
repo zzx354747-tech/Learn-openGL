@@ -20,13 +20,11 @@ void Framebuffer::resize(int width, int height)
             glBindTexture(GL_TEXTURE_2D, 0);
         }
 
-        glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-        glRenderbufferStorage(GL_RENDERBUFFER, 
-                GL_DEPTH24_STENCIL8, 
-                width, 
-                height);
-
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, depthTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8,
+                     width, height, 0, GL_DEPTH_STENCIL,
+                     GL_UNSIGNED_INT_24_8, nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
 void Framebuffer::bind()
@@ -54,6 +52,11 @@ unsigned int Framebuffer::getFBO() const
         return hdrFBO;
     }
 
+unsigned int Framebuffer::getDepthTextureID() const
+{
+        return depthTexture;
+    }
+
 Framebuffer::~Framebuffer()
 {
         glDeleteFramebuffers(1, &hdrFBO);
@@ -62,7 +65,7 @@ Framebuffer::~Framebuffer()
             if (colorBuffers[i] != 0)
                 glDeleteTextures(1, &colorBuffers[i]);
         }
-        glDeleteRenderbuffers(1, &rboDepth);
+        glDeleteTextures(1, &depthTexture);
     }
 
 void Framebuffer::initFramebuffer(int bfwidth, int bfheight)
@@ -95,18 +98,22 @@ void Framebuffer::initFramebuffer(int bfwidth, int bfheight)
 
             // 开启深度测试后，openGL会自动把每个片段的深度值写入
             // 生成渲染缓冲对象
-            glGenRenderbuffers(1, &rboDepth);
-            glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-            glRenderbufferStorage(GL_RENDERBUFFER, 
-                GL_DEPTH24_STENCIL8, 
-                bfwidth, 
-                bfheight);
+            glGenTextures(1, &depthTexture);
+            glBindTexture(GL_TEXTURE_2D, depthTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8,
+                         bfwidth, bfheight, 0, GL_DEPTH_STENCIL,
+                         GL_UNSIGNED_INT_24_8, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
             // 把渲染缓冲对象附加到帧缓冲对象上
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, 
-                GL_DEPTH_STENCIL_ATTACHMENT, 
-                GL_RENDERBUFFER, 
-                rboDepth);
+            glFramebufferTexture2D(GL_FRAMEBUFFER,
+                GL_DEPTH_STENCIL_ATTACHMENT,
+                GL_TEXTURE_2D,
+                depthTexture,
+                0);
 
             // 显示声明调用drawbuffers,以及声明drawbuffer列表
             GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };

@@ -16,6 +16,7 @@
 #include "rendering/passes/shadow/SpotShadowPass.h"
 #include "rendering/postprocess/blur/BlurPass.h"
 #include "rendering/postprocess/screen/ScreenPass.h"
+#include "rendering/postprocess/taa/TemporalAAPass.h"
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/resources/render/SceneRenderResources.h"
@@ -24,9 +25,11 @@
 class SceneRender
 {
 public:
-    SceneRender( Camera& camera, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass, SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer);
+    SceneRender( Camera& camera, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass, SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer, int width, int height);
 
     void render( int bfwidth, int bfheight, Shader& screenShader, Screenquad& screenQuad, Framebuffer& framebuffer);
+
+    void resize(int width, int height);
 
 private:
     SceneRenderConfig& config;
@@ -41,4 +44,5 @@ private:
     ForwardOverlayPass forwardOverlayPass;
     BlurPass blurPass;
     ScreenPass screenPass;
+    TemporalAAPass temporalAAPass;
 };

@@ -19,6 +19,7 @@ public:
         SceneRenderResources& resources,
         SceneRenderConfig& config,
         SceneRenderState& state,
+        LightSettings& lightSettings,
         SphereDrawer& sphereDrawer,
         ModelDrawer& modelDrawer);
 
@@ -33,6 +34,7 @@ private:
     SceneRenderResources& resources;
     SceneRenderConfig& config;
     SceneRenderState& state;
+    LightSettings& lightSettings;
     SphereDrawer& sphereDrawer;
     ModelDrawer& modelDrawer;
 };

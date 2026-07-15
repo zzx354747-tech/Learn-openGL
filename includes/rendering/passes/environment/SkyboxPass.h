@@ -2,6 +2,7 @@
 
 #include "rendering/uniforms/SkyboxCameraUniformSetter.h"
 #include "rendering/resources/render/SceneRenderResources.h"
+#include "rendering/assets/light/LightSettings.h"
 
 class SkyboxPass
 {
@@ -10,6 +11,7 @@ public:
         Camera& camera,
         SceneRenderResources& resources,
         SceneRenderConfig& config,
+        LightSettings& lightSettings,
         int bfwidth, 
         int bfheight);
 

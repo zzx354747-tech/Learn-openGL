@@ -1,4 +1,5 @@
 #include "rendering/uniforms/SSAOCameraUniformSetter.h"
+#include "rendering/uniforms/TemporalJitter.h"
 
 void SSAOCameraUniformSetter::apply( Shader& shader, Camera& camera, float width, float height )
 {
@@ -10,6 +11,10 @@ void SSAOCameraUniformSetter::apply( Shader& shader, Camera& camera, float width
             0.1f,
             100.0f
         );
+        projection = TemporalJitter::apply(
+            projection,
+            static_cast<int>(width),
+            static_cast<int>(height));
 
         glm::mat3 normalMatrix = glm::mat3(transpose(inverse(view)));
 

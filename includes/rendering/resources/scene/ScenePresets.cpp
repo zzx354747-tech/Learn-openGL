@@ -5,10 +5,10 @@ SceneRenderConfig makeLivingRoomPreset()
 {
     SceneRenderConfig config;
 
-    config.sceneSelection = SceneSelection::FujiTerrain;
+    config.sceneSelection = SceneSelection::LivingRoom;
     config.environmentSelection = EnvironmentSelection::GodRays;
-    config.renderMode = RenderMode::Lighting;
-    config.forwardLightMode = ForwardLightMode::Light;
+    config.renderMode = RenderMode::Basic;
+    config.forwardLightMode = ForwardLightMode::Basic;
 
     config.enableSkybox = true;
     config.enablePointLight = false;
@@ -20,6 +20,10 @@ SceneRenderConfig makeLivingRoomPreset()
     config.enableSSAO = true;
     config.enablePBR = true;
     config.enableIBL = true;
+    config.enableTAA = true;
+    config.enableProceduralSky = true;
+    config.enableVolumetricClouds = true;
+    config.enableSunTexture = true;
 
     config.fixedAmbientColor = glm::vec3(46.0f, 14.0f, 6.0f) / 255.0f;
     config.fixedAmbientStrength = 1.63f;

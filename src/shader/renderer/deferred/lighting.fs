@@ -71,6 +71,15 @@ uniform vec3 fixedAmbientColor;
 uniform float fixedAmbientStrength;
 uniform vec3 iblAmbientTint;
 uniform float iblAmbientStrength;
+uniform float cloudAmbientTransmission;
+uniform bool enableStormShaftLighting;
+uniform vec2 stormHeroHolePosition;
+uniform vec2 stormShaftLean;
+uniform float stormHoleSize;
+uniform float stormPoolHoleSize;
+uniform float stormHoleSoftness;
+uniform vec3 stormShaftColor;
+uniform float stormShaftSurfaceIntensity;
 uniform float phongDiffuseStrength;
 uniform float phongSpecularStrength;
 uniform float phongIBLDiffuseStrength;
@@ -89,6 +98,12 @@ uniform float waterLevel;
 uniform float waterTime;
 uniform vec2 waterCenter;
 uniform vec2 waterRadii;
+
+const int STORM_LARGE_HOLE_COUNT = 3;
+const vec2 STORM_LARGE_HOLE_OFFSETS[STORM_LARGE_HOLE_COUNT] = vec2[](
+    vec2(-3000.0, -15000.0),
+    vec2( 3500.0, -18000.0),
+    vec2(    0.0, -22000.0));
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -616,9 +631,11 @@ vec3 calcScreenSpaceGI(vec3 fragPos, vec3 normal, vec3 albedo,
             : 1.0;
         vec3 sampleAlbedo = texture(gAlbedoMetallic, sampleUv).rgb;
 
-        vec3 sourceIrradiance = fixedAmbientColor * fixedAmbientStrength;
+        vec3 sourceIrradiance = fixedAmbientColor * fixedAmbientStrength *
+                                cloudAmbientTransmission;
         if (enableIBL)
-            sourceIrradiance += iblAmbientTint * iblAmbientStrength * 0.16;
+            sourceIrradiance += iblAmbientTint * iblAmbientStrength * 0.16 *
+                                cloudAmbientTransmission;
         if (enableDirectionalLight)
         {
             float sourceNdotL = max(dot(sampleNormal, normalize(-sun.direction)), 0.0);
@@ -748,6 +765,45 @@ vec3 calcUnderwaterCaustics(
            beerLambert * receiverNdotL * (1.0 - shadow) * lakeCoverage * 2.85;
 }
 
+float sampleStormShaftCluster(vec2 worldXZ)
+{
+    if (!enableStormShaftLighting || stormShaftSurfaceIntensity <= 0.001)
+        return 0.0;
+
+    float poolRadius = max(stormPoolHoleSize, 1.0);
+    float poolInnerRadius = poolRadius *
+        (1.0 - clamp(stormHoleSoftness, 0.05, 0.80));
+    float poolDistance = length(
+        (worldXZ - stormHeroHolePosition) * vec2(0.84, 1.0));
+    float mask = 1.0 - smoothstep(
+        poolInnerRadius, poolRadius, poolDistance);
+
+    float largeRadius = max(stormHoleSize, 1.0);
+    float largeInnerRadius = largeRadius *
+        (1.0 - clamp(stormHoleSoftness, 0.05, 0.80));
+    for (int i = 0; i < STORM_LARGE_HOLE_COUNT; ++i)
+    {
+        vec2 center = stormHeroHolePosition + STORM_LARGE_HOLE_OFFSETS[i];
+        float distanceToShaft = length((worldXZ - center) * vec2(0.88, 1.12));
+        mask = max(mask, 1.0 - smoothstep(
+            largeInnerRadius, largeRadius, distanceToShaft));
+    }
+    return mask;
+}
+
+vec3 calcStormShaftLighting(
+    vec3 fragPos,
+    vec3 normal,
+    vec3 albedo,
+    float metallic)
+{
+    float mask = sampleStormShaftCluster(fragPos.xz);
+    float topFacing = max(normal.y, 0.0);
+    float receiver = mix(0.28, 1.0, topFacing);
+    return albedo * stormShaftColor * mask * receiver *
+           stormShaftSurfaceIntensity * (1.0 - metallic * 0.55) * 0.62;
+}
+
 void main()
 {
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
@@ -771,16 +827,19 @@ void main()
     if (enableIBL)
     {
         if (enablePBR)
-            result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
+            result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao) *
+                      cloudAmbientTransmission;
         else
-            result += calcPhongIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao);
+            result += calcPhongIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao) *
+                      cloudAmbientTransmission;
     }
     else
     {
-        result += calcFixedAmbient(albedo, ao);
+        result += calcFixedAmbient(albedo, ao) * cloudAmbientTransmission;
     }
 
     result += calcScreenSpaceGI(FragPos, Normal, albedo, metallic, ao);
+    result += calcStormShaftLighting(FragPos, Normal, albedo, metallic);
 
     if (enablePointLight)
 {

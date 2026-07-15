@@ -107,6 +107,26 @@ void EnvironmentController::applyPreset()
     renderParams_.numLayers = 32;
     renderParams_.parallaxHeightScale = 0.1f;
 
+    // The procedural sky intentionally uses a flat color, so keep it visually
+    // paired with the selected HDR environment instead of leaving the previous
+    // environment's color behind after a cubemap switch.
+    switch (sceneConfig_.environmentSelection)
+    {
+    case EnvironmentSelection::Sunny:
+        sceneConfig_.skyTopColor = glm::vec3(0.24f, 0.55f, 0.90f);
+        break;
+    case EnvironmentSelection::GodRays:
+        sceneConfig_.skyTopColor = glm::vec3(0.34f, 0.42f, 0.54f);
+        break;
+    case EnvironmentSelection::NightN8_3K:
+        sceneConfig_.skyTopColor = glm::vec3(0.018f, 0.030f, 0.070f);
+        break;
+    case EnvironmentSelection::Night:
+    default:
+        sceneConfig_.skyTopColor = glm::vec3(0.030f, 0.018f, 0.045f);
+        break;
+    }
+
     switch (sceneConfig_.environmentSelection)
     {
     case EnvironmentSelection::Sunny:

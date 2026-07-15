@@ -91,6 +91,112 @@ void SceneRenderUI::renderUI(
         ImGui::Checkbox("IBL", &uiState.sceneConfig.enableIBL);
         ImGui::Checkbox("Animated Water", &uiState.sceneConfig.enableWater);
 
+        ImGui::SeparatorText("Sky & Volumetrics");
+        if (uiState.sceneConfig.renderMode != RenderMode::Lighting)
+            ImGui::TextDisabled(
+                "Volumetric clouds and god rays are disabled outside Lighting mode.");
+        ImGui::Checkbox("Pure Color Sky", &uiState.sceneConfig.enableProceduralSky);
+        ImGui::ColorEdit3("Sky Background", glm::value_ptr(uiState.sceneConfig.skyTopColor));
+        ImGui::Checkbox("Volumetric Clouds", &uiState.sceneConfig.enableVolumetricClouds);
+        const char* cloudWeatherNames[] = {"Storm", "Sunny", "Overcast"};
+        int cloudWeatherIndex = static_cast<int>(uiState.sceneConfig.cloudWeatherPreset);
+        if (ImGui::Combo("Weather Target", &cloudWeatherIndex, cloudWeatherNames, 3))
+        {
+            uiState.sceneConfig.cloudWeatherPreset =
+                static_cast<CloudWeatherPreset>(cloudWeatherIndex);
+            ++uiState.sceneConfig.cloudWeatherTransitionRequest;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Evolve Again"))
+            ++uiState.sceneConfig.cloudWeatherTransitionRequest;
+        ImGui::SliderFloat(
+            "Weather Transition",
+            &uiState.sceneConfig.cloudWeatherTransitionDuration,
+            2.0f,
+            120.0f,
+            "%.1f s");
+        ImGui::ProgressBar(
+            uiState.sceneConfig.cloudWeatherTransitionProgress,
+            ImVec2(-1.0f, 0.0f),
+            uiState.sceneConfig.cloudWeatherTransitionProgress < 1.0f
+                ? "Weather evolving"
+                : "Weather stable");
+        if (ImGui::TreeNodeEx("Cloud Shape", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::SliderFloat("Coverage", &uiState.sceneConfig.cloudCoverage, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Density", &uiState.sceneConfig.cloudDensity, 0.05f, 3.0f, "%.2f");
+            ImGui::DragFloat("Base Height", &uiState.sceneConfig.cloudBaseHeight, 10.0f, 100.0f, 8000.0f, "%.0f m");
+            ImGui::DragFloat("Layer Thickness", &uiState.sceneConfig.cloudThickness, 10.0f, 100.0f, 4000.0f, "%.0f m");
+            ImGui::SliderFloat("Macro Scale", &uiState.sceneConfig.cloudScale, 0.25f, 3.0f, "%.2f");
+            ImGui::SliderFloat("Detail Scale", &uiState.sceneConfig.cloudDetailScale, 1.5f, 8.0f, "%.2f");
+            ImGui::SliderFloat("Cloud Type", &uiState.sceneConfig.cloudType, 0.0f, 1.0f, "%.2f");
+            ImGui::SetItemTooltip("0 = flat stratus, 1 = tall cumulus");
+            ImGui::SliderFloat("Anvil Amount", &uiState.sceneConfig.cloudAnvilAmount, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Erosion", &uiState.sceneConfig.cloudErosionStrength, 0.0f, 0.6f, "%.2f");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNodeEx("Cloud Wind", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::SliderFloat("Speed", &uiState.sceneConfig.cloudSpeed, 0.0f, 40.0f, "%.1f m/s");
+            ImGui::SliderFloat("Evolution Speed", &uiState.sceneConfig.cloudEvolutionSpeed, 0.0f, 0.30f, "%.3f");
+            ImGui::SetItemTooltip("Continuous cloud-shape morphing; independent of wind translation");
+            ImGui::DragFloat2("Direction XZ", glm::value_ptr(uiState.sceneConfig.cloudWindDirection), 0.01f, -1.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Height Shear", &uiState.sceneConfig.cloudWindShear, -1.0f, 1.0f, "%.2f");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNodeEx("Storm Light Holes", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::SliderFloat("Hole Strength", &uiState.sceneConfig.stormHoleStrength, 0.0f, 1.0f, "%.2f");
+            ImGui::DragFloat("Large Hole Radius", &uiState.sceneConfig.stormHoleSize, 1.0f, 20.0f, 2000.0f, "%.0f m");
+            ImGui::DragFloat("Pool Hole Radius", &uiState.sceneConfig.stormPoolHoleSize, 1.0f, 10.0f, 200.0f, "%.0f m");
+            ImGui::DragFloat("Hole Spacing", &uiState.sceneConfig.stormHoleSpacing, 250.0f, 16000.0f, 70000.0f, "%.0f m");
+            ImGui::DragFloat2("Pool Hole XZ", glm::value_ptr(uiState.sceneConfig.stormHeroHolePosition), 1.0f, -2000.0f, 2000.0f, "%.0f m");
+            ImGui::SetItemTooltip("Center of the small pool aperture; large apertures are placed farther away");
+            ImGui::DragFloat2("Shaft Lean XZ", glm::value_ptr(uiState.sceneConfig.stormShaftLean), 0.005f, -0.30f, 0.30f, "%.3f");
+            ImGui::SetItemTooltip("Horizontal movement per metre downward; controls the beam angle");
+            ImGui::SliderFloat("Hole Softness", &uiState.sceneConfig.stormHoleSoftness, 0.05f, 0.80f, "%.2f");
+            ImGui::SliderFloat("Hole Shaft Boost", &uiState.sceneConfig.stormHoleShaftStrength, 0.0f, 4.0f, "%.2f");
+            ImGui::SetItemTooltip("Boosts world-space columns cast straight down from storm cloud apertures");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNodeEx("Cloud Lighting", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::SliderFloat("Extinction", &uiState.sceneConfig.cloudExtinction, 0.1f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Sun Absorption", &uiState.sceneConfig.cloudLightAbsorption, 0.1f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Ambient Strength", &uiState.sceneConfig.cloudAmbientStrength, 0.0f, 2.0f, "%.2f");
+            ImGui::SliderFloat("Powder Effect", &uiState.sceneConfig.cloudPowderStrength, 0.0f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Multiple Scattering", &uiState.sceneConfig.cloudMultiScattering, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Silver Lining", &uiState.sceneConfig.cloudSilverLining, 0.0f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Forward Phase", &uiState.sceneConfig.cloudForwardScattering, 0.0f, 0.9f, "%.2f");
+            ImGui::SliderFloat("Backward Phase", &uiState.sceneConfig.cloudBackwardScattering, -0.8f, 0.0f, "%.2f");
+            ImGui::ColorEdit3("Cloud Sun Color", glm::value_ptr(uiState.sceneConfig.cloudSunColor));
+            ImGui::ColorEdit3("Cloud Bottom Color", glm::value_ptr(uiState.sceneConfig.cloudBottomColor));
+            ImGui::ColorEdit3("Cloud Top Color", glm::value_ptr(uiState.sceneConfig.cloudTopColor));
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("Cloud Quality"))
+        {
+            ImGui::SliderInt("View Steps", &uiState.sceneConfig.cloudViewSteps, 16, 96);
+            ImGui::SliderInt("Light Steps", &uiState.sceneConfig.cloudLightSteps, 2, 8);
+            ImGui::DragFloat("Max Distance", &uiState.sceneConfig.cloudMaxDistance, 500.0f, 5000.0f, 150000.0f, "%.0f m");
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNodeEx("God Rays", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::Checkbox("Enable God Rays", &uiState.sceneConfig.enableGodRays);
+            ImGui::SliderFloat("God Ray Intensity", &uiState.sceneConfig.godRayIntensity, 0.0f, 3.0f, "%.2f");
+            ImGui::SliderFloat("God Ray Density", &uiState.sceneConfig.godRayDensity, 0.1f, 1.5f, "%.2f");
+            ImGui::SliderFloat("God Ray Decay", &uiState.sceneConfig.godRayDecay, 0.85f, 0.999f, "%.3f");
+            ImGui::SliderFloat("God Ray Weight", &uiState.sceneConfig.godRayWeight, 0.005f, 0.15f, "%.3f");
+            ImGui::SliderFloat("God Ray Exposure", &uiState.sceneConfig.godRayExposure, 0.0f, 2.0f, "%.2f");
+            ImGui::SliderFloat("God Ray Radius", &uiState.sceneConfig.godRayRadius, 0.08f, 0.8f, "%.2f");
+            ImGui::SliderInt("God Ray Samples", &uiState.sceneConfig.godRaySamples, 16, 64);
+            ImGui::ColorEdit3("God Ray Color", glm::value_ptr(uiState.sceneConfig.godRayColor));
+            ImGui::TreePop();
+        }
+        ImGui::Checkbox("Sun Texture", &uiState.sceneConfig.enableSunTexture);
+        ImGui::SliderFloat("Sun Angular Radius", &uiState.sceneConfig.sunAngularRadius, 0.015f, 0.16f, "%.3f");
+
         ImGui::SeparatorText("Ambient");
         ImGui::ColorEdit3("Fixed Ambient Color", glm::value_ptr(uiState.sceneConfig.fixedAmbientColor));
         ImGui::DragFloat("Fixed Ambient Strength", &uiState.sceneConfig.fixedAmbientStrength, 0.01f, 0.0f, 4.0f);
@@ -118,6 +224,9 @@ void SceneRenderUI::renderUI(
         ImGui::SliderInt("Parallax Layers", &uiState.renderParams.numLayers, 1, 64);
 
         ImGui::SeparatorText("Post Process");
+        ImGui::Checkbox("Temporal AA", &uiState.sceneConfig.enableTAA);
+        ImGui::SliderFloat("TAA History Weight", &uiState.sceneConfig.taaHistoryWeight, 0.0f, 0.96f, "%.2f");
+        ImGui::SliderFloat("TAA Sharpness", &uiState.sceneConfig.taaSharpness, 0.0f, 0.75f, "%.2f");
         ImGui::Checkbox("SSAO", &uiState.sceneConfig.enableSSAO);
         ImGui::SliderFloat("SSAO Strength", &uiState.sceneConfig.ssaoStrength, 0.0f, 4.0f, "%.2f");
         ImGui::Checkbox("Bloom", &uiState.sceneConfig.enableBloom);

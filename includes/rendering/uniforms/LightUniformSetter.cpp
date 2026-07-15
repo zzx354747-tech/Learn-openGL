@@ -9,7 +9,7 @@ void LightUniformSetter::apply( Shader& shader, const LightSettings& lightSettin
 
         if (config.enableDirectionalLight)
         {
-            setupDirectionalLight(shader, lightSettings);
+            setupDirectionalLight(shader, lightSettings, config);
         }
 
         if (config.enableFlashlight)
@@ -31,19 +31,25 @@ void LightUniformSetter::setupPointLight( Shader& shader, const SceneRenderState
         shader.setFloat("pointLight.quadratic", lightSettings.pointQuadratic);
     }
 
-void LightUniformSetter::setupDirectionalLight(Shader& shader, const LightSettings& lightSettings)
+void LightUniformSetter::setupDirectionalLight(
+    Shader& shader,
+    const LightSettings& lightSettings,
+    const SceneRenderConfig& config)
 {
+        const float cloudTransmission = calculateCloudSunTransmission(config);
         shader.setVec3("sun.direction",
             lightSettings.sunDirection);
 
         shader.setVec3("sun.ambient",
-            lightSettings.sunAmbient * lightSettings.sunIntensity);
+            lightSettings.sunAmbient * lightSettings.sunIntensity * cloudTransmission);
 
         shader.setVec3("sun.diffuse",
-            lightSettings.sunDiffuse * lightSettings.sunIntensity * lightSettings.sunIntensityScale);
+            lightSettings.sunDiffuse * lightSettings.sunIntensity *
+            lightSettings.sunIntensityScale * cloudTransmission);
 
         shader.setVec3("sun.specular",
-            lightSettings.sunSpecular * lightSettings.sunIntensity * lightSettings.sunIntensityScale);
+            lightSettings.sunSpecular * lightSettings.sunIntensity *
+            lightSettings.sunIntensityScale * cloudTransmission);
     }
 
 void LightUniformSetter::setupFlashLight( Shader& shader, const Camera& camera, const LightSettings& lightSettings )

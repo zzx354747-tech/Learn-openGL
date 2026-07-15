@@ -53,6 +53,21 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("fixedAmbientStrength", config.fixedAmbientStrength);
     shader.setVec3("iblAmbientTint", config.iblAmbientTint);
     shader.setFloat("iblAmbientStrength", config.iblAmbientStrength);
+    shader.setFloat("cloudAmbientTransmission",
+                    calculateCloudAmbientTransmission(config));
+    shader.setBool("enableStormShaftLighting",
+                   shouldRenderGodRays(config) &&
+                   shouldRenderVolumetricClouds(config) &&
+                   config.stormHoleStrength > 0.001f);
+    shader.setVec2("stormHeroHolePosition", config.stormHeroHolePosition);
+    shader.setVec2("stormShaftLean", config.stormShaftLean);
+    shader.setFloat("stormHoleSize", config.stormHoleSize);
+    shader.setFloat("stormPoolHoleSize", config.stormPoolHoleSize);
+    shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
+    shader.setVec3("stormShaftColor", config.godRayColor);
+    shader.setFloat("stormShaftSurfaceIntensity",
+                    config.stormHoleStrength * config.stormHoleShaftStrength *
+                    config.godRayIntensity);
     shader.setFloat("phongDiffuseStrength", config.phongDiffuseStrength);
     shader.setFloat("phongSpecularStrength", config.phongSpecularStrength);
     shader.setFloat("phongIBLDiffuseStrength", config.phongIBLDiffuseStrength);

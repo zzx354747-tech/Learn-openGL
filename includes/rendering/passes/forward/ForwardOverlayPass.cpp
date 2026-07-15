@@ -29,6 +29,7 @@ void ForwardOverlayPass::render(
         camera,
         resources,
         config,
+        lightSettings,
         bfwidth,
         bfheight
     );
@@ -59,7 +60,23 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
     shader.setVec2("viewportSize", glm::vec2(static_cast<float>(bfwidth), static_cast<float>(bfheight)));
     shader.setVec3("sunDirection", lightSettings.sunDirection);
     shader.setVec3("sunColor", lightSettings.sunDiffuse * lightSettings.sunIntensity *
-                                  lightSettings.sunIntensityScale);
+                                  lightSettings.sunIntensityScale *
+                                  calculateCloudSunTransmission(config));
+    shader.setFloat("cloudAmbientTransmission",
+                    calculateCloudAmbientTransmission(config));
+    shader.setBool("enableStormShaftLighting",
+                   shouldRenderGodRays(config) &&
+                   shouldRenderVolumetricClouds(config) &&
+                   config.stormHoleStrength > 0.001f);
+    shader.setVec2("stormHeroHolePosition", config.stormHeroHolePosition);
+    shader.setVec2("stormShaftLean", config.stormShaftLean);
+    shader.setFloat("stormHoleSize", config.stormHoleSize);
+    shader.setFloat("stormPoolHoleSize", config.stormPoolHoleSize);
+    shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
+    shader.setVec3("stormShaftColor", config.godRayColor);
+    shader.setFloat("stormShaftSurfaceIntensity",
+                    config.stormHoleStrength * config.stormHoleShaftStrength *
+                    config.godRayIntensity);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);

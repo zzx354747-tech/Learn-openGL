@@ -1,4 +1,5 @@
 #include "rendering/uniforms/SkyboxCameraUniformSetter.h"
+#include "rendering/uniforms/TemporalJitter.h"
 
 void SkyboxCameraUniformSetter::apply( Shader& shader, Camera& camera, int width, int height )
 {
@@ -12,6 +13,7 @@ void SkyboxCameraUniformSetter::apply( Shader& shader, Camera& camera, int width
                 0.1f,
                 100.0f
             );
+        projection = TemporalJitter::apply(projection, width, height);
 
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);

@@ -4,6 +4,7 @@
 #include "imgui_impl_opengl3.h"
 
 #include <iostream>
+#include <filesystem>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include "rendering/core/WindowContext.h"
@@ -70,6 +71,21 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 int main()
 {
+#ifdef OPENGL_PROJECT_ROOT
+    // All renderer assets intentionally stay as loose project files. Anchor the
+    // legacy ../src, ../textures and ../3D_model paths regardless of how the
+    // executable was launched (IDE, Explorer, Codex, or the helper batch file).
+    std::error_code workingDirectoryError;
+    std::filesystem::current_path(
+        std::filesystem::path(OPENGL_PROJECT_ROOT) / "build",
+        workingDirectoryError);
+    if (workingDirectoryError)
+    {
+        std::cerr << "Failed to set renderer working directory: "
+                  << workingDirectoryError.message() << std::endl;
+    }
+#endif
+
     // 此时ctx仍是一个局部变量
     WindowContext ctx;
     int bfwidth = 800;

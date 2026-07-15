@@ -179,6 +179,14 @@ void main()
         metallic = mix(metallic, grassMetallic, terrainBlend);
     }
 
+    // Specular anti-aliasing: normal variation inside one pixel is converted
+    // into additional microfacet roughness instead of unstable bright sparks.
+    vec3 normalDx = dFdx(normal);
+    vec3 normalDy = dFdy(normal);
+    float normalVariance = 0.5 * (dot(normalDx, normalDx) + dot(normalDy, normalDy));
+    roughness = sqrt(clamp(roughness * roughness + min(normalVariance, 0.32),
+                           0.0016, 1.0));
+
     gNormalRoughness = vec4(normal,  roughness);
     gAlbedoMetallic  = vec4(albedo,  metallic);
 }

@@ -13,7 +13,10 @@ public:
 private:
     static void setupPointLight( Shader& shader, const SceneRenderState& state, const LightSettings& lightSettings );
 
-    static void setupDirectionalLight(Shader& shader, const LightSettings& lightSettings);
+    static void setupDirectionalLight(
+        Shader& shader,
+        const LightSettings& lightSettings,
+        const SceneRenderConfig& config);
 
     static void setupFlashLight( Shader& shader, const Camera& camera, const LightSettings& lightSettings );
 

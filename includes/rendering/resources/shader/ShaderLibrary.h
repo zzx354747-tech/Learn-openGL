@@ -4,6 +4,7 @@
 struct ShaderLibrary
 {
     Shader screen;
+    Shader taa;
     Shader cubemap;
     Shader shadowDebug;
     Shader shadowMap;

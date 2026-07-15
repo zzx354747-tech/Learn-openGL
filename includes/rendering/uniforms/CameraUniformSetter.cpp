@@ -1,4 +1,5 @@
 #include "rendering/uniforms/CameraUniformSetter.h"
+#include "rendering/uniforms/TemporalJitter.h"
 
 void CameraUniformSetter::apply( Shader& shader, Camera& camera, int width, int height )
 {
@@ -10,6 +11,7 @@ void CameraUniformSetter::apply( Shader& shader, Camera& camera, int width, int 
             0.1f,
             400.0f
         );
+        projection = TemporalJitter::apply(projection, width, height);
 
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
