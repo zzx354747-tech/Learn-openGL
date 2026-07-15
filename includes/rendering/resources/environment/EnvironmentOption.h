@@ -19,6 +19,9 @@ inline const EnvironmentOption kEnvironmentOptions[] =
     {"Sunny", "../textures/skybox/sunny.hdr",
      EnvironmentSelection::Sunny, HDRLoadOptions{true, 100.0f}},
 
+    {"God Rays 07 3K", "../textures/skybox/GodRays_07_3K.hdr",
+     EnvironmentSelection::GodRays, HDRLoadOptions{true, 100.0f}},
+
     {"Night N8 3K", "../textures/skybox/Night_08_3K.hdr",
      EnvironmentSelection::NightN8_3K, HDRLoadOptions{true, 100.0f}},
 };

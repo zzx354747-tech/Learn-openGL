@@ -16,6 +16,7 @@ struct ShaderLibrary
     Shader blur;
     Shader geometryPBR;
     Shader basicForward;
+    Shader water;
     Shader lightingPass;
     Shader ssao;
     Shader ssaoBlur;

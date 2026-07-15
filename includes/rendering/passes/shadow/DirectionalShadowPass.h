@@ -17,7 +17,8 @@ class DirectionalShadowPass
 public:
     DirectionalShadowPass( DirectionalShadowMap& shadowMap, Shader& shadowShader, 
         SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
-        SceneRenderState& state,LightSettings& lightSettings,
+        SceneRenderState& state, LightSettings& lightSettings,
+        SceneRenderConfig& config,
         ResourceRegistry& registry, ResourceHandle shadowMapHandle);
 
     void render();
@@ -31,6 +32,7 @@ private:
     ModelDrawer& modelDrawer;
     SceneRenderState& state;
     LightSettings& lightSettings;
+    SceneRenderConfig& config;
 
     glm::mat4 createLightSpaceMatrix() const;
 };

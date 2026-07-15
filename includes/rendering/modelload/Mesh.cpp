@@ -1,6 +1,7 @@
 #include "rendering/modelload/Mesh.h"
 
 #include <cstddef>
+#include <chrono>
 #include <utility>
 
 Mesh::Mesh(std::vector<Vertex> vertices,
@@ -106,8 +107,17 @@ void Mesh::Draw(Shader& shader) const
 
 void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
 {
+    static const auto windClockStart = std::chrono::steady_clock::now();
+    const float windTime = std::chrono::duration<float>(
+        std::chrono::steady_clock::now() - windClockStart).count();
+    shader.setBool("enableWind", flags.windAffected);
+    shader.setFloat("windTime", windTime);
+    shader.setFloat("windStrength", flags.windStrength);
+    shader.setVec2("windDirection", flags.windDirection);
+
     // 按类型分别绑定，固定 uniform 名，不再编号
     bool hasBaseColor = false, hasNormal = false, hasMetallic = false, hasRoughness = false, hasParallax = false;
+    bool hasTerrainBlend = false, hasTerrainGrassAlbedo = false;
     unsigned int metallicTexId = 0, roughnessTexId = 0;
 
     shader.setBool("hasAlbedoMap", false);
@@ -116,6 +126,10 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     shader.setBool("hasRoughnessMap", false);
     shader.setBool("hasMetallicMap", false);
     shader.setBool("usePackedMetallicRoughness", false);
+    shader.setBool("useTerrainBlend", false);
+    shader.setBool("hasTerrainGrassNormal", false);
+    shader.setBool("hasTerrainGrassRoughness", false);
+    shader.setBool("hasTerrainGrassMetallic", false);
     shader.setVec3("albedoColor", glm::vec3(flags.baseColorFactor));
     shader.setFloat("roughnessFactor", flags.roughnessFactor);
     shader.setFloat("metallicFactor", flags.metallicFactor);
@@ -170,6 +184,31 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
             shader.setBool("hasParallaxMap", true);
             hasParallax = true;
         }
+        else if (type == "texture_terrainBlend")
+        {
+            shader.setInt("terrainBlendTexture", i);
+            hasTerrainBlend = true;
+        }
+        else if (type == "texture_terrainGrassAlbedo")
+        {
+            shader.setInt("terrainGrassAlbedo", i);
+            hasTerrainGrassAlbedo = true;
+        }
+        else if (type == "texture_terrainGrassNormal")
+        {
+            shader.setInt("terrainGrassNormal", i);
+            shader.setBool("hasTerrainGrassNormal", true);
+        }
+        else if (type == "texture_terrainGrassRoughness")
+        {
+            shader.setInt("terrainGrassRoughness", i);
+            shader.setBool("hasTerrainGrassRoughness", true);
+        }
+        else if (type == "texture_terrainGrassMetallic")
+        {
+            shader.setInt("terrainGrassMetallic", i);
+            shader.setBool("hasTerrainGrassMetallic", true);
+        }
     }
 
     // 检测是否是 ORM 打包（metallic 和 roughness 指向同一张贴图 id）
@@ -181,6 +220,13 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     if (!hasMetallic)  shader.setBool("hasMetallicMap", false);
     if (!hasRoughness) shader.setBool("hasRoughnessMap", false);
     if (!hasParallax)  shader.setBool("hasParallaxMap", false);
+    shader.setBool("useTerrainBlend", hasTerrainBlend && hasTerrainGrassAlbedo);
+    if (!hasTerrainBlend || !hasTerrainGrassAlbedo)
+    {
+        shader.setBool("hasTerrainGrassNormal", false);
+        shader.setBool("hasTerrainGrassRoughness", false);
+        shader.setBool("hasTerrainGrassMetallic", false);
+    }
 
     glActiveTexture(GL_TEXTURE0);
 

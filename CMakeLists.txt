@@ -181,6 +181,9 @@ add_executable(fbo_demo
     includes/rendering/assets/mesh/Screenquad.cpp
     includes/rendering/assets/mesh/SkyboxMesh.cpp
     includes/rendering/assets/mesh/SphereMesh.cpp
+    includes/rendering/assets/mesh/TerrainMesh.cpp
+    includes/rendering/assets/mesh/VegetationMesh.cpp
+    includes/rendering/assets/mesh/WaterMesh.cpp
     includes/rendering/assets/texture/CubeMap.cpp
     includes/rendering/assets/texture/Texture.cpp
     includes/rendering/assets/texture/Material.cpp

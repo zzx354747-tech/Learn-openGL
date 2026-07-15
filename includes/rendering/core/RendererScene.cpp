@@ -7,6 +7,7 @@ RendererScene::RendererScene(int width, int height)
     , pingpongFBO(width, height)
     , sceneGBuffer(width, height)
     , sceneSSAO(width, height)
+    , vegetationMesh(terrainMesh)
     , shadowMap(4096, 4096)
     , pointShadowMap(1024, 1024, 1.0f, 50.0f)
     , spotShadowMap(1024, 1024, 1.0f, 50.0f)
@@ -25,6 +26,7 @@ RendererScene::RendererScene(int width, int height)
                             livingRoomDrawer,
                             sceneState,
                             lightSettings,
+                            sceneConfig,
                             sceneResources.registry,
                             sceneResources.lightingHandles.shadowMap)
     , spotShadowPass(spotShadowMap,
@@ -93,10 +95,13 @@ RendererScene::RendererScene(int width, int height)
     sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
     sceneResources.skyboxMesh = &skyboxMesh;
+    sceneResources.waterMesh = &waterMesh;
 
     sphereDrawer.loadMaterials("../textures/PBR/");
 
     livingRoomDrawer.setVisibleInScene(SceneSelection::LivingRoom);
+    livingRoomDrawer.setTerrainMesh(&terrainMesh);
+    livingRoomDrawer.setVegetationMesh(&vegetationMesh);
     glm::mat4 livingRoomTransform(1.0f);
     livingRoomTransform = glm::translate(livingRoomTransform, glm::vec3(0.0f, 0.0f, -3.0f));
     livingRoomTransform = glm::scale(livingRoomTransform, glm::vec3(0.2f));

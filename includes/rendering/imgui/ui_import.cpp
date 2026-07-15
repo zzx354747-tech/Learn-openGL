@@ -19,13 +19,17 @@ void SceneRenderUI::renderUI(
         }
 
         ImGui::SeparatorText("Render");
-        const char* sceneNames[] = {"Default", "Living Room"};
-        int sceneIndex = uiState.sceneConfig.sceneSelection == SceneSelection::LivingRoom ? 1 : 0;
-        if (ImGui::Combo("Scene", &sceneIndex, sceneNames, 2))
+        const char* sceneNames[] = {"Default", "Living Room", "Fuji Terrain"};
+        int sceneIndex = 0;
+        if (uiState.sceneConfig.sceneSelection == SceneSelection::LivingRoom)
+            sceneIndex = 1;
+        else if (uiState.sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
+            sceneIndex = 2;
+        if (ImGui::Combo("Scene", &sceneIndex, sceneNames, 3))
         {
             uiState.sceneConfig.sceneSelection = sceneIndex == 1
                 ? SceneSelection::LivingRoom
-                : SceneSelection::Default;
+                : (sceneIndex == 2 ? SceneSelection::FujiTerrain : SceneSelection::Default);
         }
 
         const char* renderModeNames[] = {"Lighting", "Forward Basic", "Forward Reflection", "Shadow Debug"};
@@ -69,8 +73,8 @@ void SceneRenderUI::renderUI(
                     break;
             }
         }
-        const char* environmentNames[] = {"Night", "Sunny", "Night N8 3K"};
-        if (ImGui::Combo("Environment", &uiState.environmentIndex, environmentNames, 3))
+        const char* environmentNames[] = {"Night", "Sunny", "God Rays 07 3K", "Night N8 3K"};
+        if (ImGui::Combo("Environment", &uiState.environmentIndex, environmentNames, 4))
         {
             uiState.sceneConfig.environmentSelection = kEnvironmentOptions[uiState.environmentIndex].selection;
             uiState.environmentLoadFailed = !uiState.loadEnvironment();
@@ -85,6 +89,7 @@ void SceneRenderUI::renderUI(
         ImGui::Checkbox("HDR", &uiState.sceneConfig.enableHDR);
         ImGui::Checkbox("PBR", &uiState.sceneConfig.enablePBR);
         ImGui::Checkbox("IBL", &uiState.sceneConfig.enableIBL);
+        ImGui::Checkbox("Animated Water", &uiState.sceneConfig.enableWater);
 
         ImGui::SeparatorText("Ambient");
         ImGui::ColorEdit3("Fixed Ambient Color", glm::value_ptr(uiState.sceneConfig.fixedAmbientColor));
@@ -97,6 +102,13 @@ void SceneRenderUI::renderUI(
         ImGui::DragFloat("Phong Specular Strength", &uiState.sceneConfig.phongSpecularStrength, 0.01f, 0.0f, 2.0f);
         ImGui::DragFloat("Phong IBL Diffuse", &uiState.sceneConfig.phongIBLDiffuseStrength, 0.01f, 0.0f, 6.0f);
         ImGui::DragFloat("Phong IBL Specular", &uiState.sceneConfig.phongIBLSpecularStrength, 0.01f, 0.0f, 4.0f);
+
+        ImGui::SeparatorText("Global Illumination");
+        ImGui::Checkbox("Screen-space GI", &uiState.sceneConfig.enableGI);
+        ImGui::SliderFloat("GI Strength", &uiState.sceneConfig.giStrength, 0.0f, 3.0f, "%.2f");
+        ImGui::SliderFloat("GI Radius", &uiState.sceneConfig.giRadius, 2.0f, 40.0f, "%.1f px");
+        ImGui::SliderFloat("GI Max Distance", &uiState.sceneConfig.giMaxDistance, 1.0f, 20.0f, "%.1f");
+        ImGui::SliderInt("GI Samples", &uiState.sceneConfig.giSampleCount, 4, 16);
 
         ImGui::SeparatorText("Material Mapping");
         ImGui::Checkbox("Normal Mapping", &uiState.renderParams.enableNormalMapping);

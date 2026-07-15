@@ -7,6 +7,7 @@ layout (location = 2) out vec4 gAlbedoMetallic;
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
+in vec2 TexCoords1;
 in mat3 TBN;
 in vec3 TangentViewPos;
 in vec3 TangentFragPos;
@@ -16,6 +17,11 @@ uniform sampler2D normalTexture;
 uniform sampler2D parallaxTexture;
 uniform sampler2D roughnessTexture;
 uniform sampler2D metallicTexture;
+uniform sampler2D terrainBlendTexture;
+uniform sampler2D terrainGrassAlbedo;
+uniform sampler2D terrainGrassNormal;
+uniform sampler2D terrainGrassRoughness;
+uniform sampler2D terrainGrassMetallic;
 
 // 全局(RenderParams 设)
 uniform bool  enableNormalMapping;
@@ -31,6 +37,10 @@ uniform bool hasParallaxMap;
 uniform bool hasRoughnessMap;
 uniform bool hasMetallicMap;
 uniform bool usePackedMetallicRoughness;
+uniform bool useTerrainBlend;
+uniform bool hasTerrainGrassNormal;
+uniform bool hasTerrainGrassRoughness;
+uniform bool hasTerrainGrassMetallic;
 uniform bool alphaMask;
 
 uniform vec3  albedoColor;
@@ -84,6 +94,9 @@ void main()
 {
     vec2 texCoords = TexCoords;
     vec3 normal;
+    float terrainBlend = useTerrainBlend
+        ? smoothstep(0.05, 0.95, texture(terrainBlendTexture, TexCoords1).r)
+        : 0.0;
 
     if (enableParallaxMapping && hasParallaxMap)
     {
@@ -94,7 +107,13 @@ void main()
 
     vec3 albedo;
     if (hasAlbedoMap)
-        albedo = pow(texture(albedoTexture, texCoords).rgb, vec3(2.2));
+    {
+        vec3 rockAlbedo = texture(albedoTexture, texCoords).rgb;
+        vec3 grassAlbedo = useTerrainBlend
+            ? texture(terrainGrassAlbedo, texCoords * 0.72).rgb
+            : rockAlbedo;
+        albedo = pow(mix(rockAlbedo, grassAlbedo, terrainBlend), vec3(2.2));
+    }
     else
         albedo = pow(albedoColor, vec3(2.2));
 
@@ -112,6 +131,11 @@ void main()
     {
         vec3 normalMap = texture(normalTexture, texCoords).rgb;
         normalMap = normalMap * 2.0 - 1.0;
+        if (useTerrainBlend && hasTerrainGrassNormal)
+        {
+            vec3 grassNormal = texture(terrainGrassNormal, texCoords * 0.72).rgb * 2.0 - 1.0;
+            normalMap = normalize(mix(normalMap, grassNormal, terrainBlend));
+        }
         normalMap = normalize(mix(vec3(0.0, 0.0, 1.0), normalMap, bumpNormalStrength));
         normal = normalize(TBN * normalMap);
     }
@@ -143,6 +167,17 @@ void main()
     }
     roughness = clamp(roughness, 0.04, 1.0);
     metallic  = clamp(metallic,  0.0,  1.0);
+    if (useTerrainBlend)
+    {
+        float grassRoughness = hasTerrainGrassRoughness
+            ? texture(terrainGrassRoughness, texCoords * 0.72).r
+            : 0.92;
+        float grassMetallic = hasTerrainGrassMetallic
+            ? texture(terrainGrassMetallic, texCoords * 0.72).r
+            : 0.0;
+        roughness = mix(roughness, grassRoughness, terrainBlend);
+        metallic = mix(metallic, grassMetallic, terrainBlend);
+    }
 
     gNormalRoughness = vec4(normal,  roughness);
     gAlbedoMetallic  = vec4(albedo,  metallic);

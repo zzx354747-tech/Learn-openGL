@@ -96,6 +96,7 @@ void EnvironmentController::applyPreset()
     sceneConfig_.enableSSAO = true;
     sceneConfig_.enablePBR = true;
     sceneConfig_.enableIBL = true;
+    sceneConfig_.enableGI = true;
     sceneConfig_.phongDiffuseStrength = 0.55f;
     sceneConfig_.phongSpecularStrength = 0.18f;
     sceneConfig_.phongIBLDiffuseStrength = 1.25f;
@@ -109,30 +110,44 @@ void EnvironmentController::applyPreset()
     switch (sceneConfig_.environmentSelection)
     {
     case EnvironmentSelection::Sunny:
+    case EnvironmentSelection::GodRays:
         sceneConfig_.enablePointLight = false;
         sceneConfig_.enableDirectionalLight = true;
         sceneConfig_.enableFlashlight = false;
-        sceneConfig_.fixedAmbientStrength = 0.1f;
+        sceneConfig_.fixedAmbientColor = glm::vec3(46.0f, 14.0f, 6.0f) / 255.0f;
+        sceneConfig_.fixedAmbientStrength = 1.63f;
         sceneConfig_.iblAmbientTint = glm::vec3(1.0f);
-        sceneConfig_.iblAmbientStrength = 1.4f;
+        sceneConfig_.iblAmbientStrength = 1.09f;
         sceneConfig_.phongDiffuseStrength = 0.42f;
         sceneConfig_.phongSpecularStrength = 0.10f;
         sceneConfig_.phongIBLDiffuseStrength = 1.15f;
         sceneConfig_.phongIBLSpecularStrength = 0.26f;
-        sceneConfig_.ssaoStrength = 1.5f;
-        sceneConfig_.exposure = 0.9f;
-        sceneConfig_.bloomStrength = 0.6f;
-        sceneConfig_.bloomThreshold = 1.3f;
+        sceneConfig_.enableGI = true;
+        sceneConfig_.giStrength = 2.12f;
+        sceneConfig_.giRadius = 18.2f;
+        sceneConfig_.giMaxDistance = 12.1f;
+        sceneConfig_.giSampleCount = 7;
+        sceneConfig_.ssaoStrength = 3.11f;
+        sceneConfig_.exposure = 0.5f;
+        sceneConfig_.bloomStrength = 0.24f;
+        sceneConfig_.bloomThreshold = 0.46f;
+        sceneConfig_.numBlurPasses = 10;
+        renderParams_.enableParallaxMapping = true;
+        renderParams_.parallaxHeightScale = 0.1f;
+        renderParams_.bumpNormalStrength = 1.0f;
+        renderParams_.numLayers = 32;
         lightSettings_.sunDiffuse = glm::vec3(38.0f, 31.0f, 15.0f);
         lightSettings_.sunSpecular = lightSettings_.sunDiffuse;
         lightSettings_.sunAmbient = glm::vec3(1.0f, 1.5f, 2.5f);
         lightSettings_.sunIntensity = 0.7f;
-        lightSettings_.sunIntensityScale = 0.52f;
-        lightSettings_.sunShadowStrength = 0.94f;
+        lightSettings_.sunIntensityScale = 0.76f;
+        lightSettings_.sunShadowStrength = 1.0f;
         sceneConfig_.directionalShadowLightSize = 0.004f;
         sceneConfig_.directionalShadowBlockerSearchRadius = 0.006f;
         sceneConfig_.directionalShadowMinFilterRadius = 0.001f;
         sceneConfig_.directionalShadowMaxFilterRadius = 0.005f;
+        sceneConfig_.directionalShadowBiasSlope = 0.005f;
+        sceneConfig_.directionalShadowBiasMin = 0.0005f;
         break;
 
     case EnvironmentSelection::NightN8_3K:
@@ -165,28 +180,35 @@ void EnvironmentController::applyPreset()
 
     case EnvironmentSelection::Night:
     default:
-        sceneConfig_.enablePointLight = true;
-        sceneConfig_.enableDirectionalLight = false;
+        // Warm after-sunset key light: the sun sits just below the horizon,
+        // producing long soft shadows while the night HDR keeps the sky dark.
+        sceneConfig_.enablePointLight = false;
+        sceneConfig_.enableDirectionalLight = true;
         sceneConfig_.enableFlashlight = false;
-        sceneConfig_.fixedAmbientStrength = 0.05f;
-        sceneConfig_.iblAmbientTint = glm::vec3(1.0f);
-        sceneConfig_.iblAmbientStrength = 0.15f;
-        sceneConfig_.phongDiffuseStrength = 0.55f;
-        sceneConfig_.phongSpecularStrength = 0.16f;
-        sceneConfig_.phongIBLDiffuseStrength = 1.65f;
-        sceneConfig_.phongIBLSpecularStrength = 0.42f;
-        sceneConfig_.ssaoStrength = 2.5f;
-        sceneConfig_.exposure = 1.4f;
-        sceneConfig_.bloomStrength = 1.8f;
-        sceneConfig_.bloomThreshold = 0.7f;
-        lightSettings_.pointDiffuse = glm::vec3(1.0f, 0.5f, 0.1f);
-        lightSettings_.pointSpecular = glm::vec3(1.0f, 0.6f, 0.25f);
-        lightSettings_.pointIntensity = 15.0f;
-        lightSettings_.pointAmbientIntensity = 0.2f;
-        lightSettings_.pointShadowStrength = 0.98f;
-        lightSettings_.pointConstant = 1.0f;
-        lightSettings_.pointLinear = 0.09f;
-        lightSettings_.pointQuadratic = 0.032f;
+        sceneConfig_.fixedAmbientColor = glm::vec3(0.18f, 0.055f, 0.025f);
+        sceneConfig_.fixedAmbientStrength = 0.18f;
+        sceneConfig_.iblAmbientTint = glm::vec3(1.0f, 0.62f, 0.42f);
+        sceneConfig_.iblAmbientStrength = 0.42f;
+        sceneConfig_.phongDiffuseStrength = 0.62f;
+        sceneConfig_.phongSpecularStrength = 0.14f;
+        sceneConfig_.phongIBLDiffuseStrength = 1.35f;
+        sceneConfig_.phongIBLSpecularStrength = 0.30f;
+        sceneConfig_.ssaoStrength = 1.9f;
+        sceneConfig_.exposure = 1.15f;
+        sceneConfig_.bloomStrength = 1.15f;
+        sceneConfig_.bloomThreshold = 1.0f;
+        lightSettings_.sunDirection = glm::normalize(glm::vec3(-0.82f, -0.16f, -0.55f));
+        lightSettings_.sunDiffuse = glm::vec3(24.0f, 7.5f, 1.8f);
+        lightSettings_.sunSpecular = glm::vec3(18.0f, 6.0f, 2.0f);
+        lightSettings_.sunAmbient = glm::vec3(0.42f, 0.12f, 0.055f);
+        lightSettings_.sunIntensity = 0.62f;
+        lightSettings_.sunIntensityScale = 0.58f;
+        lightSettings_.sunShadowStrength = 0.92f;
+        lightSettings_.sunExtractedFromEnvironment = false;
+        sceneConfig_.directionalShadowLightSize = 0.012f;
+        sceneConfig_.directionalShadowBlockerSearchRadius = 0.014f;
+        sceneConfig_.directionalShadowMinFilterRadius = 0.0015f;
+        sceneConfig_.directionalShadowMaxFilterRadius = 0.014f;
         lightSettings_.flashDiffuse = glm::vec3(0.8f, 0.9f, 1.0f);
         lightSettings_.flashSpecular = glm::vec3(1.0f);
         lightSettings_.flashIntensity = 12.0f;

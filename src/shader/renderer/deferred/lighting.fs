@@ -59,8 +59,14 @@ uniform bool enableFlashlight;
 uniform bool enableSSAO;
 uniform bool enablePBR;
 uniform bool enableIBL;
+uniform bool enableGI;
+uniform bool enableWaterCaustics;
 
 uniform float ssaoStrength;
+uniform float giStrength;
+uniform float giRadius;
+uniform float giMaxDistance;
+uniform int giSampleCount;
 uniform vec3 fixedAmbientColor;
 uniform float fixedAmbientStrength;
 uniform vec3 iblAmbientTint;
@@ -79,6 +85,10 @@ uniform float directionalShadowMinFilterRadius;
 uniform float directionalShadowMaxFilterRadius;
 uniform float directionalShadowBiasSlope;
 uniform float directionalShadowBiasMin;
+uniform float waterLevel;
+uniform float waterTime;
+uniform vec2 waterCenter;
+uniform vec2 waterRadii;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -537,6 +547,207 @@ vec3 calcFixedAmbient(vec3 albedo, float ao)
     return fixedAmbientColor * fixedAmbientStrength * albedo * ao;
 }
 
+float giHash(vec2 p)
+{
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+const vec2 GI_DISK[16] = vec2[](
+    vec2( 0.1305,  0.9914), vec2(-0.3827,  0.9239),
+    vec2(-0.7934,  0.6088), vec2(-0.9914,  0.1305),
+    vec2(-0.9239, -0.3827), vec2(-0.6088, -0.7934),
+    vec2(-0.1305, -0.9914), vec2( 0.3827, -0.9239),
+    vec2( 0.7934, -0.6088), vec2( 0.9914, -0.1305),
+    vec2( 0.6088,  0.7934), vec2( 0.1951,  0.4619),
+    vec2(-0.4619,  0.1951), vec2(-0.1951, -0.4619),
+    vec2( 0.4619, -0.1951), vec2( 0.0,     0.62)
+);
+
+// One-bounce screen-space diffuse GI. Neighboring G-buffer surfaces act as
+// secondary emitters, producing local fill light and material color bleeding.
+vec3 calcScreenSpaceGI(vec3 fragPos, vec3 normal, vec3 albedo,
+                       float metallic, float ao)
+{
+    if (!enableGI)
+        return vec3(0.0);
+
+    vec2 texelSize = 1.0 / vec2(textureSize(gPosition, 0));
+    float randomAngle = giHash(gl_FragCoord.xy) * 2.0 * PI;
+    mat2 rotation = mat2(cos(randomAngle), -sin(randomAngle),
+                         sin(randomAngle),  cos(randomAngle));
+    float viewDistance = length(viewPos - fragPos);
+    float distanceScale = clamp(18.0 / max(viewDistance, 1.0), 0.35, 1.5);
+
+    vec3 indirect = vec3(0.0);
+    float totalWeight = 0.0;
+    for (int i = 0; i < 16; ++i)
+    {
+        if (i >= giSampleCount)
+            break;
+
+        float ringScale = 0.35 + 0.65 * (float(i) + 1.0) / float(max(giSampleCount, 1));
+        vec2 sampleUv = TexCoords + rotation * GI_DISK[i] * texelSize *
+                        giRadius * distanceScale * ringScale;
+        if (sampleUv.x <= 0.0 || sampleUv.x >= 1.0 ||
+            sampleUv.y <= 0.0 || sampleUv.y >= 1.0)
+            continue;
+
+        vec3 sampleNormalRaw = texture(gNormalRoughness, sampleUv).rgb;
+        if (dot(sampleNormalRaw, sampleNormalRaw) < 0.25)
+            continue;
+        vec3 sampleNormal = normalize(sampleNormalRaw);
+        vec3 samplePos = texture(gPosition, sampleUv).rgb;
+        vec3 delta = samplePos - fragPos;
+        float distanceToSample = length(delta);
+        if (distanceToSample < 0.03 || distanceToSample > giMaxDistance)
+            continue;
+
+        vec3 directionToSample = delta / distanceToSample;
+        float receiverCosine = max(dot(normal, directionToSample), 0.0);
+        float emitterCosine = max(dot(sampleNormal, -directionToSample), 0.0);
+        float geometry = (receiverCosine + 0.08) * (emitterCosine + 0.08) /
+                         (1.0 + distanceToSample * distanceToSample * 0.14);
+        float rangeWeight = 1.0 - smoothstep(giMaxDistance * 0.55,
+                                             giMaxDistance, distanceToSample);
+        float sampleAO = enableSSAO
+            ? pow(clamp(texture(AO, sampleUv).r, 0.0, 1.0), ssaoStrength)
+            : 1.0;
+        vec3 sampleAlbedo = texture(gAlbedoMetallic, sampleUv).rgb;
+
+        vec3 sourceIrradiance = fixedAmbientColor * fixedAmbientStrength;
+        if (enableIBL)
+            sourceIrradiance += iblAmbientTint * iblAmbientStrength * 0.16;
+        if (enableDirectionalLight)
+        {
+            float sourceNdotL = max(dot(sampleNormal, normalize(-sun.direction)), 0.0);
+            sourceIrradiance += sun.diffuse * sourceNdotL / PI;
+        }
+        if (enablePointLight)
+        {
+            vec3 toPointLight = pointLight.position - samplePos;
+            float pointDistance = length(toPointLight);
+            float attenuation = 1.0 / (pointLight.constant +
+                pointLight.linear * pointDistance +
+                pointLight.quadratic * pointDistance * pointDistance);
+            sourceIrradiance += pointLight.diffuse * attenuation *
+                max(dot(sampleNormal, normalize(toPointLight)), 0.0);
+        }
+
+        float weight = geometry * rangeWeight * sampleAO;
+        indirect += sampleAlbedo * sourceIrradiance * weight;
+        totalWeight += weight;
+    }
+
+    if (totalWeight < 0.0001)
+        return vec3(0.0);
+    vec3 bouncedRadiance = indirect / totalWeight;
+    return bouncedRadiance * albedo * (1.0 - metallic) * ao * giStrength;
+}
+
+float sampleCausticLayer(vec2 worldXZ, float time)
+{
+    vec2 warp = vec2(
+        sin(dot(worldXZ, vec2(0.41, 0.23)) + time * 0.54),
+        cos(dot(worldXZ, vec2(-0.19, 0.37)) - time * 0.47));
+    vec2 p = worldXZ + warp * 0.22;
+
+    // Non-harmonic travelling waves produce curved zero contours instead of
+    // straight bands or polygon borders.
+    float field =
+        sin(dot(p, normalize(vec2( 0.82,  0.57))) * 1.62 + time * 0.91) * 0.52 +
+        sin(dot(p, normalize(vec2(-0.38,  0.93))) * 2.08 - time * 1.17) * 0.31 +
+        sin(dot(p, normalize(vec2( 0.17, -0.98))) * 2.73 + time * 1.43) * 0.17;
+
+    float aa = max(fwidth(field) * 1.25, 0.012);
+    float filament = 1.0 - smoothstep(0.055 + aa, 0.34 + aa, abs(field));
+    float pulse = 0.68 + 0.32 * sin(dot(p, vec2(0.31, -0.27)) - time * 0.63);
+    return clamp(filament * pulse, 0.0, 1.0);
+}
+
+float sampleCausticFocus(vec2 projectedXZ)
+{
+    float layerA = sampleCausticLayer(projectedXZ, waterTime * 0.82);
+    mat2 layerRotation = mat2(0.8192, -0.5736,
+                              0.5736,  0.8192);
+    float layerB = sampleCausticLayer(
+        layerRotation * projectedXZ * 1.13 + vec2(5.7, -3.4),
+        -waterTime * 0.61 + 8.3);
+
+    float overlap = min(layerA, layerB);
+    float remnant = max(layerA, layerB);
+    return clamp(pow(overlap, 4.7) * 1.82 +
+                 pow(remnant, 6.5) * 0.12, 0.0, 1.0);
+}
+
+vec3 calcUnderwaterCaustics(
+    vec3 fragPos,
+    vec3 normal,
+    vec3 albedo,
+    vec4 fragPosLightSpace
+)
+{
+    float waterDepth = waterLevel - fragPos.y;
+    if (!enableWaterCaustics || !enableDirectionalLight || waterDepth <= 0.02)
+        return vec3(0.0);
+
+    // Height alone is insufficient: other valleys can also lie below the
+    // water plane. Match the actual elliptical WaterMesh footprint so only
+    // receiver pixels vertically covered by the lake can receive caustics.
+    vec2 lakeCoordinate = (fragPos.xz - waterCenter) / waterRadii;
+    float lakeDistance = length(lakeCoordinate);
+    if (lakeDistance >= 1.0)
+        return vec3(0.0);
+    float lakeCoverage = 1.0 - smoothstep(0.94, 1.0, lakeDistance);
+
+    vec3 lightDir = normalize(-sun.direction);
+    float receiverNdotL = max(dot(normal, lightDir), 0.0);
+    if (receiverNdotL <= 0.001)
+        return vec3(0.0);
+
+    // Trace the receiver back toward its approximate entry point at the water
+    // surface. Refraction bends the ray toward vertical, hence the reduced
+    // horizontal projection factor.
+    vec2 projectedXZ = fragPos.xz +
+        lightDir.xz / max(lightDir.y, 0.16) * waterDepth * 0.32;
+
+    // Water refracts blue light slightly more strongly than red. Sample the
+    // same focus field at three nearby world positions so the energetic core
+    // remains white while only its edges split into restrained RGB fringes.
+    vec2 dispersionAxis = lightDir.xz;
+    float axisLength = length(dispersionAxis);
+    dispersionAxis = axisLength > 0.0001
+        ? dispersionAxis / axisLength
+        : vec2(0.7071, 0.7071);
+    float dispersionOffset = mix(0.018, 0.060,
+        smoothstep(0.25, 5.5, waterDepth));
+    vec3 spectralFocus = vec3(
+        sampleCausticFocus(projectedXZ + dispersionAxis * dispersionOffset),
+        sampleCausticFocus(projectedXZ),
+        sampleCausticFocus(projectedXZ - dispersionAxis * dispersionOffset));
+
+    float commonFocus = min(spectralFocus.r,
+                            min(spectralFocus.g, spectralFocus.b));
+    vec3 spectralRim = max(spectralFocus - vec3(commonFocus * 0.84), vec3(0.0));
+    vec3 focusColor = vec3(commonFocus * 1.34) +
+                      spectralRim * vec3(1.12, 1.00, 1.28);
+    float highlightCore = pow(max(spectralFocus.r,
+                                  max(spectralFocus.g, spectralFocus.b)), 2.6);
+    focusColor += vec3(1.0, 0.96, 0.84) * highlightCore * 0.38;
+
+    float shallowEntry = smoothstep(0.04, 0.30, waterDepth);
+    float beerLambert = exp(-waterDepth * 0.19);
+    float shadow = ShadowCalculation(fragPosLightSpace, normal, lightDir) *
+                   sunShadowStrength;
+
+    vec3 warmSun = normalize(max(sun.diffuse, vec3(0.001)));
+    vec3 waterTint = vec3(0.56, 0.88, 0.78);
+    vec3 causticTint = mix(waterTint, warmSun, 0.68);
+    return albedo * causticTint * sun.diffuse * focusColor * shallowEntry *
+           beerLambert * receiverNdotL * (1.0 - shadow) * lakeCoverage * 2.85;
+}
+
 void main()
 {
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
@@ -569,6 +780,8 @@ void main()
         result += calcFixedAmbient(albedo, ao);
     }
 
+    result += calcScreenSpaceGI(FragPos, Normal, albedo, metallic, ao);
+
     if (enablePointLight)
 {
     if (enablePBR)
@@ -597,6 +810,11 @@ if (enableDirectionalLight)
                     roughness, metallic);
 }
 
+vec3 underwaterCaustics = calcUnderwaterCaustics(
+    FragPos, Normal, albedo, FragPosLightSpace
+);
+result += underwaterCaustics;
+
 if (enableFlashlight)
 {
     if (enablePBR)
@@ -616,8 +834,13 @@ if (enableFlashlight)
     // 按人眼对三个颜色的敏感度计算亮度，如果亮度超过阈值，就把它写入BrightColor，否则写入黑色
     float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
     
+    float causticPeak = max(underwaterCaustics.r,
+                            max(underwaterCaustics.g, underwaterCaustics.b));
+    vec3 causticBloom = underwaterCaustics *
+        smoothstep(0.32, 1.15, causticPeak) * 0.82;
+
     if (brightness > bloomThreshold)
-        BrightColor = vec4(result, 1.0);
+        BrightColor = vec4(max(result, causticBloom), 1.0);
     else
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+        BrightColor = vec4(causticBloom, 1.0);
 }

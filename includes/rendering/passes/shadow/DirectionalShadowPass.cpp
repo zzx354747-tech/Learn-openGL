@@ -2,11 +2,12 @@
 
 DirectionalShadowPass::DirectionalShadowPass( DirectionalShadowMap& shadowMap, Shader& shadowShader, 
     SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
-    SceneRenderState& state, LightSettings& lightSettings, 
+    SceneRenderState& state, LightSettings& lightSettings,
+    SceneRenderConfig& config,
     ResourceRegistry& registry, ResourceHandle shadowMapHandle) 
     : shadowMap(shadowMap), shadowShader(shadowShader), 
     sphereDrawer(sphereDrawer), modelDrawer(modelDrawer),
-    state(state),  lightSettings(lightSettings), 
+    state(state), lightSettings(lightSettings), config(config),
     registry(registry), shadowMapHandle(shadowMapHandle)
 {
     }
@@ -36,10 +37,13 @@ void DirectionalShadowPass::render()
 
 glm::mat4 DirectionalShadowPass::createLightSpaceMatrix() const
 {
-        glm::vec3 sceneCenter(0.0f, 0.6f, -4.8f);
-        float halfExtent = 10.0f;
+        const bool isTerrain = config.sceneSelection == SceneSelection::FujiTerrain;
+        glm::vec3 sceneCenter = isTerrain
+            ? glm::vec3(0.0f, 2.0f, -18.0f)
+            : glm::vec3(0.0f, 0.6f, -4.8f);
+        float halfExtent = isTerrain ? 175.0f : 10.0f;
         float nearPlane = 0.1f;
-        float farPlane = 30.0f;
+        float farPlane = isTerrain ? 380.0f : 30.0f;
 
         glm::mat4 lightProjection = glm::ortho(
             -halfExtent,

@@ -41,6 +41,9 @@ ShaderLibrary::ShaderLibrary()
     , basicForward(
         "../src/shader/renderer/forward/unlit.vs",
         "../src/shader/renderer/forward/unlit.fs")
+    , water(
+        "../src/shader/renderer/forward/water.vs",
+        "../src/shader/renderer/forward/water.fs")
     , lightingPass(
         "../src/shader/renderer/deferred/lighting.vs",
         "../src/shader/renderer/deferred/lighting.fs")

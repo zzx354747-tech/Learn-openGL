@@ -11,6 +11,9 @@
 #include "rendering/assets/mesh/SphereMesh.h"
 #include "rendering/assets/mesh/LightMesh.h"
 #include "rendering/assets/mesh/SkyboxMesh.h"
+#include "rendering/assets/mesh/TerrainMesh.h"
+#include "rendering/assets/mesh/VegetationMesh.h"
+#include "rendering/assets/mesh/WaterMesh.h"
 #include "rendering/resources/shadow/DirectionalShadowMap.h"
 #include "rendering/resources/shadow/PointShadowMap.h"
 #include "rendering/resources/shadow/SpotShadowMap.h"
@@ -51,6 +54,9 @@ struct RendererScene
     SphereMesh sphereMesh;
     LightMesh lightMesh;
     SkyboxMesh skyboxMesh;
+    TerrainMesh terrainMesh;
+    VegetationMesh vegetationMesh;
+    WaterMesh waterMesh;
 
     DirectionalShadowMap shadowMap;
     PointShadowMap pointShadowMap;

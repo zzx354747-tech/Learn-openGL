@@ -22,6 +22,9 @@ struct MaterialFlags
     glm::vec4 baseColorFactor = glm::vec4(1.0f);
     float roughnessFactor = 1.0f;
     float metallicFactor = 0.0f;
+    bool windAffected = false;
+    float windStrength = 0.0f;
+    glm::vec2 windDirection = glm::vec2(1.0f, 0.0f);
 };
 
 class Mesh

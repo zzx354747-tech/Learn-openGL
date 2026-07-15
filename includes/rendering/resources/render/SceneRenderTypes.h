@@ -21,12 +21,14 @@ enum class SceneSelection
 {
     Default,
     LivingRoom,
+    FujiTerrain,
 };
 
 enum class EnvironmentSelection
 {
     Night,
     Sunny,
+    GodRays,
     NightN8_3K,
 };
 
@@ -42,7 +44,13 @@ struct SceneRenderConfig
     bool enableSSAO = false;
     bool enablePBR = false;
     bool enableIBL = false;
+    bool enableGI = true;
+    bool enableWater = true;
     float ssaoStrength = 1.0f;
+    float giStrength = 0.85f;
+    float giRadius = 18.0f;
+    float giMaxDistance = 8.0f;
+    int giSampleCount = 12;
     glm::vec3 fixedAmbientColor = glm::vec3(0.08f);
     float fixedAmbientStrength = 1.0f;
     glm::vec3 iblAmbientTint = glm::vec3(1.0f);

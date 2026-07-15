@@ -1,4 +1,8 @@
 #include "LightingPass.h"
+#include "rendering/assets/mesh/TerrainMesh.h"
+#include "rendering/assets/mesh/WaterMesh.h"
+
+#include <chrono>
 
 void LightingPass::render(Framebuffer& framebuffer,
     Screenquad& screenQuad)
@@ -36,7 +40,15 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setBool("enableSSAO", config.enableSSAO);
     shader.setBool("enablePBR", config.enablePBR);
     shader.setBool("enableIBL", config.enableIBL);
+    shader.setBool("enableGI", config.enableGI);
+    shader.setBool("enableWaterCaustics",
+                   config.enableWater &&
+                   config.sceneSelection == SceneSelection::FujiTerrain);
     shader.setFloat("ssaoStrength", config.ssaoStrength);
+    shader.setFloat("giStrength", config.giStrength);
+    shader.setFloat("giRadius", config.giRadius);
+    shader.setFloat("giMaxDistance", config.giMaxDistance);
+    shader.setInt("giSampleCount", config.giSampleCount);
     shader.setVec3("fixedAmbientColor", config.fixedAmbientColor);
     shader.setFloat("fixedAmbientStrength", config.fixedAmbientStrength);
     shader.setVec3("iblAmbientTint", config.iblAmbientTint);
@@ -55,6 +67,12 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("directionalShadowMaxFilterRadius", config.directionalShadowMaxFilterRadius);
     shader.setFloat("directionalShadowBiasSlope", config.directionalShadowBiasSlope);
     shader.setFloat("directionalShadowBiasMin", config.directionalShadowBiasMin);
+    shader.setFloat("waterLevel", TerrainMesh::WaterLevel);
+    shader.setVec2("waterCenter", glm::vec2(0.0f, WaterMesh::CenterZ));
+    shader.setVec2("waterRadii", glm::vec2(WaterMesh::RadiusX, WaterMesh::RadiusZ));
+    static const auto waterAnimationStart = std::chrono::steady_clock::now();
+    shader.setFloat("waterTime", std::chrono::duration<float>(
+        std::chrono::steady_clock::now() - waterAnimationStart).count());
     shader.setMat4("lightSpaceMatrix", state.dirLightSpaceMatrix);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
@@ -113,9 +131,16 @@ void LightingPass::bindLightingInputTextures(Shader& shader)
     glBindTexture(GL_TEXTURE_2D, registry.resolveTexture(handles.spotShadowMap));
     shader.setInt("spotShadowMap", 6);
 
+    // Keep unit 7 empty. Some Apple OpenGL drivers retain a stale cube target on
+    // this unit and report it as unloadable when a float sampler is assigned.
     glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glActiveTexture(GL_TEXTURE10);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     glBindTexture(GL_TEXTURE_2D, registry.resolveTexture(handles.brdfLUT));
-    shader.setInt("brdfLUT", 7);
+    shader.setInt("brdfLUT", 10);
 
     glActiveTexture(GL_TEXTURE8);
     glBindTexture(GL_TEXTURE_CUBE_MAP, registry.resolveTexture(handles.irradianceMap));

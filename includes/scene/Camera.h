@@ -25,7 +25,7 @@ public:
         float lastX = 400.0f, 
         float lastY = 300.0f,
         float sensitivity = 0.1f,
-        float speed = 2.5f
+        float speed = 18.0f
 );
 
 //对外接口
