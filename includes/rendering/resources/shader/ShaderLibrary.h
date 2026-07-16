@@ -4,10 +4,17 @@
 struct ShaderLibrary
 {
     Shader screen;
+    Shader skyComposite;
+    Shader cloudAcceleration;
+    Shader volumetricLight;
+    Shader volumetricLightComposite;
     Shader taa;
     Shader cubemap;
     Shader shadowDebug;
     Shader shadowMap;
+    Shader cloudOpticalDepth;
+    Shader cloudOpticalDepthBlur;
+    Shader cloudOpticalDepthToTransmittance;
     Shader pointShadowMap;
     Shader lightCube;
     Shader envCubemap;

@@ -59,6 +59,12 @@ struct SceneRenderConfig
     bool enableVolumetricClouds = true;
     bool enableSunTexture = true;
     bool enableGodRays = true;
+    bool enableTimeOfDay = true;
+    float timeOfDayHours = 9.0f;
+    float dayLengthSeconds = 360.0f;
+    float daylightFactor = 1.0f;
+    bool enableAutomaticWeather = true;
+    float automaticWeatherIntervalSeconds = 90.0f;
     float taaHistoryWeight = 0.88f;
     float taaSharpness = 0.28f;
     glm::vec3 skyTopColor = glm::vec3(0.24f, 0.55f, 0.90f);
@@ -77,12 +83,16 @@ struct SceneRenderConfig
     float cloudErosionStrength = 0.28f;
     float stormHoleStrength = 0.0f;
     unsigned int stormHoleSeed = 1739u;
+    // World-space center of the primary storm aperture at cloud mid-height.
+    // It is captured when the pattern is generated and never follows camera.
+    glm::vec2 stormHoleAnchor = glm::vec2(0.0f, -8000.0f);
     int stormHoleCount = 5;
     float stormHoleMinRadius = 160.0f;
     float stormHoleMaxRadius = 1400.0f;
     float stormHoleSoftness = 0.38f;
-    float stormHoleShaftStrength = 2.0f;
-    glm::vec2 stormShaftLean = glm::vec2(0.08f, 0.0f);
+    // Independent lens-facing solar glare intensity. The historical member
+    // name is retained to avoid widening this renderer configuration change.
+    float stormHoleShaftStrength = 1.0f;
     float cloudSpeed = 7.0f;
     float cloudEvolutionSpeed = 0.035f;
     float cloudEvolutionPhase = 0.0f;
@@ -90,7 +100,11 @@ struct SceneRenderConfig
     glm::vec2 cloudWindDirection = glm::vec2(0.94f, 0.34f);
     float cloudWindShear = 0.08f;
     float cloudExtinction = 1.05f;
-    float cloudLightAbsorption = 0.90f;
+    float cloudLightAbsorption = 3.50f;
+    float cloudShadowStrength = 1.0f;
+    float cloudShadowCoverage = 8000.0f;
+    int cloudShadowMarchSteps = 6;
+    int cloudShadowScanSlices = 4;
     float cloudAmbientStrength = 0.72f;
     float cloudPowderStrength = 1.35f;
     float cloudMultiScattering = 0.48f;
@@ -103,6 +117,20 @@ struct SceneRenderConfig
     int cloudViewSteps = 48;
     int cloudLightSteps = 5;
     float cloudMaxDistance = 85000.0f;
+    float cloudRenderScale = 0.5f;
+    bool enableCloudAcceleration = true;
+    bool enableCloudOccupancySkipping = true;
+    bool enableCloudLightCache = true;
+    int cloudCacheResolution = 256;
+    int cloudCacheUpdateInterval = 1;
+    int cloudCacheLightSteps = 4;
+    float cloudCacheWorldSize = 180000.0f;
+    bool enableSunLocalCloudCache = true;
+    int sunLocalCloudCacheResolution = 512;
+    float sunLocalCloudCacheWorldSize = 28000.0f;
+    int sunLocalCloudCacheTilesPerAxis = 2;
+    float cloudOccupancyThreshold = 0.012f;
+    float cloudEmptySkipMultiplier = 6.0f;
     float godRayIntensity = 0.82f;
     float godRayDensity = 0.90f;
     float godRayDecay = 0.967f;
@@ -111,6 +139,15 @@ struct SceneRenderConfig
     float godRayRadius = 0.38f;
     int godRaySamples = 48;
     glm::vec3 godRayColor = glm::vec3(1.0f, 0.78f, 0.50f);
+    float volumetricLightRenderScale = 0.5f;
+    int volumetricLightSteps = 32;
+    float volumetricLightAnisotropy = 0.68f;
+    // -ln(0.30) / 500 m: approximately 30% transmittance after 500 metres.
+    float volumetricLightExtinction = 0.0024079f;
+    float volumetricLightScattering = 0.0012f;
+    float volumetricLightMaxDistance = 8000.0f;
+    float volumetricLightIntensity = 1.0f;
+    float volumetricLightDepthSigma = 0.012f;
     float sunAngularRadius = 0.075f;
     float ssaoStrength = 1.0f;
     float giStrength = 0.85f;
@@ -118,9 +155,9 @@ struct SceneRenderConfig
     float giMaxDistance = 8.0f;
     int giSampleCount = 12;
     glm::vec3 fixedAmbientColor = glm::vec3(0.08f);
-    float fixedAmbientStrength = 1.0f;
+    float fixedAmbientStrength = 0.15f;
     glm::vec3 iblAmbientTint = glm::vec3(1.0f);
-    float iblAmbientStrength = 1.0f;
+    float iblAmbientStrength = 0.15f;
     float phongDiffuseStrength = 0.55f;
     float phongSpecularStrength = 0.18f;
     float phongIBLDiffuseStrength = 1.25f;
@@ -204,5 +241,7 @@ struct SceneRenderState
     glm::vec3 color = glm::vec3(1.0f);
 
     glm::mat4 dirLightSpaceMatrix = glm::mat4(1.0f);
+    glm::mat4 cloudShadowMatrix = glm::mat4(1.0f);
+    float cloudShadowGlobalTransmission = 1.0f;
     glm::mat4 spotLightSpaceMatrix = glm::mat4(1.0f);
 };

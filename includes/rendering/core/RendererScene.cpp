@@ -8,10 +8,19 @@
 
 namespace
 {
-double weatherClockSeconds()
+double animationClockSeconds()
 {
     return std::chrono::duration<double>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+float consumeClockDelta(double now, double& lastUpdateSeconds)
+{
+    const float deltaTime = lastUpdateSeconds > 0.0
+        ? static_cast<float>(std::min(now - lastUpdateSeconds, 0.10))
+        : 0.0f;
+    lastUpdateSeconds = now;
+    return deltaTime;
 }
 
 unsigned int nextStormHoleSeed()
@@ -30,6 +39,21 @@ unsigned int nextStormHoleSeed()
 int stormHoleCountFromSeed(unsigned int seed)
 {
     return 3 + static_cast<int>((seed >> 3u) % 5u);
+}
+
+glm::vec2 stormHoleAnchorFromSeed(unsigned int seed)
+{
+    // Fixed world-space placement. It deliberately has no camera term: the
+    // viewer may travel to the weather system, but cannot drag it around.
+    std::uint32_t xState = seed * 1664525u + 1013904223u;
+    std::uint32_t zState = xState * 1664525u + 1013904223u;
+    const float x01 = static_cast<float>(xState & 0x00ffffffu) /
+                      static_cast<float>(0x01000000u);
+    const float z01 = static_cast<float>(zState & 0x00ffffffu) /
+                      static_cast<float>(0x01000000u);
+    return glm::vec2(
+        glm::mix(-28000.0f, 28000.0f, x01),
+        glm::mix(-42000.0f, -12000.0f, z01));
 }
 
 SceneRenderConfig makeCloudWeatherTarget(
@@ -60,8 +84,7 @@ SceneRenderConfig makeCloudWeatherTarget(
             target.stormHoleMinRadius = 160.0f;
             target.stormHoleMaxRadius = 1400.0f;
             target.stormHoleSoftness = 0.38f;
-            target.stormHoleShaftStrength = 2.0f;
-            target.stormShaftLean = glm::vec2(0.08f, 0.0f);
+            target.stormHoleShaftStrength = 1.0f;
             target.cloudSpeed = 24.0f;
             target.cloudEvolutionSpeed = 0.15f;
             target.cloudWindDirection = glm::vec2(0.85f, 0.53f);
@@ -146,7 +169,7 @@ SceneRenderConfig makeCloudWeatherTarget(
             target.cloudWindDirection = glm::vec2(0.94f, 0.34f);
             target.cloudWindShear = 0.08f;
             target.cloudExtinction = 1.05f;
-            target.cloudLightAbsorption = 0.90f;
+            target.cloudLightAbsorption = 3.50f;
             target.cloudAmbientStrength = 0.72f;
             target.cloudPowderStrength = 1.35f;
             target.cloudMultiScattering = 0.48f;
@@ -200,8 +223,6 @@ void blendCloudWeather(
         start.stormHoleMaxRadius, target.stormHoleMaxRadius, amount);
     current.stormHoleSoftness = blendFloat(start.stormHoleSoftness, target.stormHoleSoftness, amount);
     current.stormHoleShaftStrength = blendFloat(start.stormHoleShaftStrength, target.stormHoleShaftStrength, amount);
-    current.stormShaftLean = glm::mix(
-        start.stormShaftLean, target.stormShaftLean, amount);
     current.cloudSpeed = blendFloat(start.cloudSpeed, target.cloudSpeed, amount);
     current.cloudEvolutionSpeed = blendFloat(start.cloudEvolutionSpeed, target.cloudEvolutionSpeed, amount);
     current.cloudWindDirection = glm::mix(start.cloudWindDirection, target.cloudWindDirection, amount);
@@ -242,6 +263,7 @@ RendererScene::RendererScene(int width, int height)
     , sceneGBuffer(width, height)
     , sceneSSAO(width, height)
     , vegetationMesh(terrainMesh)
+    , waterMesh(terrainMesh)
     , shadowMap(4096, 4096)
     , pointShadowMap(1024, 1024, 1.0f, 50.0f)
     , spotShadowMap(1024, 1024, 1.0f, 50.0f)
@@ -256,8 +278,12 @@ RendererScene::RendererScene(int width, int height)
                       sceneResources.lightingHandles.depthCubeMap)
     , directionalShadowPass(shadowMap,
                             shaderLibrary.shadowMap,
+                            shaderLibrary.cloudOpticalDepth,
+                            shaderLibrary.cloudOpticalDepthBlur,
+                            shaderLibrary.cloudOpticalDepthToTransmittance,
                             sphereDrawer,
                             livingRoomDrawer,
+                            camera,
                             sceneState,
                             lightSettings,
                             sceneConfig,
@@ -349,6 +375,14 @@ RendererScene::RendererScene(int width, int height)
     livingRoomDrawer.setTransform(livingRoomTransform);
 
     shadowResources.shadowMap = &shadowMap;
+    shadowResources.cloudOpticalDepthTexture =
+        directionalShadowPass.cloudOpticalDepthTexture();
+    shadowResources.cloudTransmittanceTexture =
+        directionalShadowPass.cloudTransmittanceTexture();
+    sceneResources.cloudOpticalDepthTexture =
+        shadowResources.cloudOpticalDepthTexture;
+    sceneResources.cloudTransmittanceTexture =
+        shadowResources.cloudTransmittanceTexture;
     shadowResources.pointShadowMap = &pointShadowMap;
     shadowResources.spotShadowMap = &spotShadowMap;
 
@@ -358,6 +392,7 @@ RendererScene::RendererScene(int width, int height)
 
     sceneResources.brdfLUT = &brdfLUT;
     sceneResources.pingpongFBO = &pingpongFBO;
+    uiState.gpuProfiler = &sceneRender.gpuProfiler();
 
     const RenderMode startupRenderMode = sceneConfig.renderMode;
     const ForwardLightMode startupForwardLightMode =
@@ -383,6 +418,32 @@ void RendererScene::resize(int width, int height)
 void RendererScene::render(int width, int height)
 {
     updateCloudWeatherEvolution();
+    if (sceneConfig.sceneSelection != previousSceneSelection)
+    {
+        if (sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
+        {
+            camera.SetPose(
+                glm::vec3(0.0f, 300.0f, 2300.0f),
+                -90.0f,
+                13.0f);
+        }
+        previousSceneSelection = sceneConfig.sceneSelection;
+    }
+    if (sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
+    {
+        const glm::vec3 cameraPosition = camera.Getposition();
+        const glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f),
+            static_cast<float>(std::max(width, 1)) /
+                static_cast<float>(std::max(height, 1)),
+            0.1f,
+            20000.0f);
+        terrainMesh.updateStreaming(
+            cameraPosition,
+            projection * camera.GetViewMatrix());
+        vegetationMesh.updateStreaming(cameraPosition);
+        waterMesh.updateStreaming(cameraPosition);
+    }
     sceneRender.render(
         width,
         height,
@@ -394,20 +455,74 @@ void RendererScene::render(int width, int height)
 
 void RendererScene::updateCloudWeatherEvolution()
 {
-    const double now = weatherClockSeconds();
-    const float deltaTime = cloudWeatherLastUpdateSeconds > 0.0
-        ? static_cast<float>(std::min(now - cloudWeatherLastUpdateSeconds, 0.10))
-        : 0.0f;
-    cloudWeatherLastUpdateSeconds = now;
+    const double now = animationClockSeconds();
+    // The solar clock and cloud/weather clock intentionally keep independent
+    // cursors. Pausing, scaling or replacing either timeline can no longer
+    // consume time that belongs to the other animation system.
+    const float sunDeltaTime = consumeClockDelta(
+        now, sunLastUpdateSeconds);
+    const float cloudDeltaTime = consumeClockDelta(
+        now, cloudWeatherLastUpdateSeconds);
+
+    if (sceneConfig.enableTimeOfDay)
+    {
+        const float dayLength = std::max(sceneConfig.dayLengthSeconds, 1.0f);
+        sceneConfig.timeOfDayHours = std::fmod(
+            sceneConfig.timeOfDayHours + sunDeltaTime * 24.0f / dayLength,
+            24.0f);
+    }
+    sceneConfig.timeOfDayHours = std::clamp(
+        sceneConfig.timeOfDayHours, 0.0f, 24.0f);
+
+    // sunDirection is the direction of incoming light. The opposite vector is
+    // the world-space direction toward the solar disk. At 06:00 it rises in
+    // the east (+X), crosses the southern sky (-Z), and sets in the west (-X).
+    constexpr float Pi = 3.14159265358979323846f;
+    const float hourAngle =
+        (sceneConfig.timeOfDayHours - 12.0f) * (2.0f * Pi / 24.0f);
+    const float elevation = glm::radians(58.0f) * std::cos(hourAngle);
+    const float horizontal = std::cos(elevation);
+    const glm::vec3 towardSun = glm::normalize(glm::vec3(
+        -std::sin(hourAngle) * horizontal,
+        std::sin(elevation),
+        -std::cos(hourAngle) * horizontal));
+    lightSettings.sunDirection = -towardSun;
+    sceneConfig.daylightFactor = glm::smoothstep(
+        -0.10f, 0.10f, towardSun.y);
+
+    if (sceneConfig.enableAutomaticWeather &&
+        sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
+    {
+        // Weather has its own clock. Moving the time-of-day slider or changing
+        // the simulated day length never changes the active weather preset.
+        automaticWeatherElapsed += cloudDeltaTime;
+        const float holdTime = std::max(
+            sceneConfig.automaticWeatherIntervalSeconds,
+            sceneConfig.cloudWeatherTransitionDuration + 1.0f);
+        if (automaticWeatherElapsed >= holdTime)
+        {
+            automaticWeatherElapsed = std::fmod(
+                automaticWeatherElapsed, holdTime);
+            automaticWeatherStage = (automaticWeatherStage + 1) % 4;
+            constexpr CloudWeatherPreset WeatherCycle[4] = {
+                CloudWeatherPreset::Sunny,
+                CloudWeatherPreset::Overcast,
+                CloudWeatherPreset::Storm,
+                CloudWeatherPreset::Overcast
+            };
+            sceneConfig.cloudWeatherPreset =
+                WeatherCycle[automaticWeatherStage];
+        }
+    }
 
     const float windLength = glm::length(sceneConfig.cloudWindDirection);
     const glm::vec2 windDirection = windLength > 0.0001f
         ? sceneConfig.cloudWindDirection / windLength
         : glm::vec2(1.0f, 0.0f);
     sceneConfig.cloudAnimationOffset +=
-        windDirection * sceneConfig.cloudSpeed * deltaTime;
+        windDirection * sceneConfig.cloudSpeed * cloudDeltaTime;
     sceneConfig.cloudEvolutionPhase +=
-        std::max(sceneConfig.cloudEvolutionSpeed, 0.0f) * deltaTime;
+        std::max(sceneConfig.cloudEvolutionSpeed, 0.0f) * cloudDeltaTime;
 
     if (sceneConfig.cloudWeatherPreset != activeCloudWeatherPreset ||
         sceneConfig.cloudWeatherTransitionRequest != activeCloudWeatherTransitionRequest)
@@ -419,6 +534,8 @@ void RendererScene::updateCloudWeatherEvolution()
             sceneConfig.stormHoleSeed = nextStormHoleSeed();
             sceneConfig.stormHoleCount =
                 stormHoleCountFromSeed(sceneConfig.stormHoleSeed);
+            sceneConfig.stormHoleAnchor = stormHoleAnchorFromSeed(
+                sceneConfig.stormHoleSeed);
         }
         cloudWeatherTransitionStart = sceneConfig;
         cloudWeatherTransitionElapsed = 0.0f;
@@ -432,7 +549,7 @@ void RendererScene::updateCloudWeatherEvolution()
     if (!cloudWeatherTransitionActive)
         return;
 
-    cloudWeatherTransitionElapsed += deltaTime;
+    cloudWeatherTransitionElapsed += cloudDeltaTime;
     const float duration = std::max(sceneConfig.cloudWeatherTransitionDuration, 0.1f);
     const float linearProgress = std::min(cloudWeatherTransitionElapsed / duration, 1.0f);
     const float smoothProgress = linearProgress * linearProgress * (3.0f - 2.0f * linearProgress);

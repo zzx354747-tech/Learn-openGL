@@ -72,13 +72,15 @@ inline float vegetationRandom(std::uint32_t value)
     return static_cast<float>(value & 0x00ffffffu) / static_cast<float>(0x00ffffffu);
 }
 
-// Expanded grass colonies cover roughly 60% before the flower ribbons carve out
-// exclusive space, leaving about 40-50% of usable lowland as visible grass piles.
+// The expanded world keeps the original two-stage layout: first select broad
+// grid regions, then let VegetationMesh densely random-fill each selected area.
+// Grass and flower regions are exclusive so their colours read as coherent
+// fields instead of evenly distributed noise.
 inline std::vector<VegetationPatch> buildVegetationPatches(
     float terrainSize, std::uint32_t seed, VegetationPatchKind requestedKind)
 {
-    constexpr unsigned int gridSize = 7;
-    const float halfExtent = terrainSize * 0.42f;
+    constexpr unsigned int gridSize = 13;
+    const float halfExtent = terrainSize * 0.46f;
     const float cellSize = halfExtent * 2.0f / static_cast<float>(gridSize);
     std::vector<VegetationPatch> patches;
 
@@ -88,7 +90,10 @@ inline std::vector<VegetationPatch> buildVegetationPatches(
         {
             const std::uint32_t h = vegetationHash(x, z, seed + 1709u);
             const float selector = vegetationRandom(h);
-            if (requestedKind != VegetationPatchKind::Grass || selector >= 0.78f)
+            const bool selected = requestedKind == VegetationPatchKind::Grass
+                ? selector < 0.48f
+                : selector >= 0.48f && selector < 0.70f;
+            if (!selected)
                 continue;
 
             const float jitterX = (vegetationRandom(h * 1664525u + 1013904223u) - 0.5f) *
@@ -96,7 +101,9 @@ inline std::vector<VegetationPatch> buildVegetationPatches(
             const float jitterZ = (vegetationRandom(h * 22695477u + 1u) - 0.5f) *
                                   cellSize * 0.30f;
             const float radiusRandom = vegetationRandom(h * 1103515245u + 12345u);
-            const float radius = 16.0f + radiusRandom * 4.0f;
+            const float radius = requestedKind == VegetationPatchKind::Grass
+                ? cellSize * (0.34f + radiusRandom * 0.10f)
+                : cellSize * (0.22f + radiusRandom * 0.08f);
             patches.push_back({
                 glm::vec2(-halfExtent + (static_cast<float>(x) + 0.5f) * cellSize + jitterX,
                           -18.0f - halfExtent + (static_cast<float>(z) + 0.5f) * cellSize + jitterZ),

@@ -11,6 +11,24 @@ void SceneRenderUI::renderUI(
      ImGui::Begin("Deferred PBR Renderer");
         ImGui::Text("FPS: %.2f", FPS);
         ImGui::Text("Swap wait ms: %.3f", swapWaitMs);
+        if (uiState.gpuProfiler &&
+            ImGui::CollapsingHeader("GPU Pass Timings", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            const std::vector<GpuPassTiming> timings =
+                uiState.gpuProfiler->timings();
+            double totalMilliseconds = 0.0;
+            for (const GpuPassTiming& timing : timings)
+            {
+                if (!timing.valid)
+                    continue;
+                totalMilliseconds += timing.milliseconds;
+                ImGui::Text("%-22s %7.3f ms",
+                            timing.name.c_str(), timing.milliseconds);
+            }
+            ImGui::Separator();
+            ImGui::Text("Measured GPU total      %7.3f ms", totalMilliseconds);
+            ImGui::TextDisabled("Smoothed async GL_TIME_ELAPSED results");
+        }
         if (uiState.environmentLoadFailed)
         {
             ImGui::TextColored(
@@ -95,6 +113,16 @@ void SceneRenderUI::renderUI(
         if (uiState.sceneConfig.renderMode != RenderMode::Lighting)
             ImGui::TextDisabled(
                 "Volumetric clouds and god rays are disabled outside Lighting mode.");
+        ImGui::Checkbox("Time of Day", &uiState.sceneConfig.enableTimeOfDay);
+        ImGui::SliderFloat("Hour", &uiState.sceneConfig.timeOfDayHours,
+                           0.0f, 24.0f, "%.2f h");
+        ImGui::SliderFloat("Day Length", &uiState.sceneConfig.dayLengthSeconds,
+                           30.0f, 1800.0f, "%.0f s");
+        ImGui::Checkbox("Automatic Weather",
+                        &uiState.sceneConfig.enableAutomaticWeather);
+        ImGui::SliderFloat("Weather Hold Time",
+                           &uiState.sceneConfig.automaticWeatherIntervalSeconds,
+                           20.0f, 600.0f, "%.0f s");
         ImGui::Checkbox("Pure Color Sky", &uiState.sceneConfig.enableProceduralSky);
         ImGui::ColorEdit3("Sky Background", glm::value_ptr(uiState.sceneConfig.skyTopColor));
         ImGui::Checkbox("Volumetric Clouds", &uiState.sceneConfig.enableVolumetricClouds);
@@ -150,21 +178,23 @@ void SceneRenderUI::renderUI(
             ImGui::Text("Pattern %u: %d generated holes",
                         uiState.sceneConfig.stormHoleSeed,
                         uiState.sceneConfig.stormHoleCount);
+            ImGui::TextWrapped("All generated holes use fixed world-space anchors; the camera cannot drag their light footprints.");
             if (ImGui::Button("Regenerate Hole Pattern"))
                 ++uiState.sceneConfig.cloudWeatherTransitionRequest;
             ImGui::DragFloat("Minimum Radius", &uiState.sceneConfig.stormHoleMinRadius, 5.0f, 40.0f, 900.0f, "%.0f m");
             ImGui::DragFloat("Maximum Radius", &uiState.sceneConfig.stormHoleMaxRadius, 10.0f, 300.0f, 2600.0f, "%.0f m");
-            ImGui::DragFloat2("Shaft Lean XZ", glm::value_ptr(uiState.sceneConfig.stormShaftLean), 0.005f, -0.30f, 0.30f, "%.3f");
-            ImGui::SetItemTooltip("Base beam angle; every generated hole receives a small random variation");
             ImGui::SliderFloat("Hole Softness", &uiState.sceneConfig.stormHoleSoftness, 0.05f, 0.80f, "%.2f");
-            ImGui::SliderFloat("Hole Shaft Boost", &uiState.sceneConfig.stormHoleShaftStrength, 0.0f, 4.0f, "%.2f");
-            ImGui::SetItemTooltip("Boosts the generated world-space volumetric shafts");
             ImGui::TreePop();
         }
         if (ImGui::TreeNodeEx("Cloud Lighting", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::SliderFloat("Extinction", &uiState.sceneConfig.cloudExtinction, 0.1f, 4.0f, "%.2f");
-            ImGui::SliderFloat("Sun Absorption", &uiState.sceneConfig.cloudLightAbsorption, 0.1f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Sun Absorption", &uiState.sceneConfig.cloudLightAbsorption, 0.0f, 8.0f, "%.2f");
+            ImGui::SliderFloat("Cloud Shadow Opacity", &uiState.sceneConfig.cloudShadowStrength, 0.0f, 1.0f, "%.2f");
+            ImGui::DragFloat("Cloud Shadow Coverage", &uiState.sceneConfig.cloudShadowCoverage, 50.0f, 4000.0f, 12000.0f, "%.0f m");
+            ImGui::SetItemTooltip("Full light-space width of the 512^2 R16F optical-depth map.");
+            ImGui::SliderInt("Cloud Shadow March Steps", &uiState.sceneConfig.cloudShadowMarchSteps, 4, 8);
+            ImGui::SliderInt("Cloud Shadow Scan Slices", &uiState.sceneConfig.cloudShadowScanSlices, 2, 8);
             ImGui::SliderFloat("Ambient Strength", &uiState.sceneConfig.cloudAmbientStrength, 0.0f, 2.0f, "%.2f");
             ImGui::SliderFloat("Powder Effect", &uiState.sceneConfig.cloudPowderStrength, 0.0f, 4.0f, "%.2f");
             ImGui::SliderFloat("Multiple Scattering", &uiState.sceneConfig.cloudMultiScattering, 0.0f, 1.0f, "%.2f");
@@ -178,26 +208,72 @@ void SceneRenderUI::renderUI(
         }
         if (ImGui::TreeNode("Cloud Quality"))
         {
+            ImGui::SliderFloat("Render Scale", &uiState.sceneConfig.cloudRenderScale,
+                               0.25f, 1.0f, "%.2fx");
+            ImGui::SetItemTooltip("0.50x renders one quarter as many cloud pixels; full-resolution TAA performs temporal reconstruction");
             ImGui::SliderInt("View Steps", &uiState.sceneConfig.cloudViewSteps, 16, 96);
             ImGui::SliderInt("Light Steps", &uiState.sceneConfig.cloudLightSteps, 2, 8);
             ImGui::DragFloat("Max Distance", &uiState.sceneConfig.cloudMaxDistance, 500.0f, 5000.0f, 150000.0f, "%.0f m");
+            ImGui::SeparatorText("World-space Cache");
+            ImGui::Checkbox("Acceleration Cache",
+                            &uiState.sceneConfig.enableCloudAcceleration);
+            ImGui::Checkbox("Occupancy Skipping",
+                            &uiState.sceneConfig.enableCloudOccupancySkipping);
+            ImGui::Checkbox("Cached Sun Lighting",
+                            &uiState.sceneConfig.enableCloudLightCache);
+            ImGui::SliderInt("Cache Resolution",
+                             &uiState.sceneConfig.cloudCacheResolution,
+                             64, 512);
+            ImGui::SliderInt("Cache Tile Interval",
+                             &uiState.sceneConfig.cloudCacheUpdateInterval,
+                             1, 8);
+            ImGui::SetItemTooltip("Frames between quadrant updates; a complete refresh takes four updates");
+            ImGui::SliderInt("Cached Light Steps",
+                             &uiState.sceneConfig.cloudCacheLightSteps,
+                             2, 6);
+            ImGui::DragFloat("Cache World Size",
+                             &uiState.sceneConfig.cloudCacheWorldSize,
+                             1000.0f, 40000.0f, 300000.0f, "%.0f m");
+            ImGui::Checkbox("Sun-local High Resolution",
+                            &uiState.sceneConfig.enableSunLocalCloudCache);
+            ImGui::SliderInt("Sun-local Resolution",
+                             &uiState.sceneConfig.sunLocalCloudCacheResolution,
+                             256, 1024);
+            ImGui::DragFloat("Sun-local World Size",
+                             &uiState.sceneConfig.sunLocalCloudCacheWorldSize,
+                             250.0f, 20000.0f, 32000.0f, "%.0f m");
+            ImGui::SliderInt("Sun-local Tiles Per Axis",
+                             &uiState.sceneConfig.sunLocalCloudCacheTilesPerAxis,
+                             2, 8);
+            ImGui::SetItemTooltip("Amortizes animated 512x512 cache updates across frames");
+            ImGui::SliderFloat("Occupancy Threshold",
+                               &uiState.sceneConfig.cloudOccupancyThreshold,
+                               0.001f, 0.08f, "%.3f");
+            ImGui::SliderFloat("Empty-space Skip",
+                               &uiState.sceneConfig.cloudEmptySkipMultiplier,
+                               1.0f, 12.0f, "%.1fx");
             ImGui::TreePop();
         }
-        if (ImGui::TreeNodeEx("God Rays", ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::TreeNodeEx("Volumetric Sun Scattering", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Checkbox("Enable God Rays", &uiState.sceneConfig.enableGodRays);
-            ImGui::SliderFloat("God Ray Intensity", &uiState.sceneConfig.godRayIntensity, 0.0f, 3.0f, "%.2f");
-            ImGui::SliderFloat("God Ray Density", &uiState.sceneConfig.godRayDensity, 0.1f, 1.5f, "%.2f");
-            ImGui::SliderFloat("God Ray Decay", &uiState.sceneConfig.godRayDecay, 0.85f, 0.999f, "%.3f");
-            ImGui::SliderFloat("God Ray Weight", &uiState.sceneConfig.godRayWeight, 0.005f, 0.15f, "%.3f");
-            ImGui::SliderFloat("God Ray Exposure", &uiState.sceneConfig.godRayExposure, 0.0f, 2.0f, "%.2f");
-            ImGui::SliderFloat("God Ray Radius", &uiState.sceneConfig.godRayRadius, 0.08f, 0.8f, "%.2f");
-            ImGui::SliderInt("God Ray Samples", &uiState.sceneConfig.godRaySamples, 16, 64);
-            ImGui::ColorEdit3("God Ray Color", glm::value_ptr(uiState.sceneConfig.godRayColor));
+            ImGui::Checkbox("Enable Scattering", &uiState.sceneConfig.enableGodRays);
+            ImGui::SliderFloat("Render Scale", &uiState.sceneConfig.volumetricLightRenderScale, 0.25f, 1.0f, "%.2fx");
+            ImGui::SliderInt("Ray Steps", &uiState.sceneConfig.volumetricLightSteps, 16, 64);
+            ImGui::SliderFloat("HG Anisotropy", &uiState.sceneConfig.volumetricLightAnisotropy, 0.50f, 0.76f, "%.2f");
+            ImGui::DragFloat("Extinction Sigma T", &uiState.sceneConfig.volumetricLightExtinction, 0.00001f, 0.00005f, 0.02f, "%.6f /m");
+            ImGui::SetItemTooltip("Upper bound for extinction; the pass automatically preserves about 30%% view transmittance up to the current cloud base");
+            ImGui::DragFloat("Scattering Sigma S", &uiState.sceneConfig.volumetricLightScattering, 0.00001f, 0.0f, 0.02f, "%.6f /m");
+            ImGui::DragFloat("Max March Distance", &uiState.sceneConfig.volumetricLightMaxDistance, 50.0f, 100.0f, 50000.0f, "%.0f m");
+            ImGui::SliderFloat("Weather-normalized Intensity", &uiState.sceneConfig.volumetricLightIntensity, 0.0f, 8.0f, "%.2f");
+            ImGui::SetItemTooltip("A single artistic control shared by Sunny and Storm; weather contrast is normalized automatically");
+            ImGui::SliderFloat("Depth Rejection", &uiState.sceneConfig.volumetricLightDepthSigma, 0.001f, 0.05f, "%.3f");
+            ImGui::ColorEdit3("Sun Scatter Tint", glm::value_ptr(uiState.sceneConfig.godRayColor));
             ImGui::TreePop();
         }
         ImGui::Checkbox("Sun Texture", &uiState.sceneConfig.enableSunTexture);
         ImGui::SliderFloat("Sun Angular Radius", &uiState.sceneConfig.sunAngularRadius, 0.015f, 0.16f, "%.3f");
+        ImGui::SliderFloat("Solar Glare Intensity", &uiState.sceneConfig.stormHoleShaftStrength, 0.0f, 4.0f, "%.2f");
+        ImGui::SetItemTooltip("Independent lens-facing glare control; actual glare is multiplied by the mip-averaged visible area of the solar disk");
 
         ImGui::SeparatorText("Ambient");
         ImGui::ColorEdit3("Fixed Ambient Color", glm::value_ptr(uiState.sceneConfig.fixedAmbientColor));

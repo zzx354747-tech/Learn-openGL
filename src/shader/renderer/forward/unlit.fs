@@ -12,14 +12,25 @@ uniform vec3 albedoColor;
 uniform bool useTerrainBlend;
 uniform sampler2D terrainBlendTexture;
 uniform sampler2D terrainGrassAlbedo;
+uniform sampler2D terrainSnowAlbedo;
+uniform bool hasTerrainSnowAlbedo;
 
 void main()
 {
     vec3 color = hasAlbedoMap ? texture(albedoTexture, TexCoords).rgb : albedoColor;
     if (useTerrainBlend && hasAlbedoMap)
     {
-        float blend = smoothstep(0.05, 0.95, texture(terrainBlendTexture, TexCoords1).r);
-        color = mix(color, texture(terrainGrassAlbedo, TexCoords * 0.72).rgb, blend);
+        vec2 mask = texture(terrainBlendTexture, TexCoords1).rg;
+        float grassWeight = clamp(mask.r, 0.0, 1.0);
+        float snowWeight = hasTerrainSnowAlbedo
+            ? clamp(mask.g, 0.0, 1.0)
+            : 0.0;
+        grassWeight *= 1.0 - snowWeight;
+        float rockWeight = max(1.0 - grassWeight - snowWeight, 0.0);
+        color = color * rockWeight +
+                texture(terrainGrassAlbedo, TexCoords * 0.72).rgb * grassWeight;
+        if (hasTerrainSnowAlbedo)
+            color += texture(terrainSnowAlbedo, TexCoords * 0.82).rgb * snowWeight;
     }
 
     color = pow(color, vec3(2.2));

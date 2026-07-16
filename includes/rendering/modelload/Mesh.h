@@ -44,7 +44,9 @@ public:
          std::vector<unsigned int> indices,
          std::vector<Texture> textures,
          MaterialFlags flags,
-         const glm::mat4& localTransform);
+         const glm::mat4& localTransform,
+         GLenum primitiveMode = GL_TRIANGLES,
+         float pointSize = 1.0f);
 
     Mesh(Mesh&& other) noexcept;
     Mesh& operator=(Mesh&& other) noexcept;
@@ -62,6 +64,8 @@ public:
     std::vector<Texture>      textures;
     MaterialFlags             flags;   // 新增成员
     glm::mat4                 localTransform = glm::mat4(1.0f);
+    GLenum                    primitiveMode = GL_TRIANGLES;
+    float                     pointSize = 1.0f;
 
 private:
     unsigned int VAO = 0;

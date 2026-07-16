@@ -7,6 +7,8 @@
 //字符串流
 #include <sstream>
 #include <iostream>
+#include <filesystem>
+#include <stdexcept>
 #include <glm/glm.hpp>
 
 class Shader {
@@ -31,20 +33,8 @@ public:
 
         try
         {
-            vShaderFile.open(vertexPath);
-            fShaderFile.open(fragmentPath);
-
-            std::stringstream vShaderStream;
-            std::stringstream fShaderStream;
-
-            vShaderStream << vShaderFile.rdbuf();
-            fShaderStream << fShaderFile.rdbuf();
-
-            vShaderFile.close();
-            fShaderFile.close();
-
-            vertexCode = vShaderStream.str();
-            fragmentCode = fShaderStream.str();
+            vertexCode = loadShaderSource(vertexPath);
+            fragmentCode = loadShaderSource(fragmentPath);
         }
         catch (std::ifstream::failure& e)
         {
@@ -112,23 +102,9 @@ public:
 
         try
         {
-            vShaderFile.open(vertexPath);
-            gShaderFile.open(geometryPath);
-            fShaderFile.open(fragmentPath);
-
-            std::stringstream vShaderStream, gShaderStream, fShaderStream;
-
-            vShaderStream << vShaderFile.rdbuf();
-            gShaderStream << gShaderFile.rdbuf();
-            fShaderStream << fShaderFile.rdbuf();
-
-            vShaderFile.close();
-            gShaderFile.close();
-            fShaderFile.close();
-
-            vertexCode = vShaderStream.str();
-            geometryCode = gShaderStream.str();
-            fragmentCode = fShaderStream.str();
+            vertexCode = loadShaderSource(vertexPath);
+            geometryCode = loadShaderSource(geometryPath);
+            fragmentCode = loadShaderSource(fragmentPath);
         }
         catch (std::ifstream::failure& e)
         {
@@ -226,6 +202,44 @@ public:
     }
 
 private:
+    static std::string loadShaderSource(
+        const std::filesystem::path& path,
+        int includeDepth = 0)
+    {
+        if (includeDepth > 16)
+            throw std::runtime_error("Shader include depth exceeded: " +
+                                     path.string());
+
+        std::ifstream file(path);
+        if (!file.is_open())
+            throw std::ifstream::failure(
+                "Unable to open shader source: " + path.string());
+        std::ostringstream output;
+        std::string line;
+        while (std::getline(file, line))
+        {
+            const std::size_t directive = line.find("#include");
+            const std::size_t firstQuote = line.find('"', directive);
+            const std::size_t secondQuote = firstQuote == std::string::npos
+                ? std::string::npos
+                : line.find('"', firstQuote + 1);
+            if (directive != std::string::npos &&
+                firstQuote != std::string::npos &&
+                secondQuote != std::string::npos)
+            {
+                const std::filesystem::path includePath =
+                    path.parent_path() /
+                    line.substr(firstQuote + 1,
+                                secondQuote - firstQuote - 1);
+                output << loadShaderSource(
+                    includePath.lexically_normal(), includeDepth + 1);
+                continue;
+            }
+            output << line << '\n';
+        }
+        return output.str();
+    }
+
     static std::string getShaderInfoLog(unsigned int shader)
     {
         int logLength = 0;

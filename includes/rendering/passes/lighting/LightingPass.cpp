@@ -52,27 +52,15 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setVec3("fixedAmbientColor", config.fixedAmbientColor);
     shader.setFloat("fixedAmbientStrength", config.fixedAmbientStrength);
     shader.setVec3("iblAmbientTint", config.iblAmbientTint);
-    shader.setFloat("iblAmbientStrength", config.iblAmbientStrength);
+    shader.setFloat("iblAmbientStrength", config.iblAmbientStrength *
+                    glm::mix(0.08f, 1.0f, config.daylightFactor));
     shader.setFloat("cloudAmbientTransmission",
                     calculateCloudAmbientTransmission(config));
-    shader.setBool("enableStormShaftLighting",
-                   shouldRenderGodRays(config) &&
-                   shouldRenderVolumetricClouds(config) &&
-                   config.stormHoleStrength > 0.001f);
-    shader.setVec2("stormShaftLean", config.stormShaftLean);
-    shader.setInt("stormHoleSeed", static_cast<int>(config.stormHoleSeed));
-    shader.setInt("stormHoleCount", config.stormHoleCount);
-    shader.setFloat("stormHoleMinRadius", config.stormHoleMinRadius);
-    shader.setFloat("stormHoleMaxRadius", config.stormHoleMaxRadius);
-    shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
-    shader.setVec3("stormShaftColor", config.godRayColor);
-    shader.setFloat("stormShaftSurfaceIntensity",
-                    config.stormHoleStrength * config.stormHoleShaftStrength *
-                    config.godRayIntensity);
     shader.setFloat("phongDiffuseStrength", config.phongDiffuseStrength);
     shader.setFloat("phongSpecularStrength", config.phongSpecularStrength);
     shader.setFloat("phongIBLDiffuseStrength", config.phongIBLDiffuseStrength);
     shader.setFloat("phongIBLSpecularStrength", config.phongIBLSpecularStrength);
+    shader.setMat3("iblSunRotation", calculateIblSunRotation(lightSettings));
     shader.setFloat("bloomThreshold", config.bloomThreshold);
     shader.setFloat("pointShadowStrength", lightSettings.pointShadowStrength);
     shader.setFloat("sunShadowStrength", lightSettings.sunShadowStrength);
@@ -84,12 +72,16 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("directionalShadowBiasSlope", config.directionalShadowBiasSlope);
     shader.setFloat("directionalShadowBiasMin", config.directionalShadowBiasMin);
     shader.setFloat("waterLevel", TerrainMesh::WaterLevel);
-    shader.setVec2("waterCenter", glm::vec2(0.0f, WaterMesh::CenterZ));
+    shader.setVec2("waterCenter", glm::vec2(WaterMesh::CenterX, WaterMesh::CenterZ));
     shader.setVec2("waterRadii", glm::vec2(WaterMesh::RadiusX, WaterMesh::RadiusZ));
     static const auto waterAnimationStart = std::chrono::steady_clock::now();
     shader.setFloat("waterTime", std::chrono::duration<float>(
         std::chrono::steady_clock::now() - waterAnimationStart).count());
     shader.setMat4("lightSpaceMatrix", state.dirLightSpaceMatrix);
+    shader.setMat4("cloudShadowMatrix", state.cloudShadowMatrix);
+    shader.setFloat(
+        "cloudShadowFallbackTransmission",
+        state.cloudShadowGlobalTransmission);
 
     LightUniformSetter::apply(shader, lightSettings, config, state, camera);
 }
@@ -165,6 +157,24 @@ void LightingPass::bindLightingInputTextures(Shader& shader)
     glActiveTexture(GL_TEXTURE9);
     glBindTexture(GL_TEXTURE_CUBE_MAP, registry.resolveTexture(handles.prefilterMap));
     shader.setInt("prefilterMap", 9);
+
+    glActiveTexture(GL_TEXTURE13);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glBindTexture(
+        GL_TEXTURE_2D,
+        shadowResources.cloudOpticalDepthTexture);
+    shader.setInt("cloudOpticalDepthMap", 13);
+
+    glActiveTexture(GL_TEXTURE14);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glBindTexture(
+        GL_TEXTURE_2D,
+        shadowResources.cloudTransmittanceTexture);
+    shader.setInt("cloudTransmittanceMap", 14);
+    shader.setBool(
+        "hasCloudOpticalDepthMap",
+        shadowResources.cloudOpticalDepthTexture != 0 &&
+        shadowResources.cloudTransmittanceTexture != 0);
 }
 
 LightingPass::LightingPass( SceneRenderResources& resources, ShadowResources& shadowResources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, Camera& camera ) : resources(resources), shadowResources(shadowResources), config(config), state(state), lightSettings(lightSettings), camera(camera)

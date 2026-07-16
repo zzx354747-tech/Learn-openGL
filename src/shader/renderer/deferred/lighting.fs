@@ -41,6 +41,9 @@ uniform sampler2D gAlbedoMetallic;
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
+uniform sampler2D cloudOpticalDepthMap;
+uniform sampler2D cloudTransmittanceMap;
+uniform mat3 iblSunRotation;
 
 // 接收SSAO贴图
 uniform sampler2D AO;
@@ -52,6 +55,7 @@ uniform Sun sun;
 uniform FlashLight flashLight;
 uniform vec3 viewPos;
 uniform mat4 lightSpaceMatrix;
+uniform mat4 cloudShadowMatrix;
 uniform mat4 spotLightSpaceMatrix;
 uniform bool enablePointLight;
 uniform bool enableDirectionalLight;
@@ -61,6 +65,8 @@ uniform bool enablePBR;
 uniform bool enableIBL;
 uniform bool enableGI;
 uniform bool enableWaterCaustics;
+uniform bool hasCloudOpticalDepthMap;
+uniform float cloudShadowFallbackTransmission;
 
 uniform float ssaoStrength;
 uniform float giStrength;
@@ -72,15 +78,6 @@ uniform float fixedAmbientStrength;
 uniform vec3 iblAmbientTint;
 uniform float iblAmbientStrength;
 uniform float cloudAmbientTransmission;
-uniform bool enableStormShaftLighting;
-uniform vec2 stormShaftLean;
-uniform int stormHoleSeed;
-uniform int stormHoleCount;
-uniform float stormHoleMinRadius;
-uniform float stormHoleMaxRadius;
-uniform float stormHoleSoftness;
-uniform vec3 stormShaftColor;
-uniform float stormShaftSurfaceIntensity;
 uniform float phongDiffuseStrength;
 uniform float phongSpecularStrength;
 uniform float phongIBLDiffuseStrength;
@@ -99,8 +96,6 @@ uniform float waterLevel;
 uniform float waterTime;
 uniform vec2 waterCenter;
 uniform vec2 waterRadii;
-
-const int MAX_STORM_HOLES = 7;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -207,6 +202,11 @@ const vec2 PCSS_DISK[16] = vec2[](
     vec2( 0.14383161, -0.14100790)
 );
 
+float sampleDirectionalBlockerDepth(vec2 uv)
+{
+    return texture(shadowMap, uv).r;
+}
+
 float findAverageBlockerDepth(vec3 projCoords, float bias)
 {
     float blockerDepth = 0.0;
@@ -214,10 +214,9 @@ float findAverageBlockerDepth(vec3 projCoords, float bias)
 
     for (int i = 0; i < PCSS_SAMPLE_COUNT; ++i)
     {
-        float sampleDepth = texture(
-            shadowMap,
-            projCoords.xy + PCSS_DISK[i] * directionalShadowBlockerSearchRadius
-        ).r;
+        float sampleDepth = sampleDirectionalBlockerDepth(
+            projCoords.xy + PCSS_DISK[i] *
+            directionalShadowBlockerSearchRadius);
 
         if (sampleDepth < projCoords.z - bias)
         {
@@ -238,10 +237,8 @@ float filterPCSSShadow(vec3 projCoords, float bias, float filterRadius)
 
     for (int i = 0; i < PCSS_SAMPLE_COUNT; ++i)
     {
-        float pcfDepth = texture(
-            shadowMap,
-            projCoords.xy + PCSS_DISK[i] * filterRadius
-        ).r;
+        float pcfDepth = sampleDirectionalBlockerDepth(
+            projCoords.xy + PCSS_DISK[i] * filterRadius);
 
         shadow += projCoords.z - bias > pcfDepth ? 1.0 : 0.0;
     }
@@ -274,6 +271,25 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     );
 
     return filterPCSSShadow(projCoords, bias, filterRadius);
+}
+
+float cloudShadowVisibility(vec3 worldPosition)
+{
+    if (!hasCloudOpticalDepthMap)
+        return cloudShadowFallbackTransmission;
+
+    vec4 lightClip = cloudShadowMatrix * vec4(worldPosition, 1.0);
+    vec2 lightNdc = lightClip.xy / max(abs(lightClip.w), 0.000001);
+    vec2 uv = clamp(lightNdc * 0.5 + 0.5, vec2(0.0), vec2(1.0));
+    float tau = texture(cloudOpticalDepthMap, uv).r;
+    float localTransmittance = exp(-tau);
+    float maximumLod = log2(float(textureSize(
+        cloudTransmittanceMap, 0).x));
+    float globalTransmittance = textureLod(
+        cloudTransmittanceMap, vec2(0.5), maximumLod).r;
+    float edgeDistance = max(abs(lightNdc.x), abs(lightNdc.y));
+    float coverageFade = 1.0 - smoothstep(0.85, 1.0, edgeDistance);
+    return mix(globalTransmittance, localTransmittance, coverageFade);
 }
 
 // BRDF函数
@@ -515,12 +531,13 @@ vec3 F  = F0 + (max(vec3(1.0 - roughness), F0) - F0)
 // 漫反射：irradiance map 直接采样
 vec3 kS = F;
 vec3 kD = (1.0 - kS) * (1.0 - metallic);
-vec3 irradiance = texture(irradianceMap, N).rgb;
+vec3 irradiance = texture(irradianceMap, iblSunRotation * N).rgb;
 vec3 diffuse    = kD * irradiance * albedo;
 
 // 镜面反射：prefilter + BRDF LUT
 const float MAX_REFLECTION_LOD = 4.0;
-vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+vec3 prefilteredColor = textureLod(
+    prefilterMap, iblSunRotation * R, roughness * MAX_REFLECTION_LOD).rgb;
 vec2 brdf  = texture(brdfLUT, vec2(NdotV, roughness)).rg;
 vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
@@ -540,11 +557,12 @@ float ao)
     float NdotV = max(dot(N, V), 0.0);
 
     vec3 specularColor = mix(vec3(0.04), albedo, metallic);
-    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 irradiance = texture(irradianceMap, iblSunRotation * N).rgb;
     vec3 diffuse = irradiance * albedo * (phongIBLDiffuseStrength / PI);
 
     const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec3 prefilteredColor = textureLod(
+        prefilterMap, iblSunRotation * R, roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
     vec3 specular = prefilteredColor
         * (specularColor * brdf.x + brdf.y)
@@ -636,7 +654,8 @@ vec3 calcScreenSpaceGI(vec3 fragPos, vec3 normal, vec3 albedo,
         if (enableDirectionalLight)
         {
             float sourceNdotL = max(dot(sampleNormal, normalize(-sun.direction)), 0.0);
-            sourceIrradiance += sun.diffuse * sourceNdotL / PI;
+            sourceIrradiance += sun.diffuse * sourceNdotL / PI *
+                                cloudShadowVisibility(samplePos);
         }
         if (enablePointLight)
         {
@@ -695,6 +714,61 @@ float sampleCausticFocus(vec2 projectedXZ)
                  pow(remnant, 6.5) * 0.12, 0.0, 1.0);
 }
 
+float terrainWaterCoverage(vec2 worldXZ)
+{
+    vec2 lakeOffset = worldXZ - waterCenter;
+    float lakeRadius = length(lakeOffset);
+    float lakeAngle = atan(lakeOffset.y, lakeOffset.x);
+    float ringCenter = waterRadii.x +
+        sin(lakeAngle * 3.0 + 0.65) * 105.0 +
+        sin(lakeAngle * 7.0 - 1.10) * 48.0;
+    float halfWidth = waterRadii.y *
+        (0.78 + 0.18 * sin(lakeAngle * 5.0 - 0.4));
+    float radialCoverage = 1.0 - smoothstep(
+        halfWidth * 0.68, halfWidth, abs(lakeRadius - ringCenter));
+    float fragmentSignal =
+        sin(lakeAngle * 3.0 + 0.78) +
+        sin(lakeAngle * 7.0 - 1.16) * 0.58 +
+        sin(lakeAngle * 13.0 + 0.31) * 0.24;
+    float coverage = radialCoverage * smoothstep(-0.16, 0.30, fragmentSignal);
+
+    float riverCenterZ = 1420.0 +
+        sin(worldXZ.x * 0.00125) * 285.0 +
+        sin(worldXZ.x * 0.00305 + 1.10) * 92.0;
+    float riverWidth = 82.0 +
+        (0.5 + 0.5 * sin(worldXZ.x * 0.0022 - 0.70)) * 38.0;
+    coverage = max(coverage, 1.0 - smoothstep(
+        riverWidth * 0.72, riverWidth, abs(worldXZ.y - riverCenterZ)));
+
+    float tributaryCenterX = 2740.0 +
+        sin(worldXZ.y * 0.00115 + 0.45) * 245.0 +
+        sin(worldXZ.y * 0.00335 - 0.80) * 75.0;
+    float tributaryWidth = 62.0 +
+        (0.5 + 0.5 * sin(worldXZ.y * 0.0027 + 0.20)) * 31.0;
+    coverage = max(coverage, 1.0 - smoothstep(
+        tributaryWidth * 0.70, tributaryWidth,
+        abs(worldXZ.x - tributaryCenterX)));
+
+    const vec4 lakeX = vec4(-3050.0, 2920.0, 2730.0, 0.0);
+    const vec4 lakeZ = vec4(1490.0, -1660.0, 2240.0, 0.0);
+    const vec4 radiusX = vec4(620.0, 720.0, 440.0, 1.0);
+    const vec4 radiusZ = vec4(410.0, 455.0, 305.0, 1.0);
+    const vec4 phase = vec4(0.7, 1.8, -0.4, 0.0);
+    for (int i = 0; i < 3; ++i)
+    {
+        vec2 offset = worldXZ - vec2(lakeX[i], lakeZ[i]);
+        float angle = atan(offset.y / radiusZ[i], offset.x / radiusX[i]);
+        float outline = 1.0 +
+            sin(angle * 3.0 + phase[i]) * 0.075 +
+            sin(angle * 7.0 - phase[i] * 0.6) * 0.035;
+        float normalizedRadius = length(offset / vec2(radiusX[i], radiusZ[i])) /
+                                 outline;
+        coverage = max(coverage,
+            1.0 - smoothstep(0.82, 1.0, normalizedRadius));
+    }
+    return clamp(coverage, 0.0, 1.0);
+}
+
 vec3 calcUnderwaterCaustics(
     vec3 fragPos,
     vec3 normal,
@@ -706,14 +780,11 @@ vec3 calcUnderwaterCaustics(
     if (!enableWaterCaustics || !enableDirectionalLight || waterDepth <= 0.02)
         return vec3(0.0);
 
-    // Height alone is insufficient: other valleys can also lie below the
-    // water plane. Match the actual elliptical WaterMesh footprint so only
-    // receiver pixels vertically covered by the lake can receive caustics.
-    vec2 lakeCoordinate = (fragPos.xz - waterCenter) / waterRadii;
-    float lakeDistance = length(lakeCoordinate);
-    if (lakeDistance >= 1.0)
+    // Height alone is insufficient: match the same mountain ring, rivers and
+    // lowland lakes that generate TerrainMesh and WaterMesh on the CPU.
+    float lakeCoverage = terrainWaterCoverage(fragPos.xz);
+    if (lakeCoverage <= 0.01)
         return vec3(0.0);
-    float lakeCoverage = 1.0 - smoothstep(0.94, 1.0, lakeDistance);
 
     vec3 lightDir = normalize(-sun.direction);
     float receiverNdotL = max(dot(normal, lightDir), 0.0);
@@ -734,7 +805,7 @@ vec3 calcUnderwaterCaustics(
     dispersionAxis = axisLength > 0.0001
         ? dispersionAxis / axisLength
         : vec2(0.7071, 0.7071);
-    float dispersionOffset = mix(0.018, 0.060,
+    float dispersionOffset = mix(0.11, 0.32,
         smoothstep(0.25, 5.5, waterDepth));
     vec3 spectralFocus = vec3(
         sampleCausticFocus(projectedXZ + dispersionAxis * dispersionOffset),
@@ -743,124 +814,25 @@ vec3 calcUnderwaterCaustics(
 
     float commonFocus = min(spectralFocus.r,
                             min(spectralFocus.g, spectralFocus.b));
-    vec3 spectralRim = max(spectralFocus - vec3(commonFocus * 0.84), vec3(0.0));
+    vec3 spectralRim = max(spectralFocus - vec3(commonFocus * 0.68), vec3(0.0));
     vec3 focusColor = vec3(commonFocus * 1.34) +
-                      spectralRim * vec3(1.12, 1.00, 1.28);
+                      spectralRim * vec3(1.28, 1.05, 1.46);
     float highlightCore = pow(max(spectralFocus.r,
                                   max(spectralFocus.g, spectralFocus.b)), 2.6);
     focusColor += vec3(1.0, 0.96, 0.84) * highlightCore * 0.38;
 
     float shallowEntry = smoothstep(0.04, 0.30, waterDepth);
-    float beerLambert = exp(-waterDepth * 0.19);
+    float beerLambert = exp(-waterDepth * 0.105);
     float shadow = ShadowCalculation(fragPosLightSpace, normal, lightDir) *
                    sunShadowStrength;
 
     vec3 warmSun = normalize(max(sun.diffuse, vec3(0.001)));
     vec3 waterTint = vec3(0.56, 0.88, 0.78);
     vec3 causticTint = mix(waterTint, warmSun, 0.68);
+    float cloudVisibility = cloudShadowVisibility(fragPos);
     return albedo * causticTint * sun.diffuse * focusColor * shallowEntry *
-           beerLambert * receiverNdotL * (1.0 - shadow) * lakeCoverage * 2.85;
-}
-
-float stormHash11(float value)
-{
-    return fract(sin(value * 12.9898 + 31.416) * 43758.5453123);
-}
-
-vec2 rotateStormHole(vec2 value, float angle)
-{
-    float sine = sin(angle);
-    float cosine = cos(angle);
-    return vec2(
-        cosine * value.x + sine * value.y,
-       -sine * value.x + cosine * value.y);
-}
-
-void getGeneratedStormHole(
-    int index,
-    out vec2 center,
-    out float radius,
-    out vec2 ellipseScale,
-    out float rotation,
-    out vec2 lean,
-    out float key)
-{
-    key = float(stormHoleSeed) * 0.071 + float(index) * 17.137;
-    float positionX = stormHash11(key + 0.37);
-    float positionZ = stormHash11(key + 2.11);
-    float sizeRandom = stormHash11(key + 4.73);
-    float aspectRandom = stormHash11(key + 7.19);
-    float rotationRandom = stormHash11(key + 9.97);
-    vec2 leanRandom = vec2(
-        stormHash11(key + 12.41),
-        stormHash11(key + 15.83));
-    float xExtent = index == 0 ? 2800.0 : 9500.0;
-    float nearDistance = index == 0 ? 900.0 : 4200.0;
-    float farDistance = index == 0 ? 5200.0 : 24000.0;
-    center = vec2(
-        mix(-xExtent, xExtent, positionX),
-       -mix(nearDistance, farDistance, positionZ));
-    float minimumRadius = min(stormHoleMinRadius, stormHoleMaxRadius);
-    float maximumRadius = max(stormHoleMinRadius, stormHoleMaxRadius);
-    radius = mix(minimumRadius, maximumRadius, pow(sizeRandom, 1.35));
-    float aspect = mix(0.68, 1.42, aspectRandom);
-    ellipseScale = vec2(aspect, 1.0 / aspect);
-    rotation = rotationRandom * 6.28318530718;
-    lean = stormShaftLean + (leanRandom - 0.5) * 0.028;
-}
-
-float sampleGeneratedStormHole(vec2 worldXZ, int index)
-{
-    vec2 center;
-    float radius;
-    vec2 ellipseScale;
-    float rotation;
-    vec2 lean;
-    float key;
-    getGeneratedStormHole(
-        index, center, radius, ellipseScale, rotation, lean, key);
-    vec2 local = rotateStormHole(worldXZ - center, rotation) /
-                 max(radius * 0.90, 1.0);
-    float polarAngle = atan(local.y, local.x);
-    float frequencyA = 3.0 + floor(stormHash11(key + 18.29) * 4.0);
-    float frequencyB = 7.0 + floor(stormHash11(key + 21.71) * 5.0);
-    float phaseA = stormHash11(key + 24.13) * 6.28318530718;
-    float phaseB = stormHash11(key + 27.59) * 6.28318530718;
-    float amplitudeA = mix(0.055, 0.145, stormHash11(key + 30.31));
-    float amplitudeB = mix(0.025, 0.080, stormHash11(key + 33.47));
-    float edgeWarp = sin(polarAngle * frequencyA + phaseA) * amplitudeA +
-                     sin(polarAngle * frequencyB + phaseB) * amplitudeB;
-    float shapedDistance = length(local * ellipseScale) + edgeWarp;
-    float softness = max(clamp(stormHoleSoftness, 0.05, 0.80), 0.48);
-    return 1.0 - smoothstep(1.0 - softness, 1.0, shapedDistance);
-}
-
-float sampleStormShaftCluster(vec2 worldXZ)
-{
-    if (!enableStormShaftLighting || stormShaftSurfaceIntensity <= 0.001)
-        return 0.0;
-
-    float mask = 0.0;
-    for (int i = 0; i < MAX_STORM_HOLES; ++i)
-    {
-        if (i >= stormHoleCount)
-            break;
-        mask = max(mask, sampleGeneratedStormHole(worldXZ, i));
-    }
-    return mask;
-}
-
-vec3 calcStormShaftLighting(
-    vec3 fragPos,
-    vec3 normal,
-    vec3 albedo,
-    float metallic)
-{
-    float mask = sampleStormShaftCluster(fragPos.xz);
-    float topFacing = max(normal.y, 0.0);
-    float receiver = mix(0.28, 1.0, topFacing);
-    return albedo * stormShaftColor * mask * receiver *
-           stormShaftSurfaceIntensity * (1.0 - metallic * 0.55) * 0.62;
+           beerLambert * receiverNdotL * (1.0 - shadow) *
+           cloudVisibility * lakeCoverage * 4.35;
 }
 
 void main()
@@ -898,8 +870,6 @@ void main()
     }
 
     result += calcScreenSpaceGI(FragPos, Normal, albedo, metallic, ao);
-    result += calcStormShaftLighting(FragPos, Normal, albedo, metallic);
-
     if (enablePointLight)
 {
     if (enablePBR)
@@ -916,16 +886,17 @@ void main()
 
 if (enableDirectionalLight)
 {
+    float cloudVisibility = cloudShadowVisibility(FragPos);
     if (enablePBR)
         result += calcSun(sun, Normal, 
                     viewDir, albedo, 
                     FragPosLightSpace, F0,
-                    roughness, metallic);
+                    roughness, metallic) * cloudVisibility;
     else
         result += calcSunPhong(sun, Normal,
                     viewDir, albedo,
                     FragPosLightSpace,
-                    roughness, metallic);
+                    roughness, metallic) * cloudVisibility;
 }
 
 vec3 underwaterCaustics = calcUnderwaterCaustics(

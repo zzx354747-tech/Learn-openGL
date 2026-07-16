@@ -186,6 +186,7 @@ add_executable(fbo_demo
     src/camera.cpp
     src/stb_image_impl.cpp
     includes/rendering/core/EnvironmentController.cpp
+    includes/rendering/debug/GpuProfiler.cpp
     includes/rendering/imgui/ui_import.cpp
     includes/rendering/modelload/Model.cpp
     includes/rendering/modelload/Mesh.cpp
@@ -209,11 +210,14 @@ add_executable(fbo_demo
     includes/rendering/passes/debug/ShadowDebugPass.cpp
     includes/rendering/passes/deferred/DeferredRenderPass.cpp
     includes/rendering/passes/environment/SkyboxPass.cpp
+    includes/rendering/passes/environment/CloudAccelerationPass.cpp
+    includes/rendering/passes/environment/VolumetricSkyPass.cpp
     includes/rendering/passes/forward/ForwardHDRPass.cpp
     includes/rendering/passes/forward/ForwardOverlayPass.cpp
     includes/rendering/passes/forward/SceneObjectPass.cpp
     includes/rendering/passes/geometry/GeometryPass.cpp
     includes/rendering/passes/lighting/LightingPass.cpp
+    includes/rendering/passes/lighting/VolumetricLightPass.cpp
     includes/rendering/passes/ssao/SSAOCommonPass.cpp
     includes/rendering/passes/shadow/DirectionalShadowPass.cpp
     includes/rendering/passes/shadow/PointShadowPass.cpp

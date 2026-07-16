@@ -25,7 +25,9 @@ void SkyboxPass::renderSkyboxPass(
         shouldRenderVolumetricClouds(config));
     shader.setBool("enableSunTexture", config.enableSunTexture && resources.sunTexture != 0);
     shader.setVec3("skyTopColor", config.skyTopColor);
+    shader.setFloat("daylightFactor", config.daylightFactor);
     shader.setVec3("sunDirection", glm::normalize(-lightSettings.sunDirection));
+    shader.setMat3("iblSunRotation", calculateIblSunRotation(lightSettings));
     shader.setVec3("cameraPos", camera.Getposition());
     shader.setFloat("cloudCoverage", config.cloudCoverage);
     shader.setFloat("cloudDensity", config.cloudDensity);
@@ -38,12 +40,12 @@ void SkyboxPass::renderSkyboxPass(
     shader.setFloat("cloudErosionStrength", config.cloudErosionStrength);
     shader.setFloat("stormHoleStrength", config.stormHoleStrength);
     shader.setInt("stormHoleSeed", static_cast<int>(config.stormHoleSeed));
+    shader.setVec2("stormHoleAnchor", config.stormHoleAnchor);
     shader.setInt("stormHoleCount", config.stormHoleCount);
     shader.setFloat("stormHoleMinRadius", config.stormHoleMinRadius);
     shader.setFloat("stormHoleMaxRadius", config.stormHoleMaxRadius);
     shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
     shader.setFloat("stormHoleShaftStrength", config.stormHoleShaftStrength);
-    shader.setVec2("stormShaftLean", config.stormShaftLean);
     shader.setFloat("cloudEvolutionTime", config.cloudEvolutionPhase);
     shader.setVec2("cloudWindOffset", config.cloudAnimationOffset);
     shader.setVec2("cloudWindDirection", config.cloudWindDirection);
@@ -63,6 +65,9 @@ void SkyboxPass::renderSkyboxPass(
     shader.setInt("cloudLightSteps", config.cloudLightSteps);
     shader.setFloat("cloudMaxDistance", config.cloudMaxDistance);
     shader.setFloat("sunAngularRadius", config.sunAngularRadius);
+    shader.setFloat(
+        "cloudFallbackSunTransmission",
+        calculateCloudSunTransmission(config));
     static unsigned int cloudFrameIndex = 0;
     shader.setInt("cloudFrameIndex", config.enableTAA
         ? static_cast<int>(cloudFrameIndex++ & 15u)

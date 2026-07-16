@@ -4,6 +4,18 @@ ShaderLibrary::ShaderLibrary()
     : screen(
         "../src/shader/renderer/postprocess/screen.vs",
         "../src/shader/renderer/postprocess/screen.fs")
+    , skyComposite(
+        "../src/shader/renderer/postprocess/sky_composite.vs",
+        "../src/shader/renderer/postprocess/sky_composite.fs")
+    , cloudAcceleration(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/postprocess/cloud_acceleration.fs")
+    , volumetricLight(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/postprocess/volumetric_light.fs")
+    , volumetricLightComposite(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/postprocess/volumetric_light_composite.fs")
     , taa(
         "../src/shader/renderer/postprocess/taa.vs",
         "../src/shader/renderer/postprocess/taa.fs")
@@ -16,6 +28,15 @@ ShaderLibrary::ShaderLibrary()
     , shadowMap(
         "../src/shader/renderer/shadow/directional.vs",
         "../src/shader/renderer/shadow/directional.fs")
+    , cloudOpticalDepth(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/shadow/cloud_optical_depth.fs")
+    , cloudOpticalDepthBlur(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/shadow/cloud_optical_depth_blur.fs")
+    , cloudOpticalDepthToTransmittance(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/shadow/cloud_optical_depth_to_transmittance.fs")
     , pointShadowMap(
         "../src/shader/renderer/shadow/point.vs",
         "../src/shader/renderer/shadow/point.gs",

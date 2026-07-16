@@ -25,15 +25,6 @@ void ForwardOverlayPass::render(
         bfheight
     );
 
-    SkyboxPass::renderSkyboxPass(
-        camera,
-        resources,
-        config,
-        lightSettings,
-        bfwidth,
-        bfheight
-    );
-
     framebuffer.unbind();
 }
 
@@ -61,24 +52,10 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
     shader.setVec3("sunDirection", lightSettings.sunDirection);
     shader.setVec3("sunColor", lightSettings.sunDiffuse * lightSettings.sunIntensity *
                                   lightSettings.sunIntensityScale *
-                                  calculateCloudSunTransmission(config));
+                                  config.daylightFactor);
     shader.setFloat("cloudAmbientTransmission",
                     calculateCloudAmbientTransmission(config));
-    shader.setBool("enableStormShaftLighting",
-                   shouldRenderGodRays(config) &&
-                   shouldRenderVolumetricClouds(config) &&
-                   config.stormHoleStrength > 0.001f);
-    shader.setVec2("stormShaftLean", config.stormShaftLean);
-    shader.setInt("stormHoleSeed", static_cast<int>(config.stormHoleSeed));
-    shader.setInt("stormHoleCount", config.stormHoleCount);
-    shader.setFloat("stormHoleMinRadius", config.stormHoleMinRadius);
-    shader.setFloat("stormHoleMaxRadius", config.stormHoleMaxRadius);
-    shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
-    shader.setVec3("stormShaftColor", config.godRayColor);
-    shader.setFloat("stormShaftSurfaceIntensity",
-                    config.stormHoleStrength * config.stormHoleShaftStrength *
-                    config.godRayIntensity);
-
+    shader.setMat3("iblSunRotation", calculateIblSunRotation(lightSettings));
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindTexture(GL_TEXTURE_CUBE_MAP,
@@ -89,6 +66,21 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
     glBindTexture(GL_TEXTURE_2D,
         resources.registry.resolveTexture(resources.lightingHandles.gPosition));
     shader.setInt("gPosition", 1);
+    shader.setMat4("cloudShadowMatrix", state.cloudShadowMatrix);
+    shader.setFloat(
+        "cloudShadowFallbackTransmission",
+        state.cloudShadowGlobalTransmission);
+    shader.setBool(
+        "hasCloudOpticalDepthMap",
+        resources.shaderLibrary &&
+        resources.cloudOpticalDepthTexture != 0 &&
+        resources.cloudTransmittanceTexture != 0);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, resources.cloudOpticalDepthTexture);
+    shader.setInt("cloudOpticalDepthMap", 2);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, resources.cloudTransmittanceTexture);
+    shader.setInt("cloudTransmittanceMap", 3);
 
     const GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
     glEnable(GL_BLEND);

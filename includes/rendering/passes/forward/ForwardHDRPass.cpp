@@ -36,7 +36,5 @@ void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
         bfheight);
 
     lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
-    SkyboxPass::renderSkyboxPass(camera, resources, config, lightSettings, bfwidth, bfheight);
-
     framebuffer.unbind();
 }

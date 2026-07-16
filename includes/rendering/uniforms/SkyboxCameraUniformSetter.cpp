@@ -11,7 +11,7 @@ void SkyboxCameraUniformSetter::apply( Shader& shader, Camera& camera, int width
                 glm::radians(45.0f),
                 static_cast<float>(width) / height,
                 0.1f,
-                100.0f
+                20000.0f
             );
         projection = TemporalJitter::apply(projection, width, height);
 

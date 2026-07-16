@@ -16,6 +16,7 @@ public:
     VegetationMesh& operator=(const VegetationMesh&) = delete;
 
     void draw(Shader& shader) const;
+    void updateStreaming(const glm::vec3& cameraPosition);
 
 private:
     const TerrainMesh& terrain;
@@ -24,6 +25,10 @@ private:
     std::unique_ptr<Mesh> grass;
     std::unique_ptr<Mesh> flowerStems;
     std::array<std::unique_ptr<Mesh>, 6> flowerPetals;
+    std::unique_ptr<Mesh> lodTrees;
+    std::unique_ptr<Mesh> lodGrass;
+    std::array<std::unique_ptr<Mesh>, 6> lodFlowers;
 
     void generate();
+    void generateLodPoints();
 };

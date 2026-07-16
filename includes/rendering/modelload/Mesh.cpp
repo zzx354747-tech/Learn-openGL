@@ -8,12 +8,16 @@ Mesh::Mesh(std::vector<Vertex> vertices,
            std::vector<unsigned int> indices,
            std::vector<Texture> textures,
            MaterialFlags flags,
-           const glm::mat4& localTransform)
+           const glm::mat4& localTransform,
+           GLenum primitiveMode,
+           float pointSize)
     : vertices(std::move(vertices))
     , indices(std::move(indices))
     , textures(std::move(textures))
     , flags(flags)
     , localTransform(localTransform)
+    , primitiveMode(primitiveMode)
+    , pointSize(pointSize)
 {
     setupMesh();
 }
@@ -24,6 +28,8 @@ Mesh::Mesh(Mesh&& other) noexcept
     , textures(std::move(other.textures))
     , flags(other.flags)
     , localTransform(other.localTransform)
+    , primitiveMode(other.primitiveMode)
+    , pointSize(other.pointSize)
     , VAO(other.VAO)
     , VBO(other.VBO)
     , EBO(other.EBO)
@@ -47,6 +53,8 @@ Mesh& Mesh::operator=(Mesh&& other) noexcept
     textures = std::move(other.textures);
     flags    = other.flags;
     localTransform = other.localTransform;
+    primitiveMode = other.primitiveMode;
+    pointSize = other.pointSize;
     VAO = other.VAO;
     VBO = other.VBO;
     EBO = other.EBO;
@@ -118,6 +126,7 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     // 按类型分别绑定，固定 uniform 名，不再编号
     bool hasBaseColor = false, hasNormal = false, hasMetallic = false, hasRoughness = false, hasParallax = false;
     bool hasTerrainBlend = false, hasTerrainGrassAlbedo = false;
+    bool hasTerrainSnowAlbedo = false;
     unsigned int metallicTexId = 0, roughnessTexId = 0;
 
     shader.setBool("hasAlbedoMap", false);
@@ -130,6 +139,9 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     shader.setBool("hasTerrainGrassNormal", false);
     shader.setBool("hasTerrainGrassRoughness", false);
     shader.setBool("hasTerrainGrassMetallic", false);
+    shader.setBool("hasTerrainSnowAlbedo", false);
+    shader.setBool("hasTerrainSnowNormal", false);
+    shader.setBool("hasTerrainSnowRoughness", false);
     shader.setVec3("albedoColor", glm::vec3(flags.baseColorFactor));
     shader.setFloat("roughnessFactor", flags.roughnessFactor);
     shader.setFloat("metallicFactor", flags.metallicFactor);
@@ -209,6 +221,22 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
             shader.setInt("terrainGrassMetallic", i);
             shader.setBool("hasTerrainGrassMetallic", true);
         }
+        else if (type == "texture_terrainSnowAlbedo")
+        {
+            shader.setInt("terrainSnowAlbedo", i);
+            shader.setBool("hasTerrainSnowAlbedo", true);
+            hasTerrainSnowAlbedo = true;
+        }
+        else if (type == "texture_terrainSnowNormal")
+        {
+            shader.setInt("terrainSnowNormal", i);
+            shader.setBool("hasTerrainSnowNormal", true);
+        }
+        else if (type == "texture_terrainSnowRoughness")
+        {
+            shader.setInt("terrainSnowRoughness", i);
+            shader.setBool("hasTerrainSnowRoughness", true);
+        }
     }
 
     // 检测是否是 ORM 打包（metallic 和 roughness 指向同一张贴图 id）
@@ -227,6 +255,12 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
         shader.setBool("hasTerrainGrassRoughness", false);
         shader.setBool("hasTerrainGrassMetallic", false);
     }
+    if (!hasTerrainBlend || !hasTerrainSnowAlbedo)
+    {
+        shader.setBool("hasTerrainSnowAlbedo", false);
+        shader.setBool("hasTerrainSnowNormal", false);
+        shader.setBool("hasTerrainSnowRoughness", false);
+    }
 
     glActiveTexture(GL_TEXTURE0);
 
@@ -238,9 +272,17 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     if (flags.doubleSided)
         glDisable(GL_CULL_FACE);
 
+    GLfloat previousPointSize = 1.0f;
+    if (primitiveMode == GL_POINTS)
+    {
+        glGetFloatv(GL_POINT_SIZE, &previousPointSize);
+        glPointSize(pointSize);
+    }
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
+    glDrawElements(primitiveMode, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+    if (primitiveMode == GL_POINTS)
+        glPointSize(previousPointSize);
 
     if (flags.doubleSided && cullFaceWasEnabled)
         glEnable(GL_CULL_FACE);

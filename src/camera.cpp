@@ -32,6 +32,16 @@ glm::mat4 Camera::GetViewMatrix() const
     return glm::lookAt(Position, Position + Front, Up);
 }
 
+void Camera::SetPose(const glm::vec3& position, float yaw, float pitch)
+{
+    Position = position;
+    Yaw = yaw;
+    Pitch = glm::clamp(pitch, -89.0f, 89.0f);
+    MovementVelocity = glm::vec3(0.0f);
+    firstMouse = true;
+    updateCameraVectors();
+}
+
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
     float velocity = MovementSpeed * deltaTime;

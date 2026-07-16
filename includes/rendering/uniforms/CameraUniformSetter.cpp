@@ -9,7 +9,7 @@ void CameraUniformSetter::apply( Shader& shader, Camera& camera, int width, int 
             glm::radians(45.0f),
             static_cast<float>(width) / static_cast<float>(height),
             0.1f,
-            400.0f
+            20000.0f
         );
         projection = TemporalJitter::apply(projection, width, height);
 

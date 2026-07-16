@@ -25,13 +25,14 @@ public:
         float lastX = 400.0f, 
         float lastY = 300.0f,
         float sensitivity = 0.1f,
-        float speed = 18.0f
+        float speed = 90.0f
 );
 
 //对外接口
 glm::mat4 GetViewMatrix() const;
 	glm::vec3 Getposition () const { return Position;}
 	glm::vec3 GetFront() const { return Front; }
+	void SetPose(const glm::vec3& position, float yaw, float pitch);
 	void ProcessKeyboard(Camera_Movement direction, float deltaTime);
 	void ProcessSmoothKeyboard(
 		bool forward,

@@ -4,6 +4,7 @@
 #include "rendering/assets/texture/HDRTexture.h"
 #include "rendering/uniforms/RenderParams.h"
 #include "rendering/assets/light/LightSettings.h"
+#include "rendering/debug/GpuProfiler.h"
 #include <functional>
 
 struct SceneRenderUIState
@@ -19,6 +20,8 @@ struct SceneRenderUIState
 
     std::function<bool()> loadEnvironment;
     std::function<void()> applyEnvironmentPreset;
+
+    const GpuProfiler* gpuProfiler = nullptr;
 };
 
 class SceneRenderUI

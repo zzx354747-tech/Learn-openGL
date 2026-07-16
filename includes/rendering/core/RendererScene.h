@@ -69,6 +69,7 @@ struct RendererScene
     LightSettings lightSettings;   
 
     SceneRenderConfig sceneConfig;
+    SceneSelection previousSceneSelection = SceneSelection::LivingRoom;
     RenderParams renderParams;
     SceneRenderState sceneState;
 
@@ -101,6 +102,9 @@ struct RendererScene
     CloudWeatherPreset activeCloudWeatherPreset = CloudWeatherPreset::Sunny;
     unsigned int activeCloudWeatherTransitionRequest = 0;
     float cloudWeatherTransitionElapsed = 0.0f;
+    float automaticWeatherElapsed = 0.0f;
+    int automaticWeatherStage = 0;
+    double sunLastUpdateSeconds = 0.0;
     double cloudWeatherLastUpdateSeconds = 0.0;
     bool cloudWeatherTransitionActive = false;
 

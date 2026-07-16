@@ -6,6 +6,8 @@
 #include "rendering/assets/mesh/Screenquad.h"
 #include "rendering/passes/debug/ShadowDebugPass.h"
 #include "rendering/passes/deferred/DeferredRenderPass.h"
+#include "rendering/passes/environment/VolumetricSkyPass.h"
+#include "rendering/passes/lighting/VolumetricLightPass.h"
 #include "rendering/passes/forward/ForwardHDRPass.h"
 #include "rendering/passes/forward/ForwardOverlayPass.h"
 #include "rendering/passes/geometry/GeometryPass.h"
@@ -21,6 +23,7 @@
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/core/ModelDrawer.h"
+#include "rendering/debug/GpuProfiler.h"
 
 class SceneRender
 {
@@ -30,6 +33,8 @@ public:
     void render( int bfwidth, int bfheight, Shader& screenShader, Screenquad& screenQuad, Framebuffer& framebuffer);
 
     void resize(int width, int height);
+
+    const GpuProfiler& gpuProfiler() const { return gpuProfiler_; }
 
 private:
     SceneRenderConfig& config;
@@ -42,7 +47,10 @@ private:
     DeferredRenderPass deferredRenderPass;
     ForwardHDRPass forwardHDRPass;
     ForwardOverlayPass forwardOverlayPass;
+    VolumetricSkyPass volumetricSkyPass;
+    VolumetricLightPass volumetricLightPass;
     BlurPass blurPass;
     ScreenPass screenPass;
     TemporalAAPass temporalAAPass;
+    GpuProfiler gpuProfiler_;
 };

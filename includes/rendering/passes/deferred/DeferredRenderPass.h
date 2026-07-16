@@ -9,6 +9,7 @@
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/assets/mesh/Screenquad.h"
+#include "rendering/debug/GpuProfiler.h"
 
 class DeferredRenderPass
 {
@@ -19,7 +20,8 @@ public:
         int bfwidth,
         int bfheight,
         Framebuffer& framebuffer,
-        Screenquad& screenQuad
+        Screenquad& screenQuad,
+        GpuProfiler& profiler
     );
 
 private:

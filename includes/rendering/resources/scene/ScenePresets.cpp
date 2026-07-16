@@ -26,9 +26,9 @@ SceneRenderConfig makeLivingRoomPreset()
     config.enableSunTexture = true;
 
     config.fixedAmbientColor = glm::vec3(46.0f, 14.0f, 6.0f) / 255.0f;
-    config.fixedAmbientStrength = 1.63f;
+    config.fixedAmbientStrength = 0.15f;
     config.iblAmbientTint = glm::vec3(1.0f);
-    config.iblAmbientStrength = 1.09f;
+    config.iblAmbientStrength = 0.15f;
 
     config.phongDiffuseStrength = 0.42f;
     config.phongSpecularStrength = 0.10f;

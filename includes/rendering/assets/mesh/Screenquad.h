@@ -7,9 +7,11 @@ public:
     Screenquad();
 
     void draw();
+    void drawTriangle();
 
     ~Screenquad();
 
 private:
     unsigned int VAO, VBO;
+    unsigned int triangleVAO, triangleVBO;
 };

@@ -81,6 +81,7 @@ void EnvironmentController::applyExtractedSun(const ExtractedLight& extractedSun
         ? extractedSun.direction
         : extractedSun.brightestDirection;
 
+    lightSettings_.environmentSunDirection = sunSourceDirection;
     lightSettings_.sunDirection = -sunSourceDirection;
     lightSettings_.sunExtractedFromEnvironment = extractedSun.valid;
 }
@@ -135,9 +136,9 @@ void EnvironmentController::applyPreset()
         sceneConfig_.enableDirectionalLight = true;
         sceneConfig_.enableFlashlight = false;
         sceneConfig_.fixedAmbientColor = glm::vec3(46.0f, 14.0f, 6.0f) / 255.0f;
-        sceneConfig_.fixedAmbientStrength = 1.63f;
+        sceneConfig_.fixedAmbientStrength = 0.15f;
         sceneConfig_.iblAmbientTint = glm::vec3(1.0f);
-        sceneConfig_.iblAmbientStrength = 1.09f;
+        sceneConfig_.iblAmbientStrength = 0.15f;
         sceneConfig_.phongDiffuseStrength = 0.42f;
         sceneConfig_.phongSpecularStrength = 0.10f;
         sceneConfig_.phongIBLDiffuseStrength = 1.15f;

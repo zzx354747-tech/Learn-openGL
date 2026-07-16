@@ -8,9 +8,17 @@ layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 
 uniform samplerCube skybox;
+uniform mat3 iblSunRotation;
+uniform float daylightFactor;
 uniform sampler2D sunTexture;
 uniform sampler2D blueNoiseTexture;
+uniform sampler2D cloudAccelerationMap;
+uniform sampler2D cloudSunLocalMap;
 uniform bool hasBlueNoiseTexture;
+uniform bool hasCloudAccelerationMap;
+uniform bool hasCloudSunLocalMap;
+uniform bool enableCloudOccupancySkipping;
+uniform bool enableCloudLightCache;
 uniform vec3 cameraPos;
 uniform bool isSkybox;
 uniform bool enableProceduralSky;
@@ -29,12 +37,12 @@ uniform float cloudAnvilAmount;
 uniform float cloudErosionStrength;
 uniform float stormHoleStrength;
 uniform int stormHoleSeed;
+uniform vec2 stormHoleAnchor;
 uniform int stormHoleCount;
 uniform float stormHoleMinRadius;
 uniform float stormHoleMaxRadius;
 uniform float stormHoleSoftness;
 uniform float stormHoleShaftStrength;
-uniform vec2 stormShaftLean;
 uniform float cloudEvolutionTime;
 uniform vec2 cloudWindOffset;
 uniform vec2 cloudWindDirection;
@@ -53,8 +61,17 @@ uniform vec3 cloudTopColor;
 uniform int cloudViewSteps;
 uniform int cloudLightSteps;
 uniform float cloudMaxDistance;
+uniform vec2 cloudCacheOrigin;
+uniform float cloudCacheWorldSize;
+uniform vec2 cloudSunLocalOrigin;
+uniform float cloudSunLocalWorldSize;
+uniform float cloudOccupancyThreshold;
+uniform float cloudEmptySkipMultiplier;
 uniform int cloudFrameIndex;
 uniform float sunAngularRadius;
+uniform float cloudFallbackSunTransmission;
+
+#include "../common/cloud_density.glsl"
 
 const int MAX_VIEW_STEPS = 96;
 const int MAX_LIGHT_STEPS = 8;
@@ -187,26 +204,52 @@ void getGeneratedStormHole(
     float sizeRandom = stormHash11(key + 4.73);
     float aspectRandom = stormHash11(key + 7.19);
     float rotationRandom = stormHash11(key + 9.97);
-    vec2 leanRandom = vec2(
-        stormHash11(key + 12.41),
-        stormHash11(key + 15.83));
-
-    // One randomly placed middle-distance opening keeps the current view
-    // interesting; the remaining openings form irregular remote cloud banks.
-    float xExtent = index == 0 ? 2800.0 : 9500.0;
-    float nearDistance = index == 0 ? 900.0 : 4200.0;
-    float farDistance = index == 0 ? 5200.0 : 24000.0;
-    center = vec2(
-        mix(-xExtent, xExtent, positionX),
-       -mix(nearDistance, farDistance, positionZ));
-
     float minimumRadius = min(stormHoleMinRadius, stormHoleMaxRadius);
     float maximumRadius = max(stormHoleMinRadius, stormHoleMaxRadius);
-    radius = mix(minimumRadius, maximumRadius, pow(sizeRandom, 1.35));
+    radius = index == 0
+        ? mix(max(minimumRadius, maximumRadius * 0.62),
+              maximumRadius, sizeRandom)
+        : (index < 5
+            ? mix(max(minimumRadius, maximumRadius * 0.52),
+                  maximumRadius * 0.88, sizeRandom)
+            : mix(minimumRadius, maximumRadius, pow(sizeRandom, 1.35)));
+
+    // The complete aperture cluster is anchored once in world space when the
+    // pattern is generated. Camera movement only changes how it is viewed.
+    vec2 sunLayerCenter = stormHoleAnchor;
+    if (index == 0)
+    {
+        center = sunLayerCenter;
+    }
+    else if (index < 5)
+    {
+        float clusterAngle = 6.28318530718 *
+            (float(index) / 5.0 + positionX * 0.12);
+        float clusterDistance = mix(
+            maximumRadius * 1.35,
+            maximumRadius * 4.50,
+            positionZ);
+        center = sunLayerCenter +
+            vec2(cos(clusterAngle), sin(clusterAngle)) * clusterDistance;
+    }
+    else
+    {
+        float clusterAngle = 6.28318530718 *
+            (float(index) / float(max(stormHoleCount, 1)) +
+             positionX * 0.12);
+        float clusterDistance = mix(
+            maximumRadius * 2.2,
+            maximumRadius * 5.6,
+            positionZ);
+        center = sunLayerCenter +
+            vec2(cos(clusterAngle), sin(clusterAngle)) * clusterDistance;
+    }
+
     float aspect = mix(0.68, 1.42, aspectRandom);
     ellipseScale = vec2(aspect, 1.0 / aspect);
     rotation = rotationRandom * 6.28318530718;
-    lean = stormShaftLean + (leanRandom - 0.5) * 0.028;
+    // Carve through the cloud along the directional light, not vertically.
+    lean = sunDirection.xz / max(sunDirection.y, 0.08);
 }
 
 float sampleGeneratedStormHole(
@@ -224,9 +267,17 @@ float sampleGeneratedStormHole(
     getGeneratedStormHole(
         index, center, radius, ellipseScale, rotation, lean, key);
 
-    vec2 axisCenter = center - lean * worldY;
+    float middleHeight = cloudBaseHeight + cloudThickness * 0.50;
+    vec2 axisCenter = center + lean * (worldY - middleHeight);
+    float height01 = clamp(
+        (worldY - cloudBaseHeight) / max(cloudThickness, 1.0),
+        0.0, 1.0);
+    float axialNoise = valueNoise(vec3(
+        vec2(key * 0.013, key * 0.021),
+        height01 * 2.7 + cloudEvolutionTime * 0.012));
+    float axialRadius = mix(0.82, 1.12, axialNoise);
     vec2 local = rotateStormHole(worldXZ - axisCenter, rotation) /
-                 max(radius * radiusScale, 1.0);
+                 max(radius * radiusScale * axialRadius, 1.0);
     float polarAngle = atan(local.y, local.x);
     float frequencyA = 3.0 + floor(stormHash11(key + 18.29) * 4.0);
     float frequencyB = 7.0 + floor(stormHash11(key + 21.71) * 5.0);
@@ -236,9 +287,22 @@ float sampleGeneratedStormHole(
     float amplitudeB = mix(0.025, 0.080, stormHash11(key + 33.47));
     float edgeWarp = sin(polarAngle * frequencyA + phaseA) * amplitudeA +
                      sin(polarAngle * frequencyB + phaseB) * amplitudeB;
-    float shapedDistance = length(local * ellipseScale) + edgeWarp;
+    float turbulentEdge = valueNoise(vec3(
+        worldXZ * 0.00072,
+        key * 0.019 + height01 * 2.1 + cloudEvolutionTime * 0.009));
+    float shapedDistance = length(local * ellipseScale) + edgeWarp +
+                           (turbulentEdge - 0.5) * 0.24;
     float softness = clamp(stormHoleSoftness, 0.05, 0.80);
-    return 1.0 - smoothstep(1.0 - softness, 1.0, shapedDistance);
+    float aperture = 1.0 - smoothstep(
+        1.0 - softness, 1.0, shapedDistance);
+    float interiorStructure = valueNoise(vec3(
+        worldXZ * 0.00135 + vec2(key * 0.007),
+        height01 * 4.2 - cloudEvolutionTime * 0.016));
+    // Never erase the density to a perfectly flat zero. Residual wisps make
+    // every generated opening participate in the same ray-marched scattering
+    // as the primary sunlit aperture.
+    float carveStrength = mix(0.78, 0.97, interiorStructure);
+    return aperture * carveStrength;
 }
 
 float sampleStormLightHole(vec2 worldXZ, float worldY)
@@ -344,8 +408,67 @@ float sampleCloudDensity(vec3 worldPos, vec2 windOffset)
     return max(coarseDensity - erosion * cloudDensity, 0.0);
 }
 
+bool sampleCloudAcceleration(
+    vec3 worldPos,
+    out vec4 acceleration,
+    out vec4 penumbraAcceleration)
+{
+    if (hasCloudSunLocalMap && cloudSunLocalWorldSize > 1.0)
+    {
+        vec2 localUV =
+            (worldPos.xz - cloudSunLocalOrigin) / cloudSunLocalWorldSize;
+        vec2 localMargin =
+            1.5 / vec2(textureSize(cloudSunLocalMap, 0));
+        if (all(greaterThanEqual(localUV, localMargin)) &&
+            all(lessThanEqual(localUV, vec2(1.0) - localMargin)))
+        {
+            acceleration = textureLod(cloudSunLocalMap, localUV, 0.0);
+            penumbraAcceleration = textureLod(
+                cloudSunLocalMap, localUV, 2.0);
+            return true;
+        }
+    }
+
+    if (!hasCloudAccelerationMap || cloudCacheWorldSize <= 1.0)
+        return false;
+
+    vec2 uv = (worldPos.xz - cloudCacheOrigin) / cloudCacheWorldSize;
+    vec2 texelMargin = 1.5 / vec2(textureSize(cloudAccelerationMap, 0));
+    if (any(lessThan(uv, texelMargin)) ||
+        any(greaterThan(uv, vec2(1.0) - texelMargin)))
+        return false;
+
+    acceleration = textureLod(cloudAccelerationMap, uv, 0.0);
+    penumbraAcceleration = textureLod(cloudAccelerationMap, uv, 1.5);
+    return true;
+}
+
+float interpolateCachedLight(vec4 acceleration, float height01)
+{
+    if (height01 <= 0.52)
+    {
+        float amount = smoothstep(0.22, 0.52, height01);
+        return mix(acceleration.g, acceleration.b, amount);
+    }
+    float amount = smoothstep(0.52, 0.82, height01);
+    return mix(acceleration.b, acceleration.a, amount);
+}
+
 float lightTransmittance(vec3 position, vec3 lightDir, vec2 windOffset)
 {
+    vec4 acceleration;
+    vec4 penumbraAcceleration;
+    if (enableCloudLightCache &&
+        sampleCloudAcceleration(
+            position, acceleration, penumbraAcceleration))
+    {
+        float height01 = clamp(getCloudHeight01(position.y), 0.0, 1.0);
+        float core = interpolateCachedLight(acceleration, height01);
+        float penumbra = interpolateCachedLight(
+            penumbraAcceleration, height01);
+        return mix(penumbra, core, 0.62);
+    }
+
     float opticalDepth = 0.0;
     int lightSteps = clamp(cloudLightSteps, 2, MAX_LIGHT_STEPS);
     float stepLength = max(55.0, cloudThickness / (float(lightSteps) * 2.2));
@@ -356,7 +479,7 @@ float lightTransmittance(vec3 position, vec3 lightDir, vec2 windOffset)
         position += lightDir * stepLength;
         // Shadows only need the broad cloud shape. Skipping edge detail here
         // removes most of the secondary-ray noise work without flattening it.
-        opticalDepth += sampleCloudDensityCoarse(position, windOffset) * stepLength * 0.001;
+        opticalDepth += sharedCloudDensity(position) * stepLength * 0.001;
         stepLength *= 1.48;
     }
     return exp(-opticalDepth * cloudLightAbsorption);
@@ -423,13 +546,43 @@ vec4 raymarchClouds(vec3 rayDir)
             break;
 
         vec3 position = cameraPos + rayDir * t;
-        float density = sampleCloudDensity(position, windOffset);
+        vec4 acceleration;
+        vec4 penumbraAcceleration;
+        bool needsAcceleration = enableCloudOccupancySkipping ||
+                                 enableCloudLightCache;
+        bool hasAcceleration = needsAcceleration &&
+                               sampleCloudAcceleration(
+                                   position,
+                                   acceleration,
+                                   penumbraAcceleration);
+        if (enableCloudOccupancySkipping && hasAcceleration &&
+            acceleration.r < cloudOccupancyThreshold)
+        {
+            t += stepLength * max(cloudEmptySkipMultiplier, 1.0);
+            continue;
+        }
+        float density = sharedCloudDensity(position);
         if (density > 0.005)
         {
-            float sunVisibility = lightTransmittance(position, sunDirection, windOffset);
             float height01 = clamp(getCloudHeight01(position.y), 0.0, 1.0);
+            float sunVisibility = enableCloudLightCache && hasAcceleration
+                ? mix(
+                    interpolateCachedLight(
+                        penumbraAcceleration, height01),
+                    interpolateCachedLight(acceleration, height01),
+                    0.62)
+                : lightTransmittance(position, sunDirection, windOffset);
             vec3 ambient = mix(cloudBottomColor, cloudTopColor,
-                               smoothstep(0.0, 0.82, height01)) * cloudAmbientStrength;
+                               smoothstep(0.0, 0.82, height01)) *
+                           cloudAmbientStrength *
+                           mix(0.07, 1.0, daylightFactor);
+            vec3 untintedCloudColor = mix(
+                cloudBottomColor, cloudTopColor,
+                smoothstep(0.0, 0.82, height01));
+            float cloudColorLuminance = dot(
+                untintedCloudColor, vec3(0.2126, 0.7152, 0.0722));
+            float sunTintEligibility = smoothstep(
+                0.07, 0.30, cloudColorLuminance);
             float powder = 1.0 - exp(-density * cloudPowderStrength);
             float scatterEnergy = clamp(cloudMultiScattering, 0.0, 1.0);
             float scatterEnergy2 = scatterEnergy * scatterEnergy;
@@ -438,7 +591,8 @@ vec4 raymarchClouds(vec3 rayDir)
                                         scatterEnergy2 * sqrt(sqrt(max(sunVisibility, 0.0)))) /
                                        (1.0 + scatterEnergy + scatterEnergy2);
             vec3 directLight = cloudSunColor * multipleScattering * phase *
-                               mix(0.72, 1.20, powder);
+                               mix(0.72, 1.20, powder) *
+                               sunTintEligibility * daylightFactor;
             vec3 lighting = ambient * (0.78 + 0.22 * powder) + directLight;
             float extinction = density * stepLength * 0.001 * cloudExtinction;
             float sampleAlpha = 1.0 - exp(-extinction);
@@ -460,39 +614,144 @@ vec4 raymarchClouds(vec3 rayDir)
         (1.0 - transmittance) * distantCloudFade);
 }
 
+void getSunBasis(out vec3 right, out vec3 up)
+{
+    vec3 upReference = abs(sunDirection.y) > 0.96
+        ? vec3(1.0, 0.0, 0.0)
+        : vec3(0.0, 1.0, 0.0);
+    right = normalize(cross(upReference, sunDirection));
+    up = normalize(cross(sunDirection, right));
+}
+
+float sunAngularWarp(vec2 offset)
+{
+    float azimuth = atan(offset.y, offset.x);
+    float evolution = cloudEvolutionTime * 0.035;
+    return 1.0 +
+        sin(azimuth * 3.0 + 0.7 + evolution) * 0.075 +
+        sin(azimuth * 7.0 - 1.9 - evolution * 0.7) * 0.038 +
+        sin(azimuth * 11.0 + 2.4) * 0.018;
+}
+
+float sampleSunAureole(vec3 rayDir)
+{
+    vec3 right;
+    vec3 up;
+    getSunBasis(right, up);
+    vec2 offset = vec2(dot(rayDir, right), dot(rayDir, up));
+    float normalizedRadius = length(offset) /
+        max(sunAngularRadius * sunAngularWarp(offset), 0.001);
+
+    // Two smooth Mie-like lobes avoid a hard circular halo boundary. Low-
+    // frequency angular modulation represents uneven aerosol/cloud-edge
+    // extinction without turning the aureole into a geometric ring.
+    float tightLobe = exp(-normalizedRadius * normalizedRadius * 1.85);
+    float broadLobe = exp(-normalizedRadius * 1.55);
+    float variation = valueNoise(vec3(
+        offset / max(sunAngularRadius, 0.001) * 1.7,
+        4.1 + cloudEvolutionTime * 0.018));
+    float irregularity = mix(0.82, 1.14, variation);
+    float front = smoothstep(-0.05, 0.08, dot(rayDir, sunDirection));
+    return (tightLobe * 0.58 + broadLobe * 0.42) * irregularity * front;
+}
+
 vec4 sampleSun(vec3 rayDir)
 {
     if (!enableSunTexture)
         return vec4(0.0);
 
-    vec3 upReference = abs(sunDirection.y) > 0.96 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
-    vec3 right = normalize(cross(upReference, sunDirection));
-    vec3 up = normalize(cross(sunDirection, right));
+    vec3 right;
+    vec3 up;
+    getSunBasis(right, up);
     vec2 offset = vec2(dot(rayDir, right), dot(rayDir, up));
     vec2 uv = offset / max(2.0 * sunAngularRadius, 0.001) + 0.5;
-    float front = smoothstep(cos(sunAngularRadius * 1.45), cos(sunAngularRadius * 0.92),
-                             dot(rayDir, sunDirection));
-    if (front <= 0.0 || any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))))
+    float normalizedRadius = length(offset) /
+        max(sunAngularRadius * sunAngularWarp(offset), 0.001);
+    float edge = 1.0 - smoothstep(0.80, 1.16, normalizedRadius);
+    if (edge <= 0.0 || any(lessThan(uv, vec2(0.0))) ||
+        any(greaterThan(uv, vec2(1.0))))
         return vec4(0.0);
     vec4 sun = texture(sunTexture, uv);
     sun.rgb *= 4.2;
-    sun.a *= front;
+    sun.a *= edge;
     return sun;
 }
 
-float sampleStormAperture(vec3 rayDir)
+float sampleSolarDiskVisibleFraction()
 {
-    if (stormHoleStrength <= 0.001 || abs(rayDir.y) <= 0.001)
+    if (!enableVolumetricClouds)
+        return 1.0;
+    if (sunDirection.y <= 0.0001)
         return 0.0;
 
-    float middleHeight = cloudBaseHeight + cloudThickness * 0.50;
-    float distanceToLayer = (middleHeight - cameraPos.y) / rayDir.y;
-    if (distanceToLayer <= 0.0 || distanceToLayer > cloudMaxDistance)
-        return 0.0;
+    // The low cache channel is transmittance from 22% inside the cloud layer
+    // toward the sun. At the camera-to-sun intersection it therefore measures
+    // the visible solar disk, rather than the visibility of an arbitrary hole.
+    float referenceHeight = cloudBaseHeight +
+                            max(cloudThickness, 1.0) * 0.22;
+    float distanceToLayer =
+        (referenceHeight - cameraPos.y) / sunDirection.y;
+    if (distanceToLayer <= 0.0)
+        return 1.0;
 
-    vec3 layerPosition = cameraPos + rayDir * distanceToLayer;
-    return sampleStormLightHole(layerPosition.xz, layerPosition.y) *
-           clamp(stormHoleStrength, 0.0, 1.0);
+    vec2 diskCenter = cameraPos.xz +
+                      sunDirection.xz * distanceToLayer;
+    float diskRadiusWorld = distanceToLayer *
+                            tan(max(sunAngularRadius, 0.001));
+
+    if (hasCloudSunLocalMap && cloudSunLocalWorldSize > 1.0)
+    {
+        vec2 uv = (diskCenter - cloudSunLocalOrigin) /
+                  cloudSunLocalWorldSize;
+        float radiusUv = diskRadiusWorld / cloudSunLocalWorldSize;
+        vec2 texelMargin =
+            1.5 / vec2(textureSize(cloudSunLocalMap, 0));
+        vec2 margin = vec2(radiusUv) + texelMargin;
+        if (all(greaterThanEqual(uv, margin)) &&
+            all(lessThanEqual(uv, vec2(1.0) - margin)))
+        {
+            float diameterTexels = max(
+                diskRadiusWorld * 2.0 *
+                float(textureSize(cloudSunLocalMap, 0).x) /
+                cloudSunLocalWorldSize,
+                1.0);
+            float maximumLod = log2(float(
+                min(textureSize(cloudSunLocalMap, 0).x,
+                    textureSize(cloudSunLocalMap, 0).y)));
+            float coverageLod = clamp(
+                log2(diameterTexels * 0.82), 0.0, maximumLod);
+            return clamp(textureLod(
+                cloudSunLocalMap, uv, coverageLod).g, 0.0, 1.0);
+        }
+    }
+
+    if (hasCloudAccelerationMap && cloudCacheWorldSize > 1.0)
+    {
+        vec2 uv = (diskCenter - cloudCacheOrigin) /
+                  cloudCacheWorldSize;
+        float radiusUv = diskRadiusWorld / cloudCacheWorldSize;
+        vec2 texelMargin =
+            1.5 / vec2(textureSize(cloudAccelerationMap, 0));
+        vec2 margin = vec2(radiusUv) + texelMargin;
+        if (all(greaterThanEqual(uv, margin)) &&
+            all(lessThanEqual(uv, vec2(1.0) - margin)))
+        {
+            float diameterTexels = max(
+                diskRadiusWorld * 2.0 *
+                float(textureSize(cloudAccelerationMap, 0).x) /
+                cloudCacheWorldSize,
+                1.0);
+            float maximumLod = log2(float(
+                min(textureSize(cloudAccelerationMap, 0).x,
+                    textureSize(cloudAccelerationMap, 0).y)));
+            float coverageLod = clamp(
+                log2(diameterTexels * 0.82), 0.0, maximumLod);
+            return clamp(textureLod(
+                cloudAccelerationMap, uv, coverageLod).g, 0.0, 1.0);
+        }
+    }
+
+    return clamp(cloudFallbackSunTransmission, 0.0, 1.0);
 }
 
 vec3 proceduralSky(vec3 rayDir, out float sunContribution, out float godRayMask)
@@ -501,7 +760,8 @@ vec3 proceduralSky(vec3 rayDir, out float sunContribution, out float godRayMask)
     // a storm, gradually tint that background from the same bottom/top palette
     // used by the cloud march. The transition follows both storm strength and
     // coverage, so exposed sky and cloud edges no longer read as two layers.
-    vec3 sky = skyTopColor;
+    vec3 nightSky = vec3(0.006, 0.010, 0.024);
+    vec3 sky = mix(nightSky, skyTopColor, daylightFactor);
     float stormBackdropWeight = clamp(stormHoleStrength, 0.0, 1.0) *
         smoothstep(0.55, 0.93, clamp(cloudCoverage, 0.0, 1.0));
     float backdropHeight = smoothstep(-0.06, 0.58, rayDir.y);
@@ -510,37 +770,50 @@ vec3 proceduralSky(vec3 rayDir, out float sunContribution, out float godRayMask)
         cloudBottomColor, cloudTopColor, 0.55) * 0.48;
     vec3 stormBackdrop = mix(
         lowStormBackdrop, highStormBackdrop, backdropHeight);
+    stormBackdrop *= mix(0.08, 1.0, daylightFactor);
     sky = mix(sky, stormBackdrop, stormBackdropWeight * 0.88);
-    vec3 cloudLinkedBackground = sky;
+    // Lens-facing glare is a solar-disk effect. Its source is evaluated once
+    // from the mip-averaged cloud coverage over the complete disk. The power
+    // response makes a tiny exposed sliver produce only a tiny glare instead
+    // of switching the full aureole on.
+    float solarDiskVisibleFraction = sampleSolarDiskVisibleFraction();
+    // Storm currently has no lens-facing glare. This only disables the
+    // aureole/Bloom response; the solar disk and physical shaft pass remain.
+    float weatherGlareVisibility =
+        1.0 - smoothstep(0.15, 0.70, stormHoleStrength);
+    float solarGlareResponse = pow(
+        clamp(solarDiskVisibleFraction, 0.0, 1.0), 1.80) *
+        max(stormHoleShaftStrength, 0.0) * weatherGlareVisibility;
 
     vec4 sun = sampleSun(rayDir);
-    sky = mix(sky, sun.rgb, sun.a);
-    sunContribution = sun.a * max(max(sun.r, sun.g), sun.b);
+    sunContribution = sun.a * max(max(sun.r, sun.g), sun.b) *
+                      solarGlareResponse;
+
+    float sunAureole = enableSunTexture ? sampleSunAureole(rayDir) : 0.0;
+    sky += cloudSunColor * sunAureole * 0.62 * solarGlareResponse;
+    sunContribution = max(
+        sunContribution,
+        sunAureole * 1.65 * solarGlareResponse);
 
     vec4 clouds = raymarchClouds(rayDir);
-    float sunHalo = pow(max(dot(rayDir, sunDirection), 0.0), 96.0);
-    float normalRaySource = sunHalo * (1.0 - clouds.a);
+    float cloudViewTransmittance = clamp(1.0 - clouds.a, 0.0, 1.0);
+    // Treat almost-covered solar texels as covered instead of allowing the
+    // HDR disk to punch through a dense cloud with a tiny residual alpha.
+    float sunPixelVisibility = smoothstep(
+        0.03, 0.92, cloudViewTransmittance);
+    sunContribution *= sunPixelVisibility;
 
-    // Storm apertures glow independently of the directional sun. Their actual
-    // downward columns are integrated in world space by screen.fs, so this
-    // mask must no longer pull them toward the projected sun position.
-    float aperture = sampleStormAperture(rayDir);
-    float apertureVisibility = smoothstep(0.25, 0.92, 1.0 - clouds.a);
-    float apertureRaySource = aperture * apertureVisibility *
-                              max(stormHoleShaftStrength, 0.0);
-    godRayMask = enableSunTexture
-        ? normalRaySource * (1.0 - clamp(stormHoleStrength, 0.0, 1.0))
-        : 0.0;
-    sunContribution = max(sunContribution, apertureRaySource * 1.35);
+    // Apertures and volumetric shafts no longer feed the lens-glare target.
+    // Only actual visible solar-disk area controls that target in every
+    // weather preset, including Sunny.
+    godRayMask = 0.0;
     // Raymarching accumulates premultiplied radiance, so composite it directly.
     sky = sky * (1.0 - clouds.a) + clouds.rgb;
+    // The disk is composited after the cloud march and attenuated per pixel.
+    // Sun-facing cloud color was already added by the in-cloud scattering
+    // model above, so blocking the disk does not make lit clouds colorless.
+    sky = mix(sky, sun.rgb, sun.a * sunPixelVisibility);
 
-    // Reveal the sky through the cut without drawing an artificial luminous
-    // ring around it. The smooth aperture mask supplies the natural soft edge.
-    float apertureCore = smoothstep(0.08, 0.88, aperture);
-    vec3 openingSky = mix(
-        cloudLinkedBackground, cloudSunColor * 0.95, 0.35);
-    sky = mix(sky, openingSky, apertureCore * 0.90);
     return sky;
 }
 
@@ -553,7 +826,7 @@ void main()
         float godRayMask = 0.0;
         vec3 color = enableProceduralSky
             ? proceduralSky(rayDir, sunContribution, godRayMask)
-            : texture(skybox, rayDir).rgb;
+            : texture(skybox, iblSunRotation * rayDir).rgb;
         FragColor = vec4(color, 1.0);
         BrightColor = vec4(
             color * smoothstep(1.0, 2.2, sunContribution),
@@ -563,7 +836,7 @@ void main()
     {
         vec3 incident = normalize(FragPos - cameraPos);
         vec3 reflected = reflect(incident, normalize(Normal));
-        vec3 color = texture(skybox, reflected).rgb;
+        vec3 color = texture(skybox, iblSunRotation * reflected).rgb;
         FragColor = vec4(color, 1.0);
         BrightColor = vec4(0.0);
     }

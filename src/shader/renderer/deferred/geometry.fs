@@ -22,6 +22,9 @@ uniform sampler2D terrainGrassAlbedo;
 uniform sampler2D terrainGrassNormal;
 uniform sampler2D terrainGrassRoughness;
 uniform sampler2D terrainGrassMetallic;
+uniform sampler2D terrainSnowAlbedo;
+uniform sampler2D terrainSnowNormal;
+uniform sampler2D terrainSnowRoughness;
 
 // 全局(RenderParams 设)
 uniform bool  enableNormalMapping;
@@ -41,6 +44,9 @@ uniform bool useTerrainBlend;
 uniform bool hasTerrainGrassNormal;
 uniform bool hasTerrainGrassRoughness;
 uniform bool hasTerrainGrassMetallic;
+uniform bool hasTerrainSnowAlbedo;
+uniform bool hasTerrainSnowNormal;
+uniform bool hasTerrainSnowRoughness;
 uniform bool alphaMask;
 
 uniform vec3  albedoColor;
@@ -94,9 +100,19 @@ void main()
 {
     vec2 texCoords = TexCoords;
     vec3 normal;
-    float terrainBlend = useTerrainBlend
-        ? smoothstep(0.05, 0.95, texture(terrainBlendTexture, TexCoords1).r)
+    vec2 terrainMask = useTerrainBlend
+        ? texture(terrainBlendTexture, TexCoords1).rg
+        : vec2(0.0);
+    float grassWeight = clamp(terrainMask.r, 0.0, 1.0);
+    float snowWeight = hasTerrainSnowAlbedo
+        ? clamp(terrainMask.g, 0.0, 1.0)
         : 0.0;
+    grassWeight *= 1.0 - snowWeight;
+    float rockWeight = max(1.0 - grassWeight - snowWeight, 0.0);
+    float terrainWeightSum = max(rockWeight + grassWeight + snowWeight, 0.0001);
+    rockWeight /= terrainWeightSum;
+    grassWeight /= terrainWeightSum;
+    snowWeight /= terrainWeightSum;
 
     if (enableParallaxMapping && hasParallaxMap)
     {
@@ -112,7 +128,12 @@ void main()
         vec3 grassAlbedo = useTerrainBlend
             ? texture(terrainGrassAlbedo, texCoords * 0.72).rgb
             : rockAlbedo;
-        albedo = pow(mix(rockAlbedo, grassAlbedo, terrainBlend), vec3(2.2));
+        vec3 snowAlbedo = hasTerrainSnowAlbedo
+            ? texture(terrainSnowAlbedo, texCoords * 0.82).rgb
+            : rockAlbedo;
+        albedo = pow(rockAlbedo * rockWeight +
+                     grassAlbedo * grassWeight +
+                     snowAlbedo * snowWeight, vec3(2.2));
     }
     else
         albedo = pow(albedoColor, vec3(2.2));
@@ -129,13 +150,16 @@ void main()
 
     if (enableNormalMapping && hasNormalMap)
     {
-        vec3 normalMap = texture(normalTexture, texCoords).rgb;
-        normalMap = normalMap * 2.0 - 1.0;
+        vec3 rockNormal = texture(normalTexture, texCoords).rgb * 2.0 - 1.0;
+        vec3 grassNormal = rockNormal;
         if (useTerrainBlend && hasTerrainGrassNormal)
-        {
-            vec3 grassNormal = texture(terrainGrassNormal, texCoords * 0.72).rgb * 2.0 - 1.0;
-            normalMap = normalize(mix(normalMap, grassNormal, terrainBlend));
-        }
+            grassNormal = texture(terrainGrassNormal, texCoords * 0.72).rgb * 2.0 - 1.0;
+        vec3 snowNormal = rockNormal;
+        if (useTerrainBlend && hasTerrainSnowNormal)
+            snowNormal = texture(terrainSnowNormal, texCoords * 0.82).rgb * 2.0 - 1.0;
+        vec3 normalMap = normalize(rockNormal * rockWeight +
+                                   grassNormal * grassWeight +
+                                   snowNormal * snowWeight);
         normalMap = normalize(mix(vec3(0.0, 0.0, 1.0), normalMap, bumpNormalStrength));
         normal = normalize(TBN * normalMap);
     }
@@ -175,8 +199,13 @@ void main()
         float grassMetallic = hasTerrainGrassMetallic
             ? texture(terrainGrassMetallic, texCoords * 0.72).r
             : 0.0;
-        roughness = mix(roughness, grassRoughness, terrainBlend);
-        metallic = mix(metallic, grassMetallic, terrainBlend);
+        float snowRoughness = hasTerrainSnowRoughness
+            ? texture(terrainSnowRoughness, texCoords * 0.82).r
+            : 0.88;
+        roughness = roughness * rockWeight +
+                    grassRoughness * grassWeight +
+                    snowRoughness * snowWeight;
+        metallic = metallic * rockWeight + grassMetallic * grassWeight;
     }
 
     // Specular anti-aliasing: normal variation inside one pixel is converted

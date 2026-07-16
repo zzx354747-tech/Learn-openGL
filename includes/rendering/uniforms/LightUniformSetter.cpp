@@ -36,20 +36,21 @@ void LightUniformSetter::setupDirectionalLight(
     const LightSettings& lightSettings,
     const SceneRenderConfig& config)
 {
-        const float cloudTransmission = calculateCloudSunTransmission(config);
         shader.setVec3("sun.direction",
             lightSettings.sunDirection);
 
         shader.setVec3("sun.ambient",
-            lightSettings.sunAmbient * lightSettings.sunIntensity * cloudTransmission);
+            lightSettings.sunAmbient * lightSettings.sunIntensity *
+            calculateCloudAmbientTransmission(config) *
+            glm::mix(0.06f, 1.0f, config.daylightFactor));
 
         shader.setVec3("sun.diffuse",
             lightSettings.sunDiffuse * lightSettings.sunIntensity *
-            lightSettings.sunIntensityScale * cloudTransmission);
+            lightSettings.sunIntensityScale * config.daylightFactor);
 
         shader.setVec3("sun.specular",
             lightSettings.sunSpecular * lightSettings.sunIntensity *
-            lightSettings.sunIntensityScale * cloudTransmission);
+            lightSettings.sunIntensityScale * config.daylightFactor);
     }
 
 void LightUniformSetter::setupFlashLight( Shader& shader, const Camera& camera, const LightSettings& lightSettings )
