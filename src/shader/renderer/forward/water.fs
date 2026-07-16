@@ -99,7 +99,7 @@ void main()
     // Smooth directional foam replaces the former multiplied sine checkerboard.
     float depthAA = max(fwidth(opticalDepth) * 2.0, 0.025);
     float shoreline = smoothstep(0.02, 0.02 + depthAA, opticalDepth) *
-                      (1.0 - smoothstep(0.62, 1.28, opticalDepth));
+                      (1.0 - smoothstep(0.36, 0.50, opticalDepth));
     float foamSignal = 0.50 +
         sin(dot(WorldPos.xz, vec2(0.71, 0.29)) + waterTime * 1.25) * 0.22 +
         sin(dot(WorldPos.xz, vec2(-0.24, 0.93)) - waterTime * 0.82) * 0.18 +

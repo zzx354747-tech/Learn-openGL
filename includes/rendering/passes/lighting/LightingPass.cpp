@@ -71,9 +71,8 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("directionalShadowMaxFilterRadius", config.directionalShadowMaxFilterRadius);
     shader.setFloat("directionalShadowBiasSlope", config.directionalShadowBiasSlope);
     shader.setFloat("directionalShadowBiasMin", config.directionalShadowBiasMin);
-    shader.setFloat("waterLevel", TerrainMesh::WaterLevel);
-    shader.setVec2("waterCenter", glm::vec2(WaterMesh::CenterX, WaterMesh::CenterZ));
-    shader.setVec2("waterRadii", glm::vec2(WaterMesh::RadiusX, WaterMesh::RadiusZ));
+    shader.setFloat("waterLevel", resources.waterMesh
+        ? resources.waterMesh->getWaterLevel() : 0.0f);
     static const auto waterAnimationStart = std::chrono::steady_clock::now();
     shader.setFloat("waterTime", std::chrono::duration<float>(
         std::chrono::steady_clock::now() - waterAnimationStart).count());

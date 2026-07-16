@@ -80,8 +80,13 @@ if /I "%~2"=="--build-only" (
 )
 
 echo [3/3] Launching %EXE%
+pushd "%BUILD_DIR%" || (
+    echo [ERROR] Cannot enter runtime directory: %BUILD_DIR%
+    goto :fail
+)
 "%EXE%"
 set "APP_EXIT_CODE=%ERRORLEVEL%"
+popd
 popd
 
 if not "%APP_EXIT_CODE%"=="0" (

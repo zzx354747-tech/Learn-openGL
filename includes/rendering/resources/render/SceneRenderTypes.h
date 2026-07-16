@@ -175,6 +175,23 @@ struct SceneRenderConfig
     float directionalShadowBiasSlope = 0.005f;
     float directionalShadowBiasMin = 0.0005f;
 
+    // Runtime terrain material controls. Geometry and derived fields are
+    // immutable after startup; these values only classify/sample the TDM.
+    float terrainSunAzimuth = 0.0f;
+    float terrainSunHeightShift = 0.06f;
+    float terrainNoiseHeightShift = 0.08f;
+    float terrainGrassEnd = 0.38f;
+    float terrainRockStart = 0.45f;
+    float terrainSnowStart = 0.75f;
+    float terrainSnowEnd = 0.82f;
+    float terrainSteepRockStart = 0.44f;
+    float terrainSteepRockEnd = 0.55f;
+    float terrainSnowSlopeStart = 0.50f;
+    float terrainSnowSlopeEnd = 0.61f;
+    float terrainBlendSharpness = 0.24f;
+    float terrainTextureScale = 1.0f / 64.0f;
+    int terrainDebugMode = 0;
+
     RenderMode renderMode = RenderMode::Basic;
     ForwardLightMode forwardLightMode = ForwardLightMode::Basic;
     SceneSelection sceneSelection = SceneSelection::Default;

@@ -262,7 +262,6 @@ RendererScene::RendererScene(int width, int height)
     , pingpongFBO(width, height)
     , sceneGBuffer(width, height)
     , sceneSSAO(width, height)
-    , vegetationMesh(terrainMesh)
     , waterMesh(terrainMesh)
     , shadowMap(4096, 4096)
     , pointShadowMap(1024, 1024, 1.0f, 50.0f)
@@ -368,7 +367,6 @@ RendererScene::RendererScene(int width, int height)
 
     livingRoomDrawer.setVisibleInScene(SceneSelection::LivingRoom);
     livingRoomDrawer.setTerrainMesh(&terrainMesh);
-    livingRoomDrawer.setVegetationMesh(&vegetationMesh);
     glm::mat4 livingRoomTransform(1.0f);
     livingRoomTransform = glm::translate(livingRoomTransform, glm::vec3(0.0f, 0.0f, -3.0f));
     livingRoomTransform = glm::scale(livingRoomTransform, glm::vec3(0.2f));
@@ -441,7 +439,6 @@ void RendererScene::render(int width, int height)
         terrainMesh.updateStreaming(
             cameraPosition,
             projection * camera.GetViewMatrix());
-        vegetationMesh.updateStreaming(cameraPosition);
         waterMesh.updateStreaming(cameraPosition);
     }
     sceneRender.render(
@@ -487,6 +484,7 @@ void RendererScene::updateCloudWeatherEvolution()
         std::sin(elevation),
         -std::cos(hourAngle) * horizontal));
     lightSettings.sunDirection = -towardSun;
+    sceneConfig.terrainSunAzimuth = std::atan2(towardSun.z, towardSun.x);
     sceneConfig.daylightFactor = glm::smoothstep(
         -0.10f, 0.10f, towardSun.y);
 

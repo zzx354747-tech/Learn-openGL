@@ -12,8 +12,7 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         // Cloud transmittance is consumed by deferred surface lighting, so it
         // must be current before the lighting pass begins.
         volumetricSkyPass.updateCloudAcceleration(screenQuad, gpuProfiler_);
-        // Dense procedural vegetation is expensive in shadow maps. Only build
-        // maps for lights that can actually contribute to the current frame.
+        // Only build maps for lights that can actually contribute this frame.
         const bool lightingMode = config.renderMode == RenderMode::Lighting;
         if (lightingMode && config.enableDirectionalLight)
         {
@@ -78,12 +77,18 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         if (config.enableTAA && resources.shaderLibrary)
         {
             ScopedGpuPass timer(gpuProfiler_, "TAA Resolve");
+            const GLuint currentPositionTexture =
+                config.renderMode == RenderMode::Lighting
+                    ? resources.registry.resolveTexture(
+                          resources.lightingHandles.gPosition)
+                    : 0;
             sceneTexture = temporalAAPass.resolve(
                 bfwidth,
                 bfheight,
                 framebuffer,
                 screenQuad,
-                resources.shaderLibrary->taa);
+                resources.shaderLibrary->taa,
+                currentPositionTexture);
         }
 
         {

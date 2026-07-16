@@ -31,19 +31,12 @@ void ModelDrawer::setTerrainMesh(TerrainMesh* terrain)
     terrainMesh = terrain;
 }
 
-void ModelDrawer::setVegetationMesh(VegetationMesh* vegetation)
-{
-    vegetationMesh = vegetation;
-}
-
 void ModelDrawer::draw(Shader& shader) const
 {
     if (config && config->sceneSelection == SceneSelection::FujiTerrain)
     {
         if (terrainMesh)
             terrainMesh->draw(shader);
-        if (vegetationMesh)
-            vegetationMesh->draw(shader);
         return;
     }
 

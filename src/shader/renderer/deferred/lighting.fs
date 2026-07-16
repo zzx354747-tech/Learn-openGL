@@ -94,8 +94,6 @@ uniform float directionalShadowBiasSlope;
 uniform float directionalShadowBiasMin;
 uniform float waterLevel;
 uniform float waterTime;
-uniform vec2 waterCenter;
-uniform vec2 waterRadii;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -714,61 +712,6 @@ float sampleCausticFocus(vec2 projectedXZ)
                  pow(remnant, 6.5) * 0.12, 0.0, 1.0);
 }
 
-float terrainWaterCoverage(vec2 worldXZ)
-{
-    vec2 lakeOffset = worldXZ - waterCenter;
-    float lakeRadius = length(lakeOffset);
-    float lakeAngle = atan(lakeOffset.y, lakeOffset.x);
-    float ringCenter = waterRadii.x +
-        sin(lakeAngle * 3.0 + 0.65) * 105.0 +
-        sin(lakeAngle * 7.0 - 1.10) * 48.0;
-    float halfWidth = waterRadii.y *
-        (0.78 + 0.18 * sin(lakeAngle * 5.0 - 0.4));
-    float radialCoverage = 1.0 - smoothstep(
-        halfWidth * 0.68, halfWidth, abs(lakeRadius - ringCenter));
-    float fragmentSignal =
-        sin(lakeAngle * 3.0 + 0.78) +
-        sin(lakeAngle * 7.0 - 1.16) * 0.58 +
-        sin(lakeAngle * 13.0 + 0.31) * 0.24;
-    float coverage = radialCoverage * smoothstep(-0.16, 0.30, fragmentSignal);
-
-    float riverCenterZ = 1420.0 +
-        sin(worldXZ.x * 0.00125) * 285.0 +
-        sin(worldXZ.x * 0.00305 + 1.10) * 92.0;
-    float riverWidth = 82.0 +
-        (0.5 + 0.5 * sin(worldXZ.x * 0.0022 - 0.70)) * 38.0;
-    coverage = max(coverage, 1.0 - smoothstep(
-        riverWidth * 0.72, riverWidth, abs(worldXZ.y - riverCenterZ)));
-
-    float tributaryCenterX = 2740.0 +
-        sin(worldXZ.y * 0.00115 + 0.45) * 245.0 +
-        sin(worldXZ.y * 0.00335 - 0.80) * 75.0;
-    float tributaryWidth = 62.0 +
-        (0.5 + 0.5 * sin(worldXZ.y * 0.0027 + 0.20)) * 31.0;
-    coverage = max(coverage, 1.0 - smoothstep(
-        tributaryWidth * 0.70, tributaryWidth,
-        abs(worldXZ.x - tributaryCenterX)));
-
-    const vec4 lakeX = vec4(-3050.0, 2920.0, 2730.0, 0.0);
-    const vec4 lakeZ = vec4(1490.0, -1660.0, 2240.0, 0.0);
-    const vec4 radiusX = vec4(620.0, 720.0, 440.0, 1.0);
-    const vec4 radiusZ = vec4(410.0, 455.0, 305.0, 1.0);
-    const vec4 phase = vec4(0.7, 1.8, -0.4, 0.0);
-    for (int i = 0; i < 3; ++i)
-    {
-        vec2 offset = worldXZ - vec2(lakeX[i], lakeZ[i]);
-        float angle = atan(offset.y / radiusZ[i], offset.x / radiusX[i]);
-        float outline = 1.0 +
-            sin(angle * 3.0 + phase[i]) * 0.075 +
-            sin(angle * 7.0 - phase[i] * 0.6) * 0.035;
-        float normalizedRadius = length(offset / vec2(radiusX[i], radiusZ[i])) /
-                                 outline;
-        coverage = max(coverage,
-            1.0 - smoothstep(0.82, 1.0, normalizedRadius));
-    }
-    return clamp(coverage, 0.0, 1.0);
-}
-
 vec3 calcUnderwaterCaustics(
     vec3 fragPos,
     vec3 normal,
@@ -778,12 +721,6 @@ vec3 calcUnderwaterCaustics(
 {
     float waterDepth = waterLevel - fragPos.y;
     if (!enableWaterCaustics || !enableDirectionalLight || waterDepth <= 0.02)
-        return vec3(0.0);
-
-    // Height alone is insufficient: match the same mountain ring, rivers and
-    // lowland lakes that generate TerrainMesh and WaterMesh on the CPU.
-    float lakeCoverage = terrainWaterCoverage(fragPos.xz);
-    if (lakeCoverage <= 0.01)
         return vec3(0.0);
 
     vec3 lightDir = normalize(-sun.direction);
@@ -832,7 +769,7 @@ vec3 calcUnderwaterCaustics(
     float cloudVisibility = cloudShadowVisibility(fragPos);
     return albedo * causticTint * sun.diffuse * focusColor * shallowEntry *
            beerLambert * receiverNdotL * (1.0 - shadow) *
-           cloudVisibility * lakeCoverage * 4.35;
+           cloudVisibility * 4.35;
 }
 
 void main()

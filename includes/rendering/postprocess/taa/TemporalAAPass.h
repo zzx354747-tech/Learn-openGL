@@ -16,7 +16,7 @@ public:
 
     void beginFrame(int width, int height);
     GLuint resolve(int width, int height, Framebuffer& source, Screenquad& screenQuad,
-                   Shader& shader);
+                   Shader& shader, GLuint currentPositionTexture = 0);
     void resize(int width, int height);
 
 private:
@@ -25,7 +25,12 @@ private:
     TemporalAAFramebuffer history_;
     glm::mat4 previousViewProjection_ = glm::mat4(1.0f);
     glm::mat4 currentViewProjection_ = glm::mat4(1.0f);
+    glm::mat4 previousSkyViewProjection_ = glm::mat4(1.0f);
+    glm::mat4 currentSkyViewProjection_ = glm::mat4(1.0f);
     bool historyValid_ = false;
+    bool stateInitialized_ = false;
+    bool previousTAAEnabled_ = false;
+    RenderMode previousRenderMode_ = RenderMode::Basic;
     int writeIndex_ = 0;
     unsigned int frameIndex_ = 0;
 

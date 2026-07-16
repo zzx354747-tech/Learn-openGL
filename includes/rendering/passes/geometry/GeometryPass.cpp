@@ -71,6 +71,20 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
 
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
     renderParams.apply(*shader);                                     // Owner B
+    shader->setFloat("u_sunAzimuth", config.terrainSunAzimuth);
+    shader->setFloat("u_terrainSunHeightShift", config.terrainSunHeightShift);
+    shader->setFloat("u_terrainNoiseHeightShift", config.terrainNoiseHeightShift);
+    shader->setFloat("u_grassEnd", config.terrainGrassEnd);
+    shader->setFloat("u_rockStart", config.terrainRockStart);
+    shader->setFloat("u_snowStart", config.terrainSnowStart);
+    shader->setFloat("u_snowEnd", config.terrainSnowEnd);
+    shader->setFloat("u_steepRockStart", config.terrainSteepRockStart);
+    shader->setFloat("u_steepRockEnd", config.terrainSteepRockEnd);
+    shader->setFloat("u_snowSlopeStart", config.terrainSnowSlopeStart);
+    shader->setFloat("u_snowSlopeEnd", config.terrainSnowSlopeEnd);
+    shader->setFloat("u_terrainBlendSharpness", config.terrainBlendSharpness);
+    shader->setFloat("u_terrainTextureScale", config.terrainTextureScale);
+    shader->setInt("u_terrainDebugMode", config.terrainDebugMode);
 
     modelDrawer.draw(*shader);   // Owner C：model 矩阵在这里面设置
 }

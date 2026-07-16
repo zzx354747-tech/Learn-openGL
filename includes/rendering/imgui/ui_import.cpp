@@ -254,6 +254,37 @@ void SceneRenderUI::renderUI(
                                1.0f, 12.0f, "%.1fx");
             ImGui::TreePop();
         }
+
+        if (uiState.sceneConfig.sceneSelection == SceneSelection::FujiTerrain &&
+            ImGui::TreeNodeEx("Alpine Terrain", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            const char* debugModes[] = {"Material", "Height", "Slope", "Aspect", "Curvature"};
+            ImGui::Combo("TDM Debug", &uiState.sceneConfig.terrainDebugMode,
+                         debugModes, 5);
+            ImGui::SliderFloat("Grass End", &uiState.sceneConfig.terrainGrassEnd,
+                               0.0f, 0.8f, "%.3f");
+            ImGui::SliderFloat("Rock Start", &uiState.sceneConfig.terrainRockStart,
+                               0.0f, 0.9f, "%.3f");
+            ImGui::SliderFloat("Snow Start", &uiState.sceneConfig.terrainSnowStart,
+                               0.3f, 1.0f, "%.3f");
+            ImGui::SliderFloat("Snow End", &uiState.sceneConfig.terrainSnowEnd,
+                               0.3f, 1.0f, "%.3f");
+            ImGui::SliderFloat("Sun-facing Shift", &uiState.sceneConfig.terrainSunHeightShift,
+                               0.0f, 0.15f, "%.3f");
+            ImGui::SliderFloat("Boundary Noise", &uiState.sceneConfig.terrainNoiseHeightShift,
+                               0.0f, 0.18f, "%.3f");
+            ImGui::SliderFloat("Steep Rock Start", &uiState.sceneConfig.terrainSteepRockStart,
+                               0.2f, 0.8f, "%.3f");
+            ImGui::SliderFloat("Steep Rock End", &uiState.sceneConfig.terrainSteepRockEnd,
+                               0.2f, 0.9f, "%.3f");
+            ImGui::SliderFloat("Snow Slope Start", &uiState.sceneConfig.terrainSnowSlopeStart,
+                               0.2f, 0.8f, "%.3f");
+            ImGui::SliderFloat("Snow Slope End", &uiState.sceneConfig.terrainSnowSlopeEnd,
+                               0.2f, 0.9f, "%.3f");
+            ImGui::SliderFloat("Height Blend", &uiState.sceneConfig.terrainBlendSharpness,
+                               0.0f, 0.6f, "%.3f");
+            ImGui::TreePop();
+        }
         if (ImGui::TreeNodeEx("Volumetric Sun Scattering", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Checkbox("Enable Scattering", &uiState.sceneConfig.enableGodRays);

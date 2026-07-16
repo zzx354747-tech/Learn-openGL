@@ -6,7 +6,6 @@
 
 #include "rendering/modelload/Model.h"
 #include "rendering/assets/mesh/TerrainMesh.h"
-#include "rendering/assets/mesh/VegetationMesh.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "core/Shader.h"
 
@@ -20,7 +19,6 @@ public:
     void setSceneConfig(SceneRenderConfig* config);
     void setVisibleInScene(SceneSelection scene);
     void setTerrainMesh(TerrainMesh* terrain);
-    void setVegetationMesh(VegetationMesh* vegetation);
 
     void draw(Shader& shader) const;
 
@@ -30,5 +28,4 @@ private:
     SceneRenderConfig* config = nullptr;
     SceneSelection visibleScene = SceneSelection::LivingRoom;
     TerrainMesh* terrainMesh = nullptr;
-    VegetationMesh* vegetationMesh = nullptr;
 };

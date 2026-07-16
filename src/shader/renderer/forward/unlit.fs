@@ -2,7 +2,8 @@
 
 in vec2 TexCoords;
 in vec2 TexCoords1;
-
+in vec3 FragPos;
+in vec3 Normal;
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 
@@ -10,29 +11,54 @@ uniform bool hasAlbedoMap;
 uniform sampler2D albedoTexture;
 uniform vec3 albedoColor;
 uniform bool useTerrainBlend;
-uniform sampler2D terrainBlendTexture;
+uniform bool hasTerrainData;
+uniform sampler2D terrainDataMap;
+uniform sampler2D terrainNoiseTexture;
 uniform sampler2D terrainGrassAlbedo;
 uniform sampler2D terrainSnowAlbedo;
-uniform bool hasTerrainSnowAlbedo;
+uniform float u_sunAzimuth;
+uniform float u_terrainSunHeightShift;
+uniform float u_terrainNoiseHeightShift;
+uniform float u_grassEnd;
+uniform float u_rockStart;
+uniform float u_snowStart;
+uniform float u_snowEnd;
+uniform float u_steepRockStart;
+uniform float u_steepRockEnd;
+uniform float u_snowSlopeStart;
+uniform float u_snowSlopeEnd;
+uniform float u_terrainTextureScale;
+uniform int u_terrainDebugMode;
+
+#include "../common/terrain_biomes.glsl"
+
+vec3 pseudoColor(float v)
+{
+    return clamp(vec3(1.5 - abs(4.0*v-3.0), 1.5 - abs(4.0*v-2.0),
+                      1.5 - abs(4.0*v-1.0)), 0.0, 1.0);
+}
 
 void main()
 {
-    vec3 color = hasAlbedoMap ? texture(albedoTexture, TexCoords).rgb : albedoColor;
-    if (useTerrainBlend && hasAlbedoMap)
+    vec3 color = hasAlbedoMap ? texture(albedoTexture, TexCoords).rgb
+                              : albedoColor;
+    if (useTerrainBlend && hasTerrainData)
     {
-        vec2 mask = texture(terrainBlendTexture, TexCoords1).rg;
-        float grassWeight = clamp(mask.r, 0.0, 1.0);
-        float snowWeight = hasTerrainSnowAlbedo
-            ? clamp(mask.g, 0.0, 1.0)
-            : 0.0;
-        grassWeight *= 1.0 - snowWeight;
-        float rockWeight = max(1.0 - grassWeight - snowWeight, 0.0);
-        color = color * rockWeight +
-                texture(terrainGrassAlbedo, TexCoords * 0.72).rgb * grassWeight;
-        if (hasTerrainSnowAlbedo)
-            color += texture(terrainSnowAlbedo, TexCoords * 0.82).rgb * snowWeight;
+        vec4 data = texture(terrainDataMap, TexCoords1);
+        float noise = texture(terrainNoiseTexture, FragPos.xz / 34.0).g;
+        vec3 weights = biomeWeights(data.r, data.g, data.b, noise);
+        vec3 tri = pow(abs(normalize(Normal)), vec3(4.0));
+        tri /= max(dot(tri, vec3(1.0)), 1e-5);
+        float s = u_terrainTextureScale;
+        vec3 rock = texture(albedoTexture, FragPos.zy*s).rgb*tri.x +
+                    texture(albedoTexture, FragPos.xz*s).rgb*tri.y +
+                    texture(albedoTexture, FragPos.xy*s).rgb*tri.z;
+        vec3 grass = texture(terrainGrassAlbedo, FragPos.xz*s*0.72).rgb;
+        vec3 snow = texture(terrainSnowAlbedo, FragPos.xz*s*0.82).rgb;
+        color = rock*weights.y + grass*weights.x + snow*weights.z;
+        if (u_terrainDebugMode > 0)
+            color = pseudoColor(data[u_terrainDebugMode - 1]);
     }
-
     color = pow(color, vec3(2.2));
     FragColor = vec4(color, 1.0);
     BrightColor = vec4(0.0, 0.0, 0.0, 1.0);

@@ -389,10 +389,7 @@ glm::mat4 DirectionalShadowPass::createLightSpaceMatrix() const
         config.sceneSelection == SceneSelection::FujiTerrain;
     const glm::vec3 cameraPosition = camera.Getposition();
     const glm::vec3 sceneCenter = isTerrain
-        ? glm::vec3(
-            TerrainMesh::FujiCenterX,
-            700.0f,
-            TerrainMesh::FujiCenterZ)
+        ? glm::vec3(0.0f, 700.0f, 0.0f)
         : glm::vec3(0.0f, 0.6f, -4.8f);
     const float halfExtent = isTerrain ? 4700.0f : 10.0f;
     const float nearPlane = 0.1f;

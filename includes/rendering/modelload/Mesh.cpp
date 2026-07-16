@@ -125,7 +125,7 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
 
     // 按类型分别绑定，固定 uniform 名，不再编号
     bool hasBaseColor = false, hasNormal = false, hasMetallic = false, hasRoughness = false, hasParallax = false;
-    bool hasTerrainBlend = false, hasTerrainGrassAlbedo = false;
+    bool hasTerrainData = false, hasTerrainGrassAlbedo = false;
     bool hasTerrainSnowAlbedo = false;
     unsigned int metallicTexId = 0, roughnessTexId = 0;
 
@@ -136,6 +136,7 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     shader.setBool("hasMetallicMap", false);
     shader.setBool("usePackedMetallicRoughness", false);
     shader.setBool("useTerrainBlend", false);
+    shader.setBool("hasTerrainData", false);
     shader.setBool("hasTerrainGrassNormal", false);
     shader.setBool("hasTerrainGrassRoughness", false);
     shader.setBool("hasTerrainGrassMetallic", false);
@@ -196,10 +197,15 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
             shader.setBool("hasParallaxMap", true);
             hasParallax = true;
         }
-        else if (type == "texture_terrainBlend")
+        else if (type == "texture_terrainData")
         {
-            shader.setInt("terrainBlendTexture", i);
-            hasTerrainBlend = true;
+            shader.setInt("terrainDataMap", i);
+            hasTerrainData = true;
+            shader.setBool("hasTerrainData", true);
+        }
+        else if (type == "texture_terrainNoise")
+        {
+            shader.setInt("terrainNoiseTexture", i);
         }
         else if (type == "texture_terrainGrassAlbedo")
         {
@@ -237,6 +243,18 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
             shader.setInt("terrainSnowRoughness", i);
             shader.setBool("hasTerrainSnowRoughness", true);
         }
+        else if (type == "texture_terrainRockHeight")
+        {
+            shader.setInt("terrainRockHeight", i);
+        }
+        else if (type == "texture_terrainGrassHeight")
+        {
+            shader.setInt("terrainGrassHeight", i);
+        }
+        else if (type == "texture_terrainSnowHeight")
+        {
+            shader.setInt("terrainSnowHeight", i);
+        }
     }
 
     // 检测是否是 ORM 打包（metallic 和 roughness 指向同一张贴图 id）
@@ -248,14 +266,14 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     if (!hasMetallic)  shader.setBool("hasMetallicMap", false);
     if (!hasRoughness) shader.setBool("hasRoughnessMap", false);
     if (!hasParallax)  shader.setBool("hasParallaxMap", false);
-    shader.setBool("useTerrainBlend", hasTerrainBlend && hasTerrainGrassAlbedo);
-    if (!hasTerrainBlend || !hasTerrainGrassAlbedo)
+    shader.setBool("useTerrainBlend", hasTerrainData && hasTerrainGrassAlbedo);
+    if (!hasTerrainData || !hasTerrainGrassAlbedo)
     {
         shader.setBool("hasTerrainGrassNormal", false);
         shader.setBool("hasTerrainGrassRoughness", false);
         shader.setBool("hasTerrainGrassMetallic", false);
     }
-    if (!hasTerrainBlend || !hasTerrainSnowAlbedo)
+    if (!hasTerrainData || !hasTerrainSnowAlbedo)
     {
         shader.setBool("hasTerrainSnowAlbedo", false);
         shader.setBool("hasTerrainSnowNormal", false);
