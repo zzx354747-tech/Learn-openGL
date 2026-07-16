@@ -9,6 +9,8 @@ layout (location = 1) out vec4 BrightColor;
 
 uniform samplerCube skybox;
 uniform sampler2D sunTexture;
+uniform sampler2D blueNoiseTexture;
+uniform bool hasBlueNoiseTexture;
 uniform vec3 cameraPos;
 uniform bool isSkybox;
 uniform bool enableProceduralSky;
@@ -26,12 +28,12 @@ uniform float cloudType;
 uniform float cloudAnvilAmount;
 uniform float cloudErosionStrength;
 uniform float stormHoleStrength;
-uniform float stormHoleSize;
-uniform float stormPoolHoleSize;
-uniform float stormHoleSpacing;
+uniform int stormHoleSeed;
+uniform int stormHoleCount;
+uniform float stormHoleMinRadius;
+uniform float stormHoleMaxRadius;
 uniform float stormHoleSoftness;
 uniform float stormHoleShaftStrength;
-uniform vec2 stormHeroHolePosition;
 uniform vec2 stormShaftLean;
 uniform float cloudEvolutionTime;
 uniform vec2 cloudWindOffset;
@@ -56,11 +58,7 @@ uniform float sunAngularRadius;
 
 const int MAX_VIEW_STEPS = 96;
 const int MAX_LIGHT_STEPS = 8;
-const int STORM_LARGE_HOLE_COUNT = 3;
-const vec2 STORM_LARGE_HOLE_OFFSETS[STORM_LARGE_HOLE_COUNT] = vec2[](
-    vec2(-3000.0, -15000.0),
-    vec2( 3500.0, -18000.0),
-    vec2(    0.0, -22000.0));
+const int MAX_STORM_HOLES = 7;
 const mat3 FBM_ROTATION = mat3(0.00, 0.80, 0.60,
                                -0.80, 0.36, -0.48,
                                -0.60, -0.48, 0.64);
@@ -130,6 +128,23 @@ float interleavedGradientNoise(vec2 pixel)
     return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
 }
 
+float cloudBlueNoiseJitter()
+{
+    if (!hasBlueNoiseTexture)
+    {
+        vec2 temporalOffset = vec2(47.0, 17.0) * float(cloudFrameIndex);
+        return interleavedGradientNoise(gl_FragCoord.xy + temporalOffset);
+    }
+
+    // The source is a tileable 64x64 CC0 blue-noise texture. A different
+    // coprime pixel offset per temporal frame decorrelates ray entry points
+    // without the low-frequency clumps produced by white/hash noise.
+    ivec2 temporalOffset = ivec2(cloudFrameIndex * 37,
+                                 cloudFrameIndex * 17);
+    ivec2 noisePixel = (ivec2(gl_FragCoord.xy) + temporalOffset) & ivec2(63);
+    return texelFetch(blueNoiseTexture, noisePixel, 0).r;
+}
+
 vec2 getWindDirection()
 {
     float lengthSquared = dot(cloudWindDirection, cloudWindDirection);
@@ -143,38 +158,102 @@ float getCloudHeight01(float worldY)
     return (worldY - cloudBaseHeight) / max(cloudThickness, 1.0);
 }
 
-float sampleAuthoredStormHole(vec2 worldXZ, float worldY)
+float stormHash11(float value)
 {
+    return fract(sin(value * 12.9898 + 31.416) * 43758.5453123);
+}
+
+vec2 rotateStormHole(vec2 value, float angle)
+{
+    float sine = sin(angle);
+    float cosine = cos(angle);
+    return vec2(
+        cosine * value.x + sine * value.y,
+       -sine * value.x + cosine * value.y);
+}
+
+void getGeneratedStormHole(
+    int index,
+    out vec2 center,
+    out float radius,
+    out vec2 ellipseScale,
+    out float rotation,
+    out vec2 lean,
+    out float key)
+{
+    key = float(stormHoleSeed) * 0.071 + float(index) * 17.137;
+    float positionX = stormHash11(key + 0.37);
+    float positionZ = stormHash11(key + 2.11);
+    float sizeRandom = stormHash11(key + 4.73);
+    float aspectRandom = stormHash11(key + 7.19);
+    float rotationRandom = stormHash11(key + 9.97);
+    vec2 leanRandom = vec2(
+        stormHash11(key + 12.41),
+        stormHash11(key + 15.83));
+
+    // One randomly placed middle-distance opening keeps the current view
+    // interesting; the remaining openings form irregular remote cloud banks.
+    float xExtent = index == 0 ? 2800.0 : 9500.0;
+    float nearDistance = index == 0 ? 900.0 : 4200.0;
+    float farDistance = index == 0 ? 5200.0 : 24000.0;
+    center = vec2(
+        mix(-xExtent, xExtent, positionX),
+       -mix(nearDistance, farDistance, positionZ));
+
+    float minimumRadius = min(stormHoleMinRadius, stormHoleMaxRadius);
+    float maximumRadius = max(stormHoleMinRadius, stormHoleMaxRadius);
+    radius = mix(minimumRadius, maximumRadius, pow(sizeRandom, 1.35));
+    float aspect = mix(0.68, 1.42, aspectRandom);
+    ellipseScale = vec2(aspect, 1.0 / aspect);
+    rotation = rotationRandom * 6.28318530718;
+    lean = stormShaftLean + (leanRandom - 0.5) * 0.028;
+}
+
+float sampleGeneratedStormHole(
+    vec2 worldXZ,
+    float worldY,
+    int index,
+    float radiusScale)
+{
+    vec2 center;
+    float radius;
+    vec2 ellipseScale;
+    float rotation;
+    vec2 lean;
+    float key;
+    getGeneratedStormHole(
+        index, center, radius, ellipseScale, rotation, lean, key);
+
+    vec2 axisCenter = center - lean * worldY;
+    vec2 local = rotateStormHole(worldXZ - axisCenter, rotation) /
+                 max(radius * radiusScale, 1.0);
+    float polarAngle = atan(local.y, local.x);
+    float frequencyA = 3.0 + floor(stormHash11(key + 18.29) * 4.0);
+    float frequencyB = 7.0 + floor(stormHash11(key + 21.71) * 5.0);
+    float phaseA = stormHash11(key + 24.13) * 6.28318530718;
+    float phaseB = stormHash11(key + 27.59) * 6.28318530718;
+    float amplitudeA = mix(0.055, 0.145, stormHash11(key + 30.31));
+    float amplitudeB = mix(0.025, 0.080, stormHash11(key + 33.47));
+    float edgeWarp = sin(polarAngle * frequencyA + phaseA) * amplitudeA +
+                     sin(polarAngle * frequencyB + phaseB) * amplitudeB;
+    float shapedDistance = length(local * ellipseScale) + edgeWarp;
     float softness = clamp(stormHoleSoftness, 0.05, 0.80);
-    vec2 shaftOffset = stormShaftLean * worldY;
-
-    float poolRadius = max(stormPoolHoleSize, 1.0);
-    float poolInnerRadius = poolRadius * (1.0 - softness);
-    float poolDistance = length(
-        (worldXZ - (stormHeroHolePosition - shaftOffset)) * vec2(0.84, 1.0));
-    float authoredHole = 1.0 - smoothstep(
-        poolInnerRadius, poolRadius, poolDistance);
-
-    float largeRadius = max(stormHoleSize, 1.0);
-    float largeInnerRadius = largeRadius * (1.0 - softness);
-    for (int i = 0; i < STORM_LARGE_HOLE_COUNT; ++i)
-    {
-        vec2 center = stormHeroHolePosition + STORM_LARGE_HOLE_OFFSETS[i] -
-                      shaftOffset;
-        float largeDistance = length((worldXZ - center) * vec2(0.88, 1.12));
-        authoredHole = max(authoredHole, 1.0 - smoothstep(
-            largeInnerRadius, largeRadius, largeDistance));
-    }
-    return authoredHole;
+    return 1.0 - smoothstep(1.0 - softness, 1.0, shapedDistance);
 }
 
 float sampleStormLightHole(vec2 worldXZ, float worldY)
 {
     if (stormHoleStrength <= 0.001)
         return 0.0;
-    // Only the pool opening and the three deliberately placed distant
-    // openings are allowed to cut the storm layer.
-    return sampleAuthoredStormHole(worldXZ, worldY);
+
+    float mask = 0.0;
+    for (int i = 0; i < MAX_STORM_HOLES; ++i)
+    {
+        if (i >= stormHoleCount)
+            break;
+        mask = max(mask, sampleGeneratedStormHole(worldXZ, worldY, i, 1.0));
+    }
+    return mask;
 }
 
 vec2 getCloudSampleXZ(vec3 worldPos, vec2 windOffset, float height01)
@@ -296,11 +375,31 @@ vec4 raymarchClouds(vec3 rayDir)
         return vec4(0.0);
 
     float cloudTop = cloudBaseHeight + max(cloudThickness, 1.0);
+    float maxCloudDistance = max(cloudMaxDistance, 1.0);
     float layerT0 = (cloudBaseHeight - cameraPos.y) / rayDir.y;
     float layerT1 = (cloudTop - cameraPos.y) / rayDir.y;
     float nearT = max(min(layerT0, layerT1), 0.0);
-    float farT = min(max(layerT0, layerT1), max(cloudMaxDistance, 1.0));
+    float farT = min(max(layerT0, layerT1), maxCloudDistance);
     if (farT <= nearT)
+        return vec4(0.0);
+
+    // A planar cloud slab reaches the maximum ray distance at one identical
+    // elevation angle, which otherwise produces a perfectly straight horizon
+    // cutoff. Fade the layer well before that hard limit and vary the fade
+    // distance slowly by world-facing direction so cloud banks dissolve into
+    // the cloud-linked background in broad, irregular groups.
+    vec2 horizontalDirection = rayDir.xz /
+        max(length(rayDir.xz), 0.001);
+    float horizonVariation = valueNoise(vec3(
+        horizontalDirection * 5.5 + cameraPos.xz * 0.000018,
+        27.0 + cloudEvolutionTime * 0.008));
+    float horizonFadeStart = maxCloudDistance *
+        mix(0.46, 0.58, horizonVariation);
+    float horizonFadeEnd = maxCloudDistance *
+        mix(0.78, 0.90, horizonVariation);
+    float distantCloudFade = 1.0 - smoothstep(
+        horizonFadeStart, horizonFadeEnd, nearT);
+    if (distantCloudFade <= 0.001)
         return vec4(0.0);
 
     // Grazing rays cross a much longer part of the cloud slab, so they need
@@ -308,8 +407,7 @@ vec4 raymarchClouds(vec3 rayDir)
     float angleQuality = mix(1.0, 0.68, smoothstep(0.02, 0.38, abs(rayDir.y)));
     int viewSteps = clamp(int(float(cloudViewSteps) * angleQuality), 16, MAX_VIEW_STEPS);
     float stepLength = (farT - nearT) / float(viewSteps);
-    vec2 temporalOffset = vec2(47.0, 17.0) * float(cloudFrameIndex);
-    float jitter = interleavedGradientNoise(gl_FragCoord.xy + temporalOffset);
+    float jitter = cloudBlueNoiseJitter();
     float t = nearT + stepLength * jitter;
     float transmittance = 1.0;
     vec3 scattering = vec3(0.0);
@@ -357,8 +455,9 @@ vec4 raymarchClouds(vec3 rayDir)
         }
     }
 
-    float horizonFade = smoothstep(0.008, 0.045, abs(rayDir.y));
-    return vec4(scattering * horizonFade, (1.0 - transmittance) * horizonFade);
+    return vec4(
+        scattering * distantCloudFade,
+        (1.0 - transmittance) * distantCloudFade);
 }
 
 vec4 sampleSun(vec3 rayDir)
@@ -398,10 +497,21 @@ float sampleStormAperture(vec3 rayDir)
 
 vec3 proceduralSky(vec3 rayDir, out float sunContribution, out float godRayMask)
 {
-    // The procedural atmosphere intentionally starts from one flat background
-    // color. Only the sun, volumetric clouds and linked god rays are layered on
-    // top; the HDR cubemap remains available for IBL/reflections.
+    // Keep ordinary weather presets on their selected flat background. During
+    // a storm, gradually tint that background from the same bottom/top palette
+    // used by the cloud march. The transition follows both storm strength and
+    // coverage, so exposed sky and cloud edges no longer read as two layers.
     vec3 sky = skyTopColor;
+    float stormBackdropWeight = clamp(stormHoleStrength, 0.0, 1.0) *
+        smoothstep(0.55, 0.93, clamp(cloudCoverage, 0.0, 1.0));
+    float backdropHeight = smoothstep(-0.06, 0.58, rayDir.y);
+    vec3 lowStormBackdrop = cloudBottomColor * 0.82;
+    vec3 highStormBackdrop = mix(
+        cloudBottomColor, cloudTopColor, 0.55) * 0.48;
+    vec3 stormBackdrop = mix(
+        lowStormBackdrop, highStormBackdrop, backdropHeight);
+    sky = mix(sky, stormBackdrop, stormBackdropWeight * 0.88);
+    vec3 cloudLinkedBackground = sky;
 
     vec4 sun = sampleSun(rayDir);
     sky = mix(sky, sun.rgb, sun.a);
@@ -428,7 +538,8 @@ vec3 proceduralSky(vec3 rayDir, out float sunContribution, out float godRayMask)
     // Reveal the sky through the cut without drawing an artificial luminous
     // ring around it. The smooth aperture mask supplies the natural soft edge.
     float apertureCore = smoothstep(0.08, 0.88, aperture);
-    vec3 openingSky = mix(skyTopColor, cloudSunColor * 0.95, 0.35);
+    vec3 openingSky = mix(
+        cloudLinkedBackground, cloudSunColor * 0.95, 0.35);
     sky = mix(sky, openingSky, apertureCore * 0.90);
     return sky;
 }

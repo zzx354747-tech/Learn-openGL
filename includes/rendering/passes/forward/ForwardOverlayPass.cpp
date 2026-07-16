@@ -68,10 +68,11 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
                    shouldRenderGodRays(config) &&
                    shouldRenderVolumetricClouds(config) &&
                    config.stormHoleStrength > 0.001f);
-    shader.setVec2("stormHeroHolePosition", config.stormHeroHolePosition);
     shader.setVec2("stormShaftLean", config.stormShaftLean);
-    shader.setFloat("stormHoleSize", config.stormHoleSize);
-    shader.setFloat("stormPoolHoleSize", config.stormPoolHoleSize);
+    shader.setInt("stormHoleSeed", static_cast<int>(config.stormHoleSeed));
+    shader.setInt("stormHoleCount", config.stormHoleCount);
+    shader.setFloat("stormHoleMinRadius", config.stormHoleMinRadius);
+    shader.setFloat("stormHoleMaxRadius", config.stormHoleMaxRadius);
     shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
     shader.setVec3("stormShaftColor", config.godRayColor);
     shader.setFloat("stormShaftSurfaceIntensity",

@@ -82,12 +82,12 @@ void ScreenPass::render(
         glm::inverse(cameraProjection * camera.GetViewMatrix()));
     screenShader.setVec3("cameraPos", camera.Getposition());
     screenShader.setFloat("stormHoleStrength", config.stormHoleStrength);
-    screenShader.setFloat("stormHoleSize", config.stormHoleSize);
-    screenShader.setFloat("stormPoolHoleSize", config.stormPoolHoleSize);
-    screenShader.setFloat("stormHoleSpacing", config.stormHoleSpacing);
+    screenShader.setInt("stormHoleSeed", static_cast<int>(config.stormHoleSeed));
+    screenShader.setInt("stormHoleCount", config.stormHoleCount);
+    screenShader.setFloat("stormHoleMinRadius", config.stormHoleMinRadius);
+    screenShader.setFloat("stormHoleMaxRadius", config.stormHoleMaxRadius);
     screenShader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
     screenShader.setFloat("stormHoleShaftStrength", config.stormHoleShaftStrength);
-    screenShader.setVec2("stormHeroHolePosition", config.stormHeroHolePosition);
     screenShader.setVec2("stormShaftLean", config.stormShaftLean);
     screenShader.setFloat("cloudBaseHeight", config.cloudBaseHeight);
     screenShader.setFloat("cloudThickness", config.cloudThickness);

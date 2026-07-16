@@ -75,6 +75,7 @@ struct RendererScene
     // 第二轮新增:第 1 层
     SceneRenderResources sceneResources;
     std::unique_ptr<GLTexture> sunTexture;
+    std::unique_ptr<GLTexture> blueNoiseTexture;
     SphereDrawer sphereDrawer;
     ModelDrawer livingRoomDrawer;
 

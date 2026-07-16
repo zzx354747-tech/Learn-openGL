@@ -147,16 +147,18 @@ void SceneRenderUI::renderUI(
         if (ImGui::TreeNodeEx("Storm Light Holes", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::SliderFloat("Hole Strength", &uiState.sceneConfig.stormHoleStrength, 0.0f, 1.0f, "%.2f");
-            ImGui::DragFloat("Large Hole Radius", &uiState.sceneConfig.stormHoleSize, 1.0f, 20.0f, 2000.0f, "%.0f m");
-            ImGui::DragFloat("Pool Hole Radius", &uiState.sceneConfig.stormPoolHoleSize, 1.0f, 10.0f, 200.0f, "%.0f m");
-            ImGui::DragFloat("Hole Spacing", &uiState.sceneConfig.stormHoleSpacing, 250.0f, 16000.0f, 70000.0f, "%.0f m");
-            ImGui::DragFloat2("Pool Hole XZ", glm::value_ptr(uiState.sceneConfig.stormHeroHolePosition), 1.0f, -2000.0f, 2000.0f, "%.0f m");
-            ImGui::SetItemTooltip("Center of the small pool aperture; large apertures are placed farther away");
+            ImGui::Text("Pattern %u: %d generated holes",
+                        uiState.sceneConfig.stormHoleSeed,
+                        uiState.sceneConfig.stormHoleCount);
+            if (ImGui::Button("Regenerate Hole Pattern"))
+                ++uiState.sceneConfig.cloudWeatherTransitionRequest;
+            ImGui::DragFloat("Minimum Radius", &uiState.sceneConfig.stormHoleMinRadius, 5.0f, 40.0f, 900.0f, "%.0f m");
+            ImGui::DragFloat("Maximum Radius", &uiState.sceneConfig.stormHoleMaxRadius, 10.0f, 300.0f, 2600.0f, "%.0f m");
             ImGui::DragFloat2("Shaft Lean XZ", glm::value_ptr(uiState.sceneConfig.stormShaftLean), 0.005f, -0.30f, 0.30f, "%.3f");
-            ImGui::SetItemTooltip("Horizontal movement per metre downward; controls the beam angle");
+            ImGui::SetItemTooltip("Base beam angle; every generated hole receives a small random variation");
             ImGui::SliderFloat("Hole Softness", &uiState.sceneConfig.stormHoleSoftness, 0.05f, 0.80f, "%.2f");
             ImGui::SliderFloat("Hole Shaft Boost", &uiState.sceneConfig.stormHoleShaftStrength, 0.0f, 4.0f, "%.2f");
-            ImGui::SetItemTooltip("Boosts world-space columns cast straight down from storm cloud apertures");
+            ImGui::SetItemTooltip("Boosts the generated world-space volumetric shafts");
             ImGui::TreePop();
         }
         if (ImGui::TreeNodeEx("Cloud Lighting", ImGuiTreeNodeFlags_DefaultOpen))

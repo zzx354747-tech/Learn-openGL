@@ -76,12 +76,12 @@ struct SceneRenderConfig
     float cloudAnvilAmount = 0.18f;
     float cloudErosionStrength = 0.28f;
     float stormHoleStrength = 0.0f;
-    float stormHoleSize = 1100.0f;
-    float stormPoolHoleSize = 38.0f;
-    float stormHoleSpacing = 32000.0f;
-    float stormHoleSoftness = 0.34f;
+    unsigned int stormHoleSeed = 1739u;
+    int stormHoleCount = 5;
+    float stormHoleMinRadius = 160.0f;
+    float stormHoleMaxRadius = 1400.0f;
+    float stormHoleSoftness = 0.38f;
     float stormHoleShaftStrength = 2.0f;
-    glm::vec2 stormHeroHolePosition = glm::vec2(0.0f, -18.0f);
     glm::vec2 stormShaftLean = glm::vec2(0.08f, 0.0f);
     float cloudSpeed = 7.0f;
     float cloudEvolutionSpeed = 0.035f;

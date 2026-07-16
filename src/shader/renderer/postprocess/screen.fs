@@ -29,12 +29,12 @@ uniform float godRayRadius;
 uniform int godRaySamples;
 uniform vec3 godRayColor;
 uniform float stormHoleStrength;
-uniform float stormHoleSize;
-uniform float stormPoolHoleSize;
-uniform float stormHoleSpacing;
+uniform int stormHoleSeed;
+uniform int stormHoleCount;
+uniform float stormHoleMinRadius;
+uniform float stormHoleMaxRadius;
 uniform float stormHoleSoftness;
 uniform float stormHoleShaftStrength;
-uniform vec2 stormHeroHolePosition;
 uniform vec2 stormShaftLean;
 uniform float cloudBaseHeight;
 uniform float cloudThickness;
@@ -46,12 +46,7 @@ uniform float cloudWindShear;
 uniform float cloudMaxDistance;
 
 const int MAX_GOD_RAY_SAMPLES = 64;
-const int STORM_SHAFT_SAMPLES = 24;
-const int STORM_LARGE_HOLE_COUNT = 3;
-const vec2 STORM_LARGE_HOLE_OFFSETS[STORM_LARGE_HOLE_COUNT] = vec2[](
-    vec2(-3000.0, -15000.0),
-    vec2( 3500.0, -18000.0),
-    vec2(    0.0, -22000.0));
+const int MAX_STORM_HOLES = 7;
 
 float interleavedGradientNoise(vec2 pixel)
 {
@@ -86,38 +81,85 @@ vec2 getWindDirection()
         : vec2(1.0, 0.0);
 }
 
-float sampleAuthoredStormHole(vec2 worldXZ, float worldY)
+float stormHash11(float value)
 {
-    // Keep every volumetric column slightly inside its matching cloud opening.
-    // The remaining outer band belongs to the opening itself, so bloom and TAA
-    // cannot make the shaft read wider than the hole.
-    float shaftRadiusScale = 0.92;
-    float softness = max(clamp(stormHoleSoftness, 0.05, 0.80), 0.48);
-    vec2 shaftOffset = stormShaftLean * worldY;
-
-    float poolRadius = max(stormPoolHoleSize * shaftRadiusScale, 1.0);
-    float poolInnerRadius = poolRadius * (1.0 - softness);
-    float poolDistance = length(
-        (worldXZ - (stormHeroHolePosition - shaftOffset)) * vec2(0.84, 1.0));
-    float authoredHole = 1.0 - smoothstep(
-        poolInnerRadius, poolRadius, poolDistance);
-
-    float largeRadius = max(stormHoleSize * shaftRadiusScale, 1.0);
-    float largeInnerRadius = largeRadius * (1.0 - softness);
-    for (int i = 0; i < STORM_LARGE_HOLE_COUNT; ++i)
-    {
-        vec2 center = stormHeroHolePosition + STORM_LARGE_HOLE_OFFSETS[i] -
-                      shaftOffset;
-        float largeDistance = length((worldXZ - center) * vec2(0.88, 1.12));
-        authoredHole = max(authoredHole, 1.0 - smoothstep(
-            largeInnerRadius, largeRadius, largeDistance));
-    }
-    return authoredHole;
+    return fract(sin(value * 12.9898 + 31.416) * 43758.5453123);
 }
 
-float sampleStormLightHole(vec2 worldXZ, float worldY)
+vec2 rotateStormHole(vec2 value, float angle)
 {
-    return sampleAuthoredStormHole(worldXZ, worldY);
+    float sine = sin(angle);
+    float cosine = cos(angle);
+    return vec2(
+        cosine * value.x + sine * value.y,
+       -sine * value.x + cosine * value.y);
+}
+
+void getGeneratedStormHole(
+    int index,
+    out vec2 center,
+    out float radius,
+    out vec2 ellipseScale,
+    out float rotation,
+    out vec2 lean,
+    out float key)
+{
+    key = float(stormHoleSeed) * 0.071 + float(index) * 17.137;
+    float positionX = stormHash11(key + 0.37);
+    float positionZ = stormHash11(key + 2.11);
+    float sizeRandom = stormHash11(key + 4.73);
+    float aspectRandom = stormHash11(key + 7.19);
+    float rotationRandom = stormHash11(key + 9.97);
+    vec2 leanRandom = vec2(
+        stormHash11(key + 12.41),
+        stormHash11(key + 15.83));
+
+    float xExtent = index == 0 ? 2800.0 : 9500.0;
+    float nearDistance = index == 0 ? 900.0 : 4200.0;
+    float farDistance = index == 0 ? 5200.0 : 24000.0;
+    center = vec2(
+        mix(-xExtent, xExtent, positionX),
+       -mix(nearDistance, farDistance, positionZ));
+
+    float minimumRadius = min(stormHoleMinRadius, stormHoleMaxRadius);
+    float maximumRadius = max(stormHoleMinRadius, stormHoleMaxRadius);
+    radius = mix(minimumRadius, maximumRadius, pow(sizeRandom, 1.35));
+    float aspect = mix(0.68, 1.42, aspectRandom);
+    ellipseScale = vec2(aspect, 1.0 / aspect);
+    rotation = rotationRandom * 6.28318530718;
+    lean = stormShaftLean + (leanRandom - 0.5) * 0.028;
+}
+
+float sampleGeneratedStormHole(
+    vec2 worldXZ,
+    float worldY,
+    int index,
+    float radiusScale)
+{
+    vec2 center;
+    float radius;
+    vec2 ellipseScale;
+    float rotation;
+    vec2 lean;
+    float key;
+    getGeneratedStormHole(
+        index, center, radius, ellipseScale, rotation, lean, key);
+
+    vec2 axisCenter = center - lean * worldY;
+    vec2 local = rotateStormHole(worldXZ - axisCenter, rotation) /
+                 max(radius * radiusScale, 1.0);
+    float polarAngle = atan(local.y, local.x);
+    float frequencyA = 3.0 + floor(stormHash11(key + 18.29) * 4.0);
+    float frequencyB = 7.0 + floor(stormHash11(key + 21.71) * 5.0);
+    float phaseA = stormHash11(key + 24.13) * 6.28318530718;
+    float phaseB = stormHash11(key + 27.59) * 6.28318530718;
+    float amplitudeA = mix(0.055, 0.145, stormHash11(key + 30.31));
+    float amplitudeB = mix(0.025, 0.080, stormHash11(key + 33.47));
+    float edgeWarp = sin(polarAngle * frequencyA + phaseA) * amplitudeA +
+                     sin(polarAngle * frequencyB + phaseB) * amplitudeB;
+    float shapedDistance = length(local * ellipseScale) + edgeWarp;
+    float softness = max(clamp(stormHoleSoftness, 0.05, 0.80), 0.48);
+    return 1.0 - smoothstep(1.0 - softness, 1.0, shapedDistance);
 }
 
 vec3 calculateGodRays()
@@ -164,9 +206,13 @@ vec3 calculateGodRays()
            screenSpaceGodRayMix;
 }
 
-float integrateStormHeroShaft(
+float integrateGeneratedStormShaft(
+    int holeIndex,
     vec2 center,
     float shaftRadius,
+    vec2 ellipseScale,
+    float rotation,
+    vec2 lean,
     float visibilityBoost,
     vec3 rayDir,
     float nearT,
@@ -175,13 +221,13 @@ float integrateStormHeroShaft(
     float shaftBottom,
     float shaftLength)
 {
-    vec2 ellipseScale = vec2(0.88, 1.12);
-    vec2 origin = (cameraPos.xz - center + stormShaftLean * cameraPos.y) *
-                  ellipseScale;
-    vec2 direction = (rayDir.xz + stormShaftLean * rayDir.y) * ellipseScale;
-    // Feather only inward. The outer integration boundary remains smaller
-    // than the matching cloud aperture.
-    float radius = max(shaftRadius * 0.92, 1.0);
+    vec2 origin = rotateStormHole(
+        cameraPos.xz - center + lean * cameraPos.y, rotation) * ellipseScale;
+    vec2 direction = rotateStormHole(
+        rayDir.xz + lean * rayDir.y, rotation) * ellipseScale;
+    // Use only an oversized ellipse as a cheap intersection bound. The actual
+    // contribution is clipped below by the exact random aperture function.
+    float radius = max(shaftRadius * 0.90 * 1.24, 1.0);
     float a = dot(direction, direction);
     float segmentStart = nearT;
     float segmentEnd = farT;
@@ -216,9 +262,21 @@ float integrateStormHeroShaft(
     if (a >= 0.000001)
         closestT = clamp(-dot(origin, direction) / a,
                          segmentStart, segmentEnd);
-    float radialDistance = length(origin + direction * closestT);
-    float edgeFeather = 1.0 - smoothstep(
-        radius * 0.50, radius, radialDistance);
+    float shapeT0 = mix(segmentStart, closestT, 0.50);
+    float shapeT2 = mix(closestT, segmentEnd, 0.50);
+    vec3 shapePosition0 = cameraPos + rayDir * shapeT0;
+    vec3 shapePosition1 = cameraPos + rayDir * closestT;
+    vec3 shapePosition2 = cameraPos + rayDir * shapeT2;
+    float apertureShape = max(
+        sampleGeneratedStormHole(
+            shapePosition0.xz, shapePosition0.y, holeIndex, 0.90),
+        max(
+            sampleGeneratedStormHole(
+                shapePosition1.xz, shapePosition1.y, holeIndex, 0.90),
+            sampleGeneratedStormHole(
+                shapePosition2.xz, shapePosition2.y, holeIndex, 0.90)));
+    if (apertureShape <= 0.001)
+        return 0.0;
     vec3 middlePosition = cameraPos + rayDir * middleT;
     float height01 = clamp(
         (middlePosition.y - shaftBottom) / shaftLength, 0.0, 1.0);
@@ -229,7 +287,7 @@ float integrateStormHeroShaft(
         middlePosition * vec3(0.0014, 0.0021, 0.0014) +
         vec3(0.0, cloudEvolutionTime * 0.035, 0.0)));
     return (pathLength / shaftLength) * groundFade *
-           distanceFade * dust * edgeFeather * visibilityBoost * 1.35;
+           distanceFade * dust * apertureShape * visibilityBoost * 1.35;
 }
 
 vec3 calculateStormGodRays()
@@ -281,49 +339,42 @@ vec3 calculateStormGodRays()
     if (farT <= nearT)
         return vec3(0.0);
 
-    float stepLength = (farT - nearT) / float(STORM_SHAFT_SAMPLES);
-    float jitter = interleavedGradientNoise(gl_FragCoord.xy + vec2(91.0, 37.0));
-    float t = nearT + stepLength * jitter;
     float scattering = 0.0;
 
-    for (int i = 0; i < STORM_SHAFT_SAMPLES; ++i)
+    // Intersect every generated shaft, then evaluate that exact hole's warped
+    // outline at the closest point. This keeps the volume silhouette identical
+    // to the cloud opening instead of overlaying a brighter ellipse.
+    float minimumRadius = min(stormHoleMinRadius, stormHoleMaxRadius);
+    float maximumRadius = max(stormHoleMinRadius, stormHoleMaxRadius);
+    for (int i = 0; i < MAX_STORM_HOLES; ++i)
     {
-        vec3 position = cameraPos + rayDir * t;
-        float aperture = sampleStormLightHole(position.xz, position.y);
-        float height01 = clamp((position.y - shaftBottom) / shaftLength, 0.0, 1.0);
-        float groundFade = smoothstep(0.0, 0.12, height01);
-        float distanceFade = 1.0 - smoothstep(rayLimit * 0.58, rayLimit, t);
-        float dust = mix(0.78, 1.0, valueNoise(
-            position * vec3(0.0014, 0.0021, 0.0014) +
-            vec3(0.0, cloudEvolutionTime * 0.035, 0.0)));
-        scattering += aperture * groundFade * distanceFade * dust *
-                      (stepLength / shaftLength);
-        t += stepLength;
-    }
-
-    // Integrate the small pool shaft and the three large distant shafts as
-    // analytic cylinders so all remain stable even below the horizon.
-    // The camera starts near the pool footprint, so a physically normalized
-    // short path is almost invisible from the side. Boost only this small
-    // shaft for level/downward views; its radius and footprint are unchanged.
-    float upwardView = smoothstep(0.15, 0.75, max(rayDir.y, 0.0));
-    float poolVisibilityBoost = mix(14.0, 5.0, upwardView);
-    scattering += integrateStormHeroShaft(
-        stormHeroHolePosition,
-        stormPoolHoleSize,
-        poolVisibilityBoost,
-        rayDir, nearT, farT, rayLimit, shaftBottom, shaftLength);
-    for (int i = 0; i < STORM_LARGE_HOLE_COUNT; ++i)
-    {
-        scattering += integrateStormHeroShaft(
-            stormHeroHolePosition + STORM_LARGE_HOLE_OFFSETS[i],
-            stormHoleSize,
-            1.0,
+        if (i >= stormHoleCount)
+            break;
+        vec2 center;
+        float radius;
+        vec2 ellipseScale;
+        float rotation;
+        vec2 lean;
+        float key;
+        getGeneratedStormHole(
+            i, center, radius, ellipseScale, rotation, lean, key);
+        float size01 = (radius - minimumRadius) /
+            max(maximumRadius - minimumRadius, 1.0);
+        float visibilityBoost = mix(
+            4.8, 1.0, smoothstep(0.10, 0.82, size01));
+        scattering += integrateGeneratedStormShaft(
+            i,
+            center,
+            radius,
+            ellipseScale,
+            rotation,
+            lean,
+            visibilityBoost,
             rayDir, nearT, farT, rayLimit, shaftBottom, shaftLength);
     }
 
-    // A mild upward-view phase boost makes the cloud opening read clearly,
-    // but the beam direction itself remains fixed along world -Y.
+    // A mild upward-view phase boost keeps generated openings readable while
+    // every shaft remains anchored to its own world-space axis.
     float viewPhase = mix(0.72, 1.0,
         pow(max(rayDir.y, 0.0), 2.0));
     float strength = clamp(stormHoleStrength, 0.0, 1.0) *

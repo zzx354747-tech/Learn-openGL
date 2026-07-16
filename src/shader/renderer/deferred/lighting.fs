@@ -73,10 +73,11 @@ uniform vec3 iblAmbientTint;
 uniform float iblAmbientStrength;
 uniform float cloudAmbientTransmission;
 uniform bool enableStormShaftLighting;
-uniform vec2 stormHeroHolePosition;
 uniform vec2 stormShaftLean;
-uniform float stormHoleSize;
-uniform float stormPoolHoleSize;
+uniform int stormHoleSeed;
+uniform int stormHoleCount;
+uniform float stormHoleMinRadius;
+uniform float stormHoleMaxRadius;
 uniform float stormHoleSoftness;
 uniform vec3 stormShaftColor;
 uniform float stormShaftSurfaceIntensity;
@@ -99,11 +100,7 @@ uniform float waterTime;
 uniform vec2 waterCenter;
 uniform vec2 waterRadii;
 
-const int STORM_LARGE_HOLE_COUNT = 3;
-const vec2 STORM_LARGE_HOLE_OFFSETS[STORM_LARGE_HOLE_COUNT] = vec2[](
-    vec2(-3000.0, -15000.0),
-    vec2( 3500.0, -18000.0),
-    vec2(    0.0, -22000.0));
+const int MAX_STORM_HOLES = 7;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -765,28 +762,90 @@ vec3 calcUnderwaterCaustics(
            beerLambert * receiverNdotL * (1.0 - shadow) * lakeCoverage * 2.85;
 }
 
+float stormHash11(float value)
+{
+    return fract(sin(value * 12.9898 + 31.416) * 43758.5453123);
+}
+
+vec2 rotateStormHole(vec2 value, float angle)
+{
+    float sine = sin(angle);
+    float cosine = cos(angle);
+    return vec2(
+        cosine * value.x + sine * value.y,
+       -sine * value.x + cosine * value.y);
+}
+
+void getGeneratedStormHole(
+    int index,
+    out vec2 center,
+    out float radius,
+    out vec2 ellipseScale,
+    out float rotation,
+    out vec2 lean,
+    out float key)
+{
+    key = float(stormHoleSeed) * 0.071 + float(index) * 17.137;
+    float positionX = stormHash11(key + 0.37);
+    float positionZ = stormHash11(key + 2.11);
+    float sizeRandom = stormHash11(key + 4.73);
+    float aspectRandom = stormHash11(key + 7.19);
+    float rotationRandom = stormHash11(key + 9.97);
+    vec2 leanRandom = vec2(
+        stormHash11(key + 12.41),
+        stormHash11(key + 15.83));
+    float xExtent = index == 0 ? 2800.0 : 9500.0;
+    float nearDistance = index == 0 ? 900.0 : 4200.0;
+    float farDistance = index == 0 ? 5200.0 : 24000.0;
+    center = vec2(
+        mix(-xExtent, xExtent, positionX),
+       -mix(nearDistance, farDistance, positionZ));
+    float minimumRadius = min(stormHoleMinRadius, stormHoleMaxRadius);
+    float maximumRadius = max(stormHoleMinRadius, stormHoleMaxRadius);
+    radius = mix(minimumRadius, maximumRadius, pow(sizeRandom, 1.35));
+    float aspect = mix(0.68, 1.42, aspectRandom);
+    ellipseScale = vec2(aspect, 1.0 / aspect);
+    rotation = rotationRandom * 6.28318530718;
+    lean = stormShaftLean + (leanRandom - 0.5) * 0.028;
+}
+
+float sampleGeneratedStormHole(vec2 worldXZ, int index)
+{
+    vec2 center;
+    float radius;
+    vec2 ellipseScale;
+    float rotation;
+    vec2 lean;
+    float key;
+    getGeneratedStormHole(
+        index, center, radius, ellipseScale, rotation, lean, key);
+    vec2 local = rotateStormHole(worldXZ - center, rotation) /
+                 max(radius * 0.90, 1.0);
+    float polarAngle = atan(local.y, local.x);
+    float frequencyA = 3.0 + floor(stormHash11(key + 18.29) * 4.0);
+    float frequencyB = 7.0 + floor(stormHash11(key + 21.71) * 5.0);
+    float phaseA = stormHash11(key + 24.13) * 6.28318530718;
+    float phaseB = stormHash11(key + 27.59) * 6.28318530718;
+    float amplitudeA = mix(0.055, 0.145, stormHash11(key + 30.31));
+    float amplitudeB = mix(0.025, 0.080, stormHash11(key + 33.47));
+    float edgeWarp = sin(polarAngle * frequencyA + phaseA) * amplitudeA +
+                     sin(polarAngle * frequencyB + phaseB) * amplitudeB;
+    float shapedDistance = length(local * ellipseScale) + edgeWarp;
+    float softness = max(clamp(stormHoleSoftness, 0.05, 0.80), 0.48);
+    return 1.0 - smoothstep(1.0 - softness, 1.0, shapedDistance);
+}
+
 float sampleStormShaftCluster(vec2 worldXZ)
 {
     if (!enableStormShaftLighting || stormShaftSurfaceIntensity <= 0.001)
         return 0.0;
 
-    float poolRadius = max(stormPoolHoleSize, 1.0);
-    float poolInnerRadius = poolRadius *
-        (1.0 - clamp(stormHoleSoftness, 0.05, 0.80));
-    float poolDistance = length(
-        (worldXZ - stormHeroHolePosition) * vec2(0.84, 1.0));
-    float mask = 1.0 - smoothstep(
-        poolInnerRadius, poolRadius, poolDistance);
-
-    float largeRadius = max(stormHoleSize, 1.0);
-    float largeInnerRadius = largeRadius *
-        (1.0 - clamp(stormHoleSoftness, 0.05, 0.80));
-    for (int i = 0; i < STORM_LARGE_HOLE_COUNT; ++i)
+    float mask = 0.0;
+    for (int i = 0; i < MAX_STORM_HOLES; ++i)
     {
-        vec2 center = stormHeroHolePosition + STORM_LARGE_HOLE_OFFSETS[i];
-        float distanceToShaft = length((worldXZ - center) * vec2(0.88, 1.12));
-        mask = max(mask, 1.0 - smoothstep(
-            largeInnerRadius, largeRadius, distanceToShaft));
+        if (i >= stormHoleCount)
+            break;
+        mask = max(mask, sampleGeneratedStormHole(worldXZ, i));
     }
     return mask;
 }

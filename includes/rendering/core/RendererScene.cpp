@@ -2,6 +2,7 @@
 #include "rendering/core/RendererScene.h"
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -11,6 +12,24 @@ double weatherClockSeconds()
 {
     return std::chrono::duration<double>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+unsigned int nextStormHoleSeed()
+{
+    static std::uint32_t state = static_cast<std::uint32_t>(
+        std::chrono::high_resolution_clock::now()
+            .time_since_epoch().count());
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    // GLSL receives this as an int and converts it to float for hashing. Keep
+    // it small enough to preserve every bit in a 32-bit shader float.
+    return 1u + state % 65520u;
+}
+
+int stormHoleCountFromSeed(unsigned int seed)
+{
+    return 3 + static_cast<int>((seed >> 3u) % 5u);
 }
 
 SceneRenderConfig makeCloudWeatherTarget(
@@ -25,7 +44,9 @@ SceneRenderConfig makeCloudWeatherTarget(
     switch (preset)
     {
         case CloudWeatherPreset::Storm:
-            target.skyTopColor = glm::vec3(0.10f, 0.13f, 0.19f);
+            // Neutral slate-gray background blends into the dense storm base
+            // without the previous saturated blue seam at cloud openings.
+            target.skyTopColor = glm::vec3(0.075f, 0.085f, 0.105f);
             target.cloudCoverage = 0.94f;
             target.cloudDensity = 2.15f;
             target.cloudBaseHeight = 4000.0f;
@@ -36,12 +57,10 @@ SceneRenderConfig makeCloudWeatherTarget(
             target.cloudAnvilAmount = 0.88f;
             target.cloudErosionStrength = 0.34f;
             target.stormHoleStrength = 1.0f;
-            target.stormHoleSize = 1100.0f;
-            target.stormPoolHoleSize = 38.0f;
-            target.stormHoleSpacing = 32000.0f;
-            target.stormHoleSoftness = 0.34f;
+            target.stormHoleMinRadius = 160.0f;
+            target.stormHoleMaxRadius = 1400.0f;
+            target.stormHoleSoftness = 0.38f;
             target.stormHoleShaftStrength = 2.0f;
-            target.stormHeroHolePosition = glm::vec2(0.0f, -18.0f);
             target.stormShaftLean = glm::vec2(0.08f, 0.0f);
             target.cloudSpeed = 24.0f;
             target.cloudEvolutionSpeed = 0.15f;
@@ -175,14 +194,12 @@ void blendCloudWeather(
     current.cloudAnvilAmount = blendFloat(start.cloudAnvilAmount, target.cloudAnvilAmount, amount);
     current.cloudErosionStrength = blendFloat(start.cloudErosionStrength, target.cloudErosionStrength, amount);
     current.stormHoleStrength = blendFloat(start.stormHoleStrength, target.stormHoleStrength, amount);
-    current.stormHoleSize = blendFloat(start.stormHoleSize, target.stormHoleSize, amount);
-    current.stormPoolHoleSize = blendFloat(
-        start.stormPoolHoleSize, target.stormPoolHoleSize, amount);
-    current.stormHoleSpacing = blendFloat(start.stormHoleSpacing, target.stormHoleSpacing, amount);
+    current.stormHoleMinRadius = blendFloat(
+        start.stormHoleMinRadius, target.stormHoleMinRadius, amount);
+    current.stormHoleMaxRadius = blendFloat(
+        start.stormHoleMaxRadius, target.stormHoleMaxRadius, amount);
     current.stormHoleSoftness = blendFloat(start.stormHoleSoftness, target.stormHoleSoftness, amount);
     current.stormHoleShaftStrength = blendFloat(start.stormHoleShaftStrength, target.stormHoleShaftStrength, amount);
-    current.stormHeroHolePosition = glm::mix(
-        start.stormHeroHolePosition, target.stormHeroHolePosition, amount);
     current.stormShaftLean = glm::mix(
         start.stormShaftLean, target.stormShaftLean, amount);
     current.cloudSpeed = blendFloat(start.cloudSpeed, target.cloudSpeed, amount);
@@ -318,6 +335,8 @@ RendererScene::RendererScene(int width, int height)
 
     sunTexture = std::make_unique<GLTexture>("../textures/sky/sun.png");
     sceneResources.sunTexture = sunTexture->getID();
+    blueNoiseTexture = std::make_unique<GLTexture>("../textures/noise/blue_noise_64.png");
+    sceneResources.blueNoiseTexture = blueNoiseTexture->getID();
 
     sphereDrawer.loadMaterials("../textures/PBR/");
 
@@ -395,6 +414,12 @@ void RendererScene::updateCloudWeatherEvolution()
     {
         activeCloudWeatherPreset = sceneConfig.cloudWeatherPreset;
         activeCloudWeatherTransitionRequest = sceneConfig.cloudWeatherTransitionRequest;
+        if (activeCloudWeatherPreset == CloudWeatherPreset::Storm)
+        {
+            sceneConfig.stormHoleSeed = nextStormHoleSeed();
+            sceneConfig.stormHoleCount =
+                stormHoleCountFromSeed(sceneConfig.stormHoleSeed);
+        }
         cloudWeatherTransitionStart = sceneConfig;
         cloudWeatherTransitionElapsed = 0.0f;
         cloudWeatherTransitionActive = true;

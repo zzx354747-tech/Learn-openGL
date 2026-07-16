@@ -37,12 +37,12 @@ void SkyboxPass::renderSkyboxPass(
     shader.setFloat("cloudAnvilAmount", config.cloudAnvilAmount);
     shader.setFloat("cloudErosionStrength", config.cloudErosionStrength);
     shader.setFloat("stormHoleStrength", config.stormHoleStrength);
-    shader.setFloat("stormHoleSize", config.stormHoleSize);
-    shader.setFloat("stormPoolHoleSize", config.stormPoolHoleSize);
-    shader.setFloat("stormHoleSpacing", config.stormHoleSpacing);
+    shader.setInt("stormHoleSeed", static_cast<int>(config.stormHoleSeed));
+    shader.setInt("stormHoleCount", config.stormHoleCount);
+    shader.setFloat("stormHoleMinRadius", config.stormHoleMinRadius);
+    shader.setFloat("stormHoleMaxRadius", config.stormHoleMaxRadius);
     shader.setFloat("stormHoleSoftness", config.stormHoleSoftness);
     shader.setFloat("stormHoleShaftStrength", config.stormHoleShaftStrength);
-    shader.setVec2("stormHeroHolePosition", config.stormHeroHolePosition);
     shader.setVec2("stormShaftLean", config.stormShaftLean);
     shader.setFloat("cloudEvolutionTime", config.cloudEvolutionPhase);
     shader.setVec2("cloudWindOffset", config.cloudAnimationOffset);
@@ -70,6 +70,10 @@ void SkyboxPass::renderSkyboxPass(
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, resources.sunTexture);
     shader.setInt("sunTexture", 1);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, resources.blueNoiseTexture);
+    shader.setInt("blueNoiseTexture", 2);
+    shader.setBool("hasBlueNoiseTexture", resources.blueNoiseTexture != 0);
 
     GLboolean cullFaceWasEnabled = glIsEnabled(GL_CULL_FACE);
     glDisable(GL_CULL_FACE);

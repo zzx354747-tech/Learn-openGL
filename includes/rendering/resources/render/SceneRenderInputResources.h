@@ -16,4 +16,5 @@ struct SceneRenderInputResources
     SphereMesh* sphereMesh = nullptr;
     SkyboxMesh* skyboxMesh = nullptr;
     WaterMesh* waterMesh = nullptr;
+    GLuint blueNoiseTexture = 0;
 };
