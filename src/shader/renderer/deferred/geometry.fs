@@ -62,10 +62,6 @@ uniform float u_grassEnd;
 uniform float u_rockStart;
 uniform float u_snowStart;
 uniform float u_snowEnd;
-uniform float u_steepRockStart;
-uniform float u_steepRockEnd;
-uniform float u_snowSlopeStart;
-uniform float u_snowSlopeEnd;
 uniform float u_terrainBlendSharpness;
 uniform float u_terrainTextureScale;
 uniform int u_terrainDebugMode;
@@ -142,11 +138,11 @@ vec3 rotateHue(vec3 color, float angle)
            axis * dot(axis, color) * (1.0 - cos(angle));
 }
 
-vec3 heightBlend(vec3 biome, vec3 materialHeight, float snowDepth)
+vec3 heightBlend(vec3 biome, vec3 materialHeight)
 {
-    // Thin snow deliberately loses the height contest so rock punctures the
-    // snow line and steep upper ridges remain dark.
-    materialHeight.z = mix(-0.25, materialHeight.z, snowDepth);
+    // Height detail only shapes the two authored transition bands. Materials
+    // whose biome weight is zero remain exactly zero, so pure rock and pure
+    // snow regions cannot be contaminated by another texture.
     vec3 score = biome + materialHeight * u_terrainBlendSharpness;
     float maximum = max(score.x, max(score.y, score.z));
     vec3 result = exp((score - maximum) * 8.0) * step(vec3(0.0001), biome);
@@ -177,10 +173,7 @@ void main()
         float macroNoise = texture(terrainNoiseTexture, FragPos.xz / 480.0).r;
         float edgeNoise = texture(terrainNoiseTexture, FragPos.xz / 34.0).g;
         float biomeNoise = mix(macroNoise, edgeNoise, 0.65);
-        vec3 biome = biomeWeights(data.r, data.g, data.b, biomeNoise);
-        float steepFactor = smoothstep(u_snowSlopeStart,
-                                       u_snowSlopeEnd, data.g);
-        float snowDepth = biome.z * (1.0 - steepFactor);
+        vec3 biome = biomeWeights(data.r, data.b, biomeNoise);
 
         float scale = u_terrainTextureScale;
         vec3 planeWeights = triplanarWeights(normal);
@@ -192,7 +185,7 @@ void main()
                                    FragPos.xz * scale * 0.82).r;
         vec3 materialBiome = vec3(biome.y, biome.x, biome.z);
         vec3 weights = heightBlend(materialBiome,
-            vec3(rockHeight, grassHeight, snowHeight), snowDepth);
+            vec3(rockHeight, grassHeight, snowHeight));
 
         vec3 rockAlbedo = triplanarColor(
             albedoTexture, FragPos, planeWeights, scale);

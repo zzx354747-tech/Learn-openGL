@@ -14,6 +14,9 @@ void ForwardOverlayPass::render(
     glViewport(0, 0, bfwidth, bfheight);
     glEnable(GL_DEPTH_TEST);
 
+    if (config.enableWater && config.sceneSelection == SceneSelection::FujiTerrain)
+        captureOpaqueScene(bfwidth, bfheight);
+
     renderWater(bfwidth, bfheight);
 
     lightVisualPass::renderLightVisualPass(
@@ -32,6 +35,33 @@ ForwardOverlayPass::ForwardOverlayPass(Camera& camera, SceneRenderResources& res
     SceneRenderState& state, SceneRenderConfig& config, LightSettings& lightSettings)
     : camera(camera), resources(resources), state(state), config(config), lightSettings(lightSettings)
 {
+}
+
+ForwardOverlayPass::~ForwardOverlayPass()
+{
+    if (sceneColorOpaque)
+        glDeleteTextures(1, &sceneColorOpaque);
+}
+
+void ForwardOverlayPass::captureOpaqueScene(int width, int height)
+{
+    if (!sceneColorOpaque)
+        glGenTextures(1, &sceneColorOpaque);
+    glBindTexture(GL_TEXTURE_2D, sceneColorOpaque);
+    if (opaqueWidth != width || opaqueHeight != height)
+    {
+        opaqueWidth = width;
+        opaqueHeight = height;
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0,
+                     GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
@@ -56,6 +86,26 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
     shader.setFloat("cloudAmbientTransmission",
                     calculateCloudAmbientTransmission(config));
     shader.setMat3("iblSunRotation", calculateIblSunRotation(lightSettings));
+    shader.setMat4("lightSpaceMatrix", state.dirLightSpaceMatrix);
+    shader.setFloat("terrainSize", resources.waterMesh->getTerrainSize());
+    const WaterRenderSettings& water = config.water;
+    shader.setVec2("waterWindDirection", water.windDirection);
+    shader.setFloat("waterWaveAmplitude", water.waveAmplitude);
+    shader.setFloat("waterWavelengthScale", water.wavelengthScale);
+    shader.setFloat("detailNormalStrength", water.detailNormalStrength);
+    shader.setFloat("refractionStrength", water.refractionStrength);
+    shader.setVec3("absorptionCoefficient", water.absorptionCoefficient);
+    shader.setVec3("scatteringColor", water.scatteringColor);
+    shader.setFloat("maxAbsorptionDistance", water.maxAbsorptionDistance);
+    shader.setFloat("waterRoughness", water.roughness);
+    shader.setFloat("foamShoreWidth", water.foamShoreWidth);
+    shader.setBool("enableDispersion", water.enableDispersion);
+    shader.setVec3("waterIOR_RGB", water.iorRGB);
+    shader.setFloat("dispersionStrength", water.dispersionStrength);
+    shader.setFloat("dispersionBlend", water.dispersionBlend);
+    shader.setFloat("dispersionDepthFalloff", water.dispersionDepthFalloff);
+    shader.setFloat("dispersionMaxPixels", water.dispersionMaxPixels);
+    shader.setFloat("spectralGlintStrength", water.spectralGlintStrength);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindTexture(GL_TEXTURE_CUBE_MAP,
@@ -82,12 +132,24 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
     glBindTexture(GL_TEXTURE_2D, resources.cloudTransmittanceTexture);
     shader.setInt("cloudTransmittanceMap", 3);
 
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, sceneColorOpaque);
+    shader.setInt("sceneColorOpaque", 4);
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, resources.waterMesh->getLakeDataTexture());
+    shader.setInt("lakeDataMap", 5);
+    glActiveTexture(GL_TEXTURE8);
+    glBindTexture(GL_TEXTURE_2D,
+        resources.registry.resolveTexture(resources.lightingHandles.shadowMap));
+    shader.setInt("shadowMap", 8);
+
     const GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthMask(GL_FALSE);
-    resources.waterMesh->draw(shader);
+    GLboolean depthWriteWasEnabled = GL_TRUE;
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteWasEnabled);
+    glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
-    if (!blendWasEnabled)
-        glDisable(GL_BLEND);
+    resources.waterMesh->draw(shader);
+    glDepthMask(depthWriteWasEnabled);
+    if (blendWasEnabled)
+        glEnable(GL_BLEND);
 }

@@ -40,6 +40,39 @@ enum class CloudWeatherPreset
     Overcast,
 };
 
+struct WaterRenderSettings
+{
+    // Default look: clear, sunlit tropical-island water.
+    glm::vec2 windDirection = glm::vec2(0.91f, 0.41f);
+    float waveAmplitude = 0.075f;
+    float wavelengthScale = 1.18f;
+    float detailNormalStrength = 0.18f;
+    float refractionStrength = 0.024f;
+    glm::vec3 absorptionCoefficient = glm::vec3(0.10f, 0.035f, 0.018f);
+    glm::vec3 scatteringColor = glm::vec3(0.025f, 0.24f, 0.30f);
+    float maxAbsorptionDistance = 42.0f;
+    float roughness = 0.055f;
+    float foamShoreWidth = 0.78f;
+
+    bool enableCaustics = true;
+    float causticStrength = 2.20f;
+    float causticScale = 0.15f;
+    float causticSharpness = 2.6f;
+    float causticCurvatureScale = 0.52f;
+    float causticDepthStart = 0.05f;
+    float causticDepthPeak = 2.0f;
+    float causticDepthEnd = 120.0f;
+    float causticAbsorptionScale = 0.10f;
+
+    bool enableDispersion = true;
+    glm::vec3 iorRGB = glm::vec3(1.331f, 1.333f, 1.337f);
+    float dispersionStrength = 0.85f;
+    float dispersionBlend = 0.72f;
+    float dispersionDepthFalloff = 0.035f;
+    float dispersionMaxPixels = 4.5f;
+    float spectralGlintStrength = 0.028f;
+};
+
 struct SceneRenderConfig
 {
     bool enableSkybox = false;
@@ -65,6 +98,7 @@ struct SceneRenderConfig
     float daylightFactor = 1.0f;
     bool enableAutomaticWeather = true;
     float automaticWeatherIntervalSeconds = 90.0f;
+    WaterRenderSettings water;
     float taaHistoryWeight = 0.88f;
     float taaSharpness = 0.28f;
     glm::vec3 skyTopColor = glm::vec3(0.24f, 0.55f, 0.90f);
@@ -180,15 +214,16 @@ struct SceneRenderConfig
     float terrainSunAzimuth = 0.0f;
     float terrainSunHeightShift = 0.06f;
     float terrainNoiseHeightShift = 0.08f;
-    float terrainGrassEnd = 0.38f;
-    float terrainRockStart = 0.45f;
-    float terrainSnowStart = 0.75f;
-    float terrainSnowEnd = 0.82f;
-    float terrainSteepRockStart = 0.44f;
-    float terrainSteepRockEnd = 0.55f;
-    float terrainSnowSlopeStart = 0.50f;
-    float terrainSnowSlopeEnd = 0.61f;
-    float terrainBlendSharpness = 0.24f;
+    // Low plains remain grass. Only the mountain transition is lowered and
+    // narrowed so exposed rock occupies more of the lower mountain body.
+    float terrainGrassEnd = 0.36f;
+    float terrainRockStart = 0.39f;
+    // Calibrated against the generated terrain surface: weighted snow cover
+    // remains above 30% of samples classified as mountain rather than merely
+    // occupying 30% of the vertical elevation range.
+    float terrainSnowStart = 0.53f;
+    float terrainSnowEnd = 0.56f;
+    float terrainBlendSharpness = 0.12f;
     float terrainTextureScale = 1.0f / 64.0f;
     int terrainDebugMode = 0;
 

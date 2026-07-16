@@ -23,10 +23,6 @@ uniform float u_grassEnd;
 uniform float u_rockStart;
 uniform float u_snowStart;
 uniform float u_snowEnd;
-uniform float u_steepRockStart;
-uniform float u_steepRockEnd;
-uniform float u_snowSlopeStart;
-uniform float u_snowSlopeEnd;
 uniform float u_terrainTextureScale;
 uniform int u_terrainDebugMode;
 
@@ -46,7 +42,7 @@ void main()
     {
         vec4 data = texture(terrainDataMap, TexCoords1);
         float noise = texture(terrainNoiseTexture, FragPos.xz / 34.0).g;
-        vec3 weights = biomeWeights(data.r, data.g, data.b, noise);
+        vec3 weights = biomeWeights(data.r, data.b, noise);
         vec3 tri = pow(abs(normalize(Normal)), vec3(4.0));
         tri /= max(dot(tri, vec3(1.0)), 1e-5);
         float s = u_terrainTextureScale;

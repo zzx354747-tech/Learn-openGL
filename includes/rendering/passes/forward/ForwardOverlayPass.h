@@ -16,6 +16,7 @@ class ForwardOverlayPass
 public:
     ForwardOverlayPass(Camera& camera, SceneRenderResources& resources,
         SceneRenderState& state, SceneRenderConfig& config, LightSettings& lightSettings);
+    ~ForwardOverlayPass();
 
     void render(
         int bfwidth,
@@ -29,6 +30,10 @@ private:
     SceneRenderState& state;
     SceneRenderConfig& config;
     LightSettings& lightSettings;
+    unsigned int sceneColorOpaque = 0;
+    int opaqueWidth = 0;
+    int opaqueHeight = 0;
 
     void renderWater(int bfwidth, int bfheight);
+    void captureOpaqueScene(int width, int height);
 };

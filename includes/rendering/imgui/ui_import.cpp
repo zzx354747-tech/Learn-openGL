@@ -108,6 +108,72 @@ void SceneRenderUI::renderUI(
         ImGui::Checkbox("PBR", &uiState.sceneConfig.enablePBR);
         ImGui::Checkbox("IBL", &uiState.sceneConfig.enableIBL);
         ImGui::Checkbox("Animated Water", &uiState.sceneConfig.enableWater);
+        if (ImGui::TreeNodeEx("Sunny Island Water", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            WaterRenderSettings& water = uiState.sceneConfig.water;
+            ImGui::DragFloat2("Water Wind XZ", glm::value_ptr(water.windDirection),
+                              0.01f, -1.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Wave Amplitude", &water.waveAmplitude,
+                               0.0f, 0.24f, "%.3f m");
+            ImGui::SliderFloat("Wavelength Scale", &water.wavelengthScale,
+                               0.5f, 2.0f, "%.2f");
+            ImGui::SliderFloat("Detail Normal", &water.detailNormalStrength,
+                               0.0f, 0.45f, "%.2f");
+            ImGui::SliderFloat("Refraction Strength", &water.refractionStrength,
+                               0.0f, 0.04f, "%.3f");
+            ImGui::ColorEdit3("Scattering Color", glm::value_ptr(water.scatteringColor));
+            ImGui::DragFloat3("Absorption RGB", glm::value_ptr(water.absorptionCoefficient),
+                              0.002f, 0.0f, 1.0f, "%.3f");
+            ImGui::SliderFloat("Max Absorption Distance", &water.maxAbsorptionDistance,
+                               1.0f, 60.0f, "%.1f m");
+            ImGui::SliderFloat("Water Roughness", &water.roughness,
+                               0.04f, 0.18f, "%.3f");
+            ImGui::SliderFloat("Foam Shore Width", &water.foamShoreWidth,
+                               0.15f, 1.2f, "%.2f m");
+
+            if (ImGui::TreeNodeEx("Caustics", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Checkbox("Enable Caustics", &water.enableCaustics);
+                ImGui::SliderFloat("Caustic Strength", &water.causticStrength,
+                                   0.0f, 4.0f, "%.2f");
+                ImGui::SliderFloat("Photon Focus Sharpness", &water.causticSharpness,
+                                   1.0f, 5.0f, "%.2f");
+                ImGui::SliderFloat("Photon Footprint", &water.causticScale,
+                                   0.04f, 0.24f, "%.3f");
+                ImGui::SliderFloat("Optical Refraction Scale", &water.causticCurvatureScale,
+                                   0.05f, 0.8f, "%.2f");
+                ImGui::DragFloat("Caustic Start Depth", &water.causticDepthStart,
+                                 0.02f, 0.0f, 2.0f, "%.2f m");
+                ImGui::DragFloat("Caustic Peak Depth", &water.causticDepthPeak,
+                                 0.05f, 0.25f, 8.0f, "%.2f m");
+                ImGui::DragFloat("Caustic End Depth", &water.causticDepthEnd,
+                                  0.25f, 5.0f, 120.0f, "%.1f m");
+                ImGui::SliderFloat("Caustic Absorption", &water.causticAbsorptionScale,
+                                   0.0f, 2.0f, "%.2f");
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNodeEx("Dispersion", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Checkbox("Enable Dispersion", &water.enableDispersion);
+                ImGui::SliderFloat("Dispersion Strength", &water.dispersionStrength,
+                                   0.0f, 2.0f, "%.2f");
+                ImGui::SliderFloat("Dispersion Blend", &water.dispersionBlend,
+                                   0.0f, 1.0f, "%.2f");
+                ImGui::SliderFloat("Dispersion Depth Falloff", &water.dispersionDepthFalloff,
+                                   0.0f, 0.35f, "%.3f");
+                ImGui::SliderFloat("Dispersion Max Pixels", &water.dispersionMaxPixels,
+                                   0.0f, 12.0f, "%.2f px");
+                ImGui::DragFloat3("Water IOR RGB", glm::value_ptr(water.iorRGB),
+                                  0.0001f, 1.30f, 1.38f, "%.4f");
+                ImGui::SliderFloat("Spectral Glint", &water.spectralGlintStrength,
+                                   0.0f, 0.08f, "%.3f");
+                ImGui::TreePop();
+            }
+            if (ImGui::Button("Reset Island Water Defaults"))
+                water = WaterRenderSettings{};
+            ImGui::TreePop();
+        }
 
         ImGui::SeparatorText("Sky & Volumetrics");
         if (uiState.sceneConfig.renderMode != RenderMode::Lighting)
@@ -261,26 +327,18 @@ void SceneRenderUI::renderUI(
             const char* debugModes[] = {"Material", "Height", "Slope", "Aspect", "Curvature"};
             ImGui::Combo("TDM Debug", &uiState.sceneConfig.terrainDebugMode,
                          debugModes, 5);
-            ImGui::SliderFloat("Grass End", &uiState.sceneConfig.terrainGrassEnd,
+            ImGui::SliderFloat("Grass/Rock Blend Start", &uiState.sceneConfig.terrainGrassEnd,
                                0.0f, 0.8f, "%.3f");
-            ImGui::SliderFloat("Rock Start", &uiState.sceneConfig.terrainRockStart,
+            ImGui::SliderFloat("Grass/Rock Blend End", &uiState.sceneConfig.terrainRockStart,
                                0.0f, 0.9f, "%.3f");
-            ImGui::SliderFloat("Snow Start", &uiState.sceneConfig.terrainSnowStart,
+            ImGui::SliderFloat("Rock/Snow Blend Start", &uiState.sceneConfig.terrainSnowStart,
                                0.3f, 1.0f, "%.3f");
-            ImGui::SliderFloat("Snow End", &uiState.sceneConfig.terrainSnowEnd,
+            ImGui::SliderFloat("Rock/Snow Blend End", &uiState.sceneConfig.terrainSnowEnd,
                                0.3f, 1.0f, "%.3f");
             ImGui::SliderFloat("Sun-facing Shift", &uiState.sceneConfig.terrainSunHeightShift,
                                0.0f, 0.15f, "%.3f");
             ImGui::SliderFloat("Boundary Noise", &uiState.sceneConfig.terrainNoiseHeightShift,
                                0.0f, 0.18f, "%.3f");
-            ImGui::SliderFloat("Steep Rock Start", &uiState.sceneConfig.terrainSteepRockStart,
-                               0.2f, 0.8f, "%.3f");
-            ImGui::SliderFloat("Steep Rock End", &uiState.sceneConfig.terrainSteepRockEnd,
-                               0.2f, 0.9f, "%.3f");
-            ImGui::SliderFloat("Snow Slope Start", &uiState.sceneConfig.terrainSnowSlopeStart,
-                               0.2f, 0.8f, "%.3f");
-            ImGui::SliderFloat("Snow Slope End", &uiState.sceneConfig.terrainSnowSlopeEnd,
-                               0.2f, 0.9f, "%.3f");
             ImGui::SliderFloat("Height Blend", &uiState.sceneConfig.terrainBlendSharpness,
                                0.0f, 0.6f, "%.3f");
             ImGui::TreePop();

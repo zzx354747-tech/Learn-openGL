@@ -78,10 +78,6 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     shader->setFloat("u_rockStart", config.terrainRockStart);
     shader->setFloat("u_snowStart", config.terrainSnowStart);
     shader->setFloat("u_snowEnd", config.terrainSnowEnd);
-    shader->setFloat("u_steepRockStart", config.terrainSteepRockStart);
-    shader->setFloat("u_steepRockEnd", config.terrainSteepRockEnd);
-    shader->setFloat("u_snowSlopeStart", config.terrainSnowSlopeStart);
-    shader->setFloat("u_snowSlopeEnd", config.terrainSnowSlopeEnd);
     shader->setFloat("u_terrainBlendSharpness", config.terrainBlendSharpness);
     shader->setFloat("u_terrainTextureScale", config.terrainTextureScale);
     shader->setInt("u_terrainDebugMode", config.terrainDebugMode);

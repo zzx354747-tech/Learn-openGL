@@ -25,6 +25,8 @@ struct ShaderLibrary
     Shader geometryPBR;
     Shader basicForward;
     Shader water;
+    Shader waterCausticPhotons;
+    Shader waterCausticBlur;
     Shader lightingPass;
     Shader ssao;
     Shader ssaoBlur;

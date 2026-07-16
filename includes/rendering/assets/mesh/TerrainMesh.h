@@ -13,6 +13,14 @@
 class TerrainMesh
 {
 public:
+    struct LakeRegion
+    {
+        glm::vec4 boundsXZ = glm::vec4(0.0f); // minX, minZ, maxX, maxZ
+        float waterLevel = 0.0f;
+        float area = 0.0f;
+        float maximumDepth = 0.0f;
+    };
+
     struct Peak
     {
         float bezierT;
@@ -23,6 +31,7 @@ public:
     struct Settings
     {
         unsigned int resolution = 1024;       // height field and TDM
+        unsigned int lakeDataResolution = 2048; // analytic shoreline/LDM
         unsigned int meshResolution = 256;    // base mesh (not height data)
         float size = 8200.0f;
         float mountainHeight = 2050.0f;
@@ -49,12 +58,24 @@ public:
         bool edgeFade = true;
         float curvatureRange = 0.012f;
 
-        // A basin is placed manually for now; its shoreline is always the
-        // height-field/water-plane intersection, never an independent mask.
-        glm::vec2 lakeCenter = glm::vec2(-2550.0f, 1650.0f);
-        glm::vec2 lakeRadii = glm::vec2(720.0f, 470.0f);
-        float lakeBasinDepth = 54.0f;
-        float lakeLevelOffset = 8.0f;
+        // Lake terrain is part of the authored terrain preset. The same
+        // deterministic shape function carves the floor, builds the bank and
+        // writes the Lake Data Map; there is no minimum search or flood fill.
+        glm::vec2 lakeCenter = glm::vec2(0.0f, 0.0f);
+        glm::vec2 lakeRadii = glm::vec2(460.0f, 310.0f);
+        float lakeWaterLevel = 1167.0f;
+        float lakeBasinDepth = 68.0f;
+        float lakeRimHeight = 24.0f;
+        float lakeBankWidth = 120.0f;
+
+        // A separate plateau tarn beside the meadow, designed independently
+        // but evaluated by the same terrain/lake function.
+        glm::vec2 meadowLakeCenter = glm::vec2(-2200.0f, 1300.0f);
+        glm::vec2 meadowLakeRadii = glm::vec2(320.0f, 220.0f);
+        float meadowLakeWaterLevel = 72.6f;
+        float meadowLakeBasinDepth = 28.0f;
+        float meadowLakeRimHeight = 14.0f;
+        float meadowLakeBankWidth = 82.0f;
     };
 
     TerrainMesh();
@@ -72,6 +93,10 @@ public:
     float sampleWorldHeight(float worldX, float worldZ) const;
     glm::vec3 sampleWorldNormal(float worldX, float worldZ) const;
     bool isBelowWater(float worldX, float worldZ) const;
+    glm::vec2 sampleLakeData(float worldX, float worldZ) const;
+    float sampleWaterDepth(float worldX, float worldZ) const;
+    float sampleSignedDistanceToWater(float worldX, float worldZ) const;
+    bool isInsideLake(float worldX, float worldZ) const;
     bool isInsideCentralTerrain(float worldX, float worldZ) const;
     glm::ivec2 getStreamingTile() const { return glm::ivec2(0); }
     glm::mat4 getTileTransform(int, int) const { return glm::mat4(1.0f); }
@@ -83,6 +108,11 @@ public:
     const Settings& getSettings() const { return settings; }
     float getWaterLevel() const { return waterLevel; }
     unsigned int getTerrainDataTexture() const { return terrainDataTexture; }
+    unsigned int getLakeDataTexture() const { return lakeDataTexture; }
+    glm::vec4 getLakeBoundsXZ() const { return lakeBoundsXZ; }
+    float getLakeArea() const { return lakeArea; }
+    float getMaximumWaterDepth() const { return maximumWaterDepth; }
+    const std::vector<LakeRegion>& getLakeRegions() const { return lakeRegions; }
     bool wasLoadedFromCache() const { return cacheHit; }
 
 private:
@@ -94,9 +124,16 @@ private:
     std::vector<float> heightSamples;
     std::vector<float> terrainData; // transient derived-field workspace
     std::vector<std::uint16_t> terrainDataHalf;
+    // RGB: depth, signed shore distance, local water-surface elevation.
+    std::vector<std::uint16_t> lakeDataHalf;
+    std::vector<LakeRegion> lakeRegions;
     unsigned int terrainDataTexture = 0;
+    unsigned int lakeDataTexture = 0;
     unsigned int detailNoiseTexture = 0;
     float waterLevel = 0.0f;
+    glm::vec4 lakeBoundsXZ = glm::vec4(0.0f);
+    float lakeArea = 0.0f;
+    float maximumWaterDepth = 0.0f;
     bool cacheHit = false;
     std::array<glm::vec4, 6> frustumPlanes{};
     bool streamingValid = false;
@@ -106,7 +143,7 @@ private:
     void computeDerivedFields();
     void buildMesh();
     void uploadTerrainTextures();
-    void findWaterLevel();
+    void generateLakeData();
     std::uint64_t parameterHash() const;
     bool loadCache();
     void saveCache() const;

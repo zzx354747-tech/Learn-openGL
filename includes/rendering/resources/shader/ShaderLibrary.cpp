@@ -68,6 +68,12 @@ ShaderLibrary::ShaderLibrary()
     , water(
         "../src/shader/renderer/forward/water.vs",
         "../src/shader/renderer/forward/water.fs")
+    , waterCausticPhotons(
+        "../src/shader/renderer/deferred/water_caustic_photons.vs",
+        "../src/shader/renderer/deferred/water_caustic_photons.fs")
+    , waterCausticBlur(
+        "../src/shader/renderer/postprocess/screen.vs",
+        "../src/shader/renderer/deferred/water_caustic_blur.fs")
     , lightingPass(
         "../src/shader/renderer/deferred/lighting.vs",
         "../src/shader/renderer/deferred/lighting.fs")

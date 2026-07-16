@@ -3,8 +3,11 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include <array>
+#include <cmath>
 #include <iostream>
 #include <filesystem>
+#include <string>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include "rendering/core/WindowContext.h"
@@ -69,7 +72,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         static_cast<float>(xpos), static_cast<float>(ypos));
 }
 
-int main()
+int main(int argc, char** argv)
 {
 #ifdef OPENGL_PROJECT_ROOT
     // All renderer assets intentionally stay as loose project files. Anchor the
@@ -100,10 +103,16 @@ int main()
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
+    const bool shaderCheck = argc > 1 && std::string(argv[1]) == "--shader-check";
+    const bool waterCheck = argc > 1 && std::string(argv[1]) == "--water-check";
+    const bool waterEffectsCheck = argc > 1 &&
+        std::string(argv[1]) == "--water-effects-check";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    if (shaderCheck || waterCheck || waterEffectsCheck)
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "Framebuffer Demo", nullptr, nullptr);
     if (!window)    
@@ -128,6 +137,105 @@ int main()
 
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
+    if (shaderCheck || waterCheck)
+    {
+        ShaderLibrary shaderCheckLibrary;
+        if (waterCheck)
+        {
+            TerrainMesh terrainCheck;
+            WaterMesh waterCheckMesh(terrainCheck);
+            if (terrainCheck.getLakeRegions().size() != 2u ||
+                terrainCheck.getLakeDataTexture() == 0u)
+            {
+                std::cerr << "Water check failed: expected two uploaded lake regions"
+                          << std::endl;
+                return 2;
+            }
+            const auto& lakes = terrainCheck.getLakeRegions();
+            const auto& terrainSettings = terrainCheck.getSettings();
+            const std::array<glm::vec2, 2> lakeCenters{{
+                terrainSettings.lakeCenter, terrainSettings.meadowLakeCenter}};
+            for (std::size_t i = 0; i < lakes.size(); ++i)
+            {
+                const float floorHeight = terrainCheck.sampleHeight(
+                    lakeCenters[i].x, lakeCenters[i].y);
+                const float authoredDepth = terrainCheck.sampleWaterDepth(
+                    lakeCenters[i].x, lakeCenters[i].y);
+                if (authoredDepth < lakes[i].maximumDepth * 0.90f ||
+                    std::abs((lakes[i].waterLevel - floorHeight) - authoredDepth) > 2.0f)
+                {
+                    std::cerr << "Water check failed: lake floor/LDM coupling mismatch"
+                              << std::endl;
+                    return 3;
+                }
+            }
+
+            SceneRenderConfig coverageConfig;
+            const float lowerBlendWidth = coverageConfig.terrainRockStart -
+                                          coverageConfig.terrainGrassEnd;
+            const float upperBlendWidth = coverageConfig.terrainSnowEnd -
+                                          coverageConfig.terrainSnowStart;
+            const float pureRockWidth = coverageConfig.terrainSnowStart -
+                                        coverageConfig.terrainRockStart;
+            std::cout << "Terrain blend widths: grass/rock=" << lowerBlendWidth
+                      << ", rock/snow=" << upperBlendWidth
+                      << ", pure rock=" << pureRockWidth << std::endl;
+            if (lowerBlendWidth > 0.035f || upperBlendWidth > 0.035f ||
+                pureRockWidth < 0.10f)
+            {
+                std::cerr << "Water check failed: terrain transition bands are too wide"
+                          << std::endl;
+                return 4;
+            }
+            if (!coverageConfig.water.enableCaustics ||
+                coverageConfig.water.causticStrength < 2.0f ||
+                coverageConfig.water.causticDepthEnd <
+                    terrainCheck.getMaximumWaterDepth())
+            {
+                std::cerr << "Water check failed: default caustics do not cover the lake floor"
+                          << std::endl;
+                return 5;
+            }
+            double mountainSamples = 0.0;
+            double weightedSnowSamples = 0.0;
+            constexpr int CoverageGrid = 128;
+            for (int z = 0; z < CoverageGrid; ++z)
+            {
+                for (int x = 0; x < CoverageGrid; ++x)
+                {
+                    const float worldX = -terrainSettings.size * 0.5f +
+                        terrainSettings.size * (x + 0.5f) / CoverageGrid;
+                    const float worldZ = -terrainSettings.size * 0.5f +
+                        terrainSettings.size * (z + 0.5f) / CoverageGrid;
+                    const float normalizedHeight = glm::clamp(
+                        (terrainCheck.sampleHeight(worldX, worldZ) -
+                         terrainSettings.baseHeight) / terrainSettings.mountainHeight,
+                        0.0f, 1.0f);
+                    if (normalizedHeight < coverageConfig.terrainGrassEnd)
+                        continue;
+                    const float heightSnow = glm::smoothstep(
+                        coverageConfig.terrainSnowStart,
+                        coverageConfig.terrainSnowEnd, normalizedHeight);
+                    weightedSnowSamples += heightSnow;
+                    mountainSamples += 1.0;
+                }
+            }
+            const double snowCoverage = mountainSamples > 0.0
+                ? weightedSnowSamples / mountainSamples : 0.0;
+            std::cout << "Snow coverage of mountain samples: "
+                      << snowCoverage * 100.0 << "%" << std::endl;
+            if (snowCoverage < 0.30)
+            {
+                std::cerr << "Water check failed: snow coverage is below 30%"
+                          << std::endl;
+                return 6;
+            }
+        }
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 0;
+    }
+
     // 启用垂直同步
     glfwSwapInterval(1); 
 
@@ -144,11 +252,27 @@ int main()
 
     glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
+    int waterEffectsResult = 0;
     {
 
     RendererScene scene(bfwidth, bfheight);
 
+    if (waterEffectsCheck)
+    {
+        scene.sceneConfig.sceneSelection = SceneSelection::FujiTerrain;
+        scene.sceneConfig.renderMode = RenderMode::Lighting;
+        scene.sceneConfig.enableWater = true;
+        scene.sceneConfig.enableDirectionalLight = true;
+        scene.sceneConfig.enableTimeOfDay = false;
+        scene.sceneConfig.enableAutomaticWeather = false;
+        scene.sceneConfig.enableVolumetricClouds = false;
+        scene.sceneConfig.enableGodRays = false;
+        scene.sceneConfig.daylightFactor = 1.0f;
+    }
+
     ctx.rendererScene = &scene;
+
+    int renderedFrameCount = 0;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -180,6 +304,37 @@ int main()
         double afterSwap = glfwGetTime();
         swapWaitMs = static_cast<float>((afterSwap - beforeSwap) * 1000.0);
         glfwPollEvents();
+        ++renderedFrameCount;
+        if (waterEffectsCheck && renderedFrameCount >= 3)
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+    if (waterEffectsCheck)
+    {
+        const LightingPass::CausticMapStats stats =
+            scene.lightingPass.inspectCausticMap();
+        const WaterRenderSettings& water = scene.sceneConfig.water;
+        const float normalizedIorSpread = std::abs(water.iorRGB.b -
+                                                   water.iorRGB.r) / 0.006f;
+        const float representativeDispersionPixels =
+            water.dispersionMaxPixels * water.dispersionStrength *
+            normalizedIorSpread *
+            std::exp(-6.0f * water.dispersionDepthFalloff);
+        std::cout << "Caustic atlas: dynamicMax="
+                  << stats.maximumDynamicDensity
+                  << ", referenceMax=" << stats.maximumReferenceDensity
+                  << ", focusedExcessMax=" << stats.maximumFocusedExcess
+                  << std::endl;
+        std::cout << "Representative dispersion separation: "
+                  << representativeDispersionPixels << " px" << std::endl;
+        if (!stats.valid || stats.maximumDynamicDensity < 0.01f ||
+            stats.maximumReferenceDensity < 0.01f ||
+            stats.maximumFocusedExcess < 0.02f ||
+            representativeDispersionPixels < 0.75f)
+        {
+            std::cerr << "Water effects check failed: caustic or dispersion "
+                         "energy is not visible" << std::endl;
+            waterEffectsResult = 7;
+        }
     }
     glfwSetWindowUserPointer(window, nullptr);
 }
@@ -189,5 +344,5 @@ int main()
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     glfwTerminate();
-    return 0;
+    return waterEffectsResult;
 }

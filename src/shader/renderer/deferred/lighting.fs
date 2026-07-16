@@ -43,6 +43,8 @@ uniform samplerCube prefilterMap;
 uniform sampler2D brdfLUT;
 uniform sampler2D cloudOpticalDepthMap;
 uniform sampler2D cloudTransmittanceMap;
+uniform sampler2D lakeDataMap;
+uniform sampler2D waterCausticMap;
 uniform mat3 iblSunRotation;
 
 // 接收SSAO贴图
@@ -65,6 +67,7 @@ uniform bool enablePBR;
 uniform bool enableIBL;
 uniform bool enableGI;
 uniform bool enableWaterCaustics;
+uniform bool hasWaterCausticMap;
 uniform bool hasCloudOpticalDepthMap;
 uniform float cloudShadowFallbackTransmission;
 
@@ -92,8 +95,16 @@ uniform float directionalShadowMinFilterRadius;
 uniform float directionalShadowMaxFilterRadius;
 uniform float directionalShadowBiasSlope;
 uniform float directionalShadowBiasMin;
-uniform float waterLevel;
-uniform float waterTime;
+uniform float terrainSize;
+uniform vec4 causticBounds0;
+uniform vec4 causticBounds1;
+uniform float causticStrength;
+uniform float causticSharpness;
+uniform float causticDepthStart;
+uniform float causticDepthPeak;
+uniform float causticDepthEnd;
+uniform float causticAbsorptionScale;
+uniform vec3 waterAbsorptionCoefficient;
 
 float SpotShadowCalculation(vec4 fragPosLightSpace)
 {
@@ -677,99 +688,91 @@ vec3 calcScreenSpaceGI(vec3 fragPos, vec3 normal, vec3 albedo,
     return bouncedRadiance * albedo * (1.0 - metallic) * ao * giStrength;
 }
 
-float sampleCausticLayer(vec2 worldXZ, float time)
+
+vec2 waterCausticAtlasUV(vec2 worldXZ, out bool valid)
 {
-    vec2 warp = vec2(
-        sin(dot(worldXZ, vec2(0.41, 0.23)) + time * 0.54),
-        cos(dot(worldXZ, vec2(-0.19, 0.37)) - time * 0.47));
-    vec2 p = worldXZ + warp * 0.22;
-
-    // Non-harmonic travelling waves produce curved zero contours instead of
-    // straight bands or polygon borders.
-    float field =
-        sin(dot(p, normalize(vec2( 0.82,  0.57))) * 1.62 + time * 0.91) * 0.52 +
-        sin(dot(p, normalize(vec2(-0.38,  0.93))) * 2.08 - time * 1.17) * 0.31 +
-        sin(dot(p, normalize(vec2( 0.17, -0.98))) * 2.73 + time * 1.43) * 0.17;
-
-    float aa = max(fwidth(field) * 1.25, 0.012);
-    float filament = 1.0 - smoothstep(0.055 + aa, 0.34 + aa, abs(field));
-    float pulse = 0.68 + 0.32 * sin(dot(p, vec2(0.31, -0.27)) - time * 0.63);
-    return clamp(filament * pulse, 0.0, 1.0);
-}
-
-float sampleCausticFocus(vec2 projectedXZ)
-{
-    float layerA = sampleCausticLayer(projectedXZ, waterTime * 0.82);
-    mat2 layerRotation = mat2(0.8192, -0.5736,
-                              0.5736,  0.8192);
-    float layerB = sampleCausticLayer(
-        layerRotation * projectedXZ * 1.13 + vec2(5.7, -3.4),
-        -waterTime * 0.61 + 8.3);
-
-    float overlap = min(layerA, layerB);
-    float remnant = max(layerA, layerB);
-    return clamp(pow(overlap, 4.7) * 1.82 +
-                 pow(remnant, 6.5) * 0.12, 0.0, 1.0);
+    vec2 local0 = (worldXZ - causticBounds0.xy) /
+                  max(causticBounds0.zw - causticBounds0.xy, vec2(1.0));
+    if (all(greaterThanEqual(local0, vec2(0.0))) &&
+        all(lessThanEqual(local0, vec2(1.0))))
+    {
+        valid = true;
+        return vec2(local0.x * 0.5, local0.y);
+    }
+    vec2 local1 = (worldXZ - causticBounds1.xy) /
+                  max(causticBounds1.zw - causticBounds1.xy, vec2(1.0));
+    if (all(greaterThanEqual(local1, vec2(0.0))) &&
+        all(lessThanEqual(local1, vec2(1.0))))
+    {
+        valid = true;
+        return vec2(0.5 + local1.x * 0.5, local1.y);
+    }
+    valid = false;
+    return vec2(0.0);
 }
 
 vec3 calcUnderwaterCaustics(
     vec3 fragPos,
     vec3 normal,
     vec3 albedo,
-    vec4 fragPosLightSpace
-)
+    vec4 fragPosLightSpace)
 {
-    float waterDepth = waterLevel - fragPos.y;
-    if (!enableWaterCaustics || !enableDirectionalLight || waterDepth <= 0.02)
+    if (!enableWaterCaustics || !hasWaterCausticMap ||
+        !enableDirectionalLight)
         return vec3(0.0);
 
+    vec2 lakeUV = fragPos.xz / max(terrainSize, 1.0) + 0.5;
+    if (any(lessThan(lakeUV, vec2(0.0))) ||
+        any(greaterThan(lakeUV, vec2(1.0))))
+        return vec3(0.0);
+    vec3 lakeData = texture(lakeDataMap, lakeUV).rgb;
+    float waterDepth = lakeData.b - fragPos.y;
+    if (lakeData.r <= 0.02 || lakeData.g <= 0.0 ||
+        lakeData.b <= 0.0 || waterDepth <= 0.02)
+        return vec3(0.0);
+
+    bool atlasValid = false;
+    vec2 atlasUV = waterCausticAtlasUV(fragPos.xz, atlasValid);
+    if (!atlasValid)
+        return vec3(0.0);
+    vec2 photonDensity = texture(waterCausticMap, atlasUV).rg;
+    if (max(photonDensity.r, photonDensity.g) <= 0.001)
+        return vec3(0.0);
+
+    // R is animated-surface photon density and G is flat-water reference
+    // density. Their ratio removes the uniform photon carpet and retains only
+    // genuine refractive energy compression.
+    float referenceDensity = max(photonDensity.g, 0.012);
+    float focusedExcess = max(photonDensity.r - photonDensity.g, 0.0) /
+                          referenceDensity;
+    float focusExponent = mix(0.78, 1.65,
+                              clamp((causticSharpness - 1.0) / 4.0,
+                                    0.0, 1.0));
+    float causticPattern = pow(smoothstep(0.015, 0.32, focusedExcess),
+                               focusExponent) *
+                           min(0.40 + focusedExcess * 1.35, 3.4);
+
+    float shoreMask = smoothstep(0.8, 6.0, lakeData.g);
+    float shallowRise = smoothstep(causticDepthStart,
+                                   causticDepthPeak, waterDepth);
+    float deepFade = 1.0 - smoothstep(causticDepthPeak,
+                                      causticDepthEnd, waterDepth);
     vec3 lightDir = normalize(-sun.direction);
     float receiverNdotL = max(dot(normal, lightDir), 0.0);
-    if (receiverNdotL <= 0.001)
-        return vec3(0.0);
-
-    // Trace the receiver back toward its approximate entry point at the water
-    // surface. Refraction bends the ray toward vertical, hence the reduced
-    // horizontal projection factor.
-    vec2 projectedXZ = fragPos.xz +
-        lightDir.xz / max(lightDir.y, 0.16) * waterDepth * 0.32;
-
-    // Water refracts blue light slightly more strongly than red. Sample the
-    // same focus field at three nearby world positions so the energetic core
-    // remains white while only its edges split into restrained RGB fringes.
-    vec2 dispersionAxis = lightDir.xz;
-    float axisLength = length(dispersionAxis);
-    dispersionAxis = axisLength > 0.0001
-        ? dispersionAxis / axisLength
-        : vec2(0.7071, 0.7071);
-    float dispersionOffset = mix(0.11, 0.32,
-        smoothstep(0.25, 5.5, waterDepth));
-    vec3 spectralFocus = vec3(
-        sampleCausticFocus(projectedXZ + dispersionAxis * dispersionOffset),
-        sampleCausticFocus(projectedXZ),
-        sampleCausticFocus(projectedXZ - dispersionAxis * dispersionOffset));
-
-    float commonFocus = min(spectralFocus.r,
-                            min(spectralFocus.g, spectralFocus.b));
-    vec3 spectralRim = max(spectralFocus - vec3(commonFocus * 0.68), vec3(0.0));
-    vec3 focusColor = vec3(commonFocus * 1.34) +
-                      spectralRim * vec3(1.28, 1.05, 1.46);
-    float highlightCore = pow(max(spectralFocus.r,
-                                  max(spectralFocus.g, spectralFocus.b)), 2.6);
-    focusColor += vec3(1.0, 0.96, 0.84) * highlightCore * 0.38;
-
-    float shallowEntry = smoothstep(0.04, 0.30, waterDepth);
-    float beerLambert = exp(-waterDepth * 0.105);
     float shadow = ShadowCalculation(fragPosLightSpace, normal, lightDir) *
                    sunShadowStrength;
-
-    vec3 warmSun = normalize(max(sun.diffuse, vec3(0.001)));
-    vec3 waterTint = vec3(0.56, 0.88, 0.78);
-    vec3 causticTint = mix(waterTint, warmSun, 0.68);
     float cloudVisibility = cloudShadowVisibility(fragPos);
-    return albedo * causticTint * sun.diffuse * focusColor * shallowEntry *
-           beerLambert * receiverNdotL * (1.0 - shadow) *
-           cloudVisibility * 4.35;
+    vec3 transmittance = exp(-waterAbsorptionCoefficient * waterDepth *
+                             causticAbsorptionScale);
+    vec3 receiverResponse = mix(albedo,
+        sqrt(max(albedo, vec3(0.0))), 0.28);
+    float receiverIllumination = mix(0.22, 1.0, receiverNdotL);
+    float directVisibility = (1.0 - shadow * 0.88) *
+                             mix(0.35, 1.0, cloudVisibility);
+    vec3 opticalHighlight = mix(receiverResponse, vec3(0.72, 0.93, 1.0), 0.32);
+    return opticalHighlight * sun.diffuse * transmittance * causticPattern *
+           shoreMask * shallowRise * deepFade * receiverIllumination *
+           directVisibility * causticStrength * 1.45;
 }
 
 void main()

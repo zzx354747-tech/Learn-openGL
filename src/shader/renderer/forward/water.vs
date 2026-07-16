@@ -6,33 +6,72 @@ layout (location = 2) in vec2 aTexCoords;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform sampler2D lakeDataMap;
+uniform vec2 waterWindDirection;
+uniform float waterWaveAmplitude;
+uniform float waterWavelengthScale;
 uniform float waterTime;
 
 out vec3 WorldPos;
 out vec3 WaterNormal;
-out vec2 WaterUV;
+out vec2 LakeUV;
+flat out float SurfaceWaterLevel;
+
+const float TWO_PI = 6.28318530718;
+
+vec2 rotateDirection(vec2 direction, float radians)
+{
+    float c = cos(radians);
+    float s = sin(radians);
+    return vec2(c * direction.x - s * direction.y,
+                s * direction.x + c * direction.y);
+}
+
+void accumulateWave(inout float height, inout vec2 gradient,
+                    vec2 worldXZ, vec2 direction, float amplitude,
+                    float wavelength, float speed, float phase)
+{
+    float k = TWO_PI / max(wavelength, 0.1);
+    float theta = dot(direction, worldXZ) * k + speed * waterTime + phase;
+    height += amplitude * sin(theta);
+    gradient += direction * (amplitude * cos(theta) * k);
+}
+
+void evaluateWaterWaves(vec2 worldXZ, out float height, out vec2 gradient)
+{
+    vec2 wind = length(waterWindDirection) > 0.0001
+        ? normalize(waterWindDirection) : vec2(1.0, 0.0);
+    float scale = max(waterWavelengthScale, 0.1);
+    height = 0.0;
+    gradient = vec2(0.0);
+    accumulateWave(height, gradient, worldXZ, wind,
+                   waterWaveAmplitude, 18.0 * scale, 0.82, 0.0);
+    accumulateWave(height, gradient, worldXZ, rotateDirection(wind, 0.42),
+                   waterWaveAmplitude * 0.48, 10.0 * scale, 1.11, 1.7);
+    accumulateWave(height, gradient, worldXZ, rotateDirection(wind, -0.57),
+                   waterWaveAmplitude * 0.23, 6.2 * scale, 1.48, 3.1);
+    accumulateWave(height, gradient, worldXZ, rotateDirection(wind, 0.86),
+                   waterWaveAmplitude * 0.14, 3.8 * scale, 1.92, 5.4);
+}
 
 void main()
 {
-    vec3 p = aPos;
-    vec2 d1 = normalize(vec2(0.82, 0.57));
-    vec2 d2 = normalize(vec2(-0.38, 0.93));
-    vec2 d3 = normalize(vec2(0.15, -0.99));
+    vec3 localPosition = aPos;
+    vec2 lakeData = texture(lakeDataMap, aTexCoords).rg;
+    float depthFade = smoothstep(0.15, 2.0, lakeData.r);
+    float shoreFade = smoothstep(0.5, 8.0, lakeData.g);
+    float waveFade = depthFade * shoreFade;
+    float height;
+    vec2 gradient;
+    evaluateWaterWaves(localPosition.xz, height, gradient);
+    localPosition.y += height * waveFade;
+    gradient *= waveFade;
 
-    float q1 = dot(p.xz, d1) * 0.52 + waterTime * 1.15;
-    float q2 = dot(p.xz, d2) * 0.83 + waterTime * 1.72;
-    float q3 = dot(p.xz, d3) * 1.31 + waterTime * 2.18;
-    p.y += sin(q1) * 0.105 + sin(q2) * 0.052 + sin(q3) * 0.022;
-
-    vec2 gradient = d1 * cos(q1) * 0.105 * 0.52 +
-                    d2 * cos(q2) * 0.052 * 0.83 +
-                    d3 * cos(q3) * 0.022 * 1.31;
-    vec3 localNormal = normalize(vec3(-gradient.x, 1.0, -gradient.y));
     mat3 normalMatrix = transpose(inverse(mat3(model)));
-
-    vec4 world = model * vec4(p, 1.0);
+    vec4 world = model * vec4(localPosition, 1.0);
     WorldPos = world.xyz;
-    WaterNormal = normalize(normalMatrix * localNormal);
-    WaterUV = aTexCoords;
+    WaterNormal = normalize(normalMatrix * vec3(-gradient.x, 1.0, -gradient.y));
+    LakeUV = aTexCoords;
+    SurfaceWaterLevel = aPos.y;
     gl_Position = projection * view * world;
 }
