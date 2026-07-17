@@ -8,7 +8,7 @@ public:
     bool  enableParallaxMapping = false;
     float bumpNormalStrength    = 1.0f;
     int   numLayers             = 32;
-    float parallaxHeightScale   = 0.1f;
+    float parallaxHeightScale   = 0.006f;
 
     void apply(Shader& shader) const;
 };

@@ -105,9 +105,11 @@ struct SceneRenderConfig
     glm::vec2 vegetationWindDirection = glm::vec2(0.88f, 0.47f);
     float vegetationWindSpeed = 1.15f;
     float vegetationWindStrength = 0.32f;
+    float vegetationMaterialMipBias = 0.35f;
+    float vegetationTransmissionStrength = 0.85f;
     float vegetationGrassDistance = 150.0f;
-    float vegetationFlowerDistance = 100.0f;
-    float vegetationTreeDistance = 1400.0f;
+    float vegetationFlowerDistance = 180.0f;
+    float vegetationTreeDistance = 950.0f;
     glm::vec3 skyTopColor = glm::vec3(0.24f, 0.55f, 0.90f);
     CloudWeatherPreset cloudWeatherPreset = CloudWeatherPreset::Sunny;
     unsigned int cloudWeatherTransitionRequest = 0;
@@ -219,17 +221,14 @@ struct SceneRenderConfig
     // Runtime terrain material controls. Geometry and derived fields are
     // immutable after startup; these values only classify/sample the TDM.
     float terrainSunAzimuth = 0.0f;
-    float terrainSunHeightShift = 0.06f;
-    float terrainNoiseHeightShift = 0.08f;
-    // Low plains remain grass. Only the mountain transition is lowered and
-    // narrowed so exposed rock occupies more of the lower mountain body.
-    float terrainGrassEnd = 0.36f;
-    float terrainRockStart = 0.39f;
-    // Calibrated against the generated terrain surface: weighted snow cover
-    // remains above 30% of samples classified as mountain rather than merely
-    // occupying 30% of the vertical elevation range.
-    float terrainSnowStart = 0.53f;
-    float terrainSnowEnd = 0.56f;
+    // Height is the primary classifier. Aspect and noise only perturb the two
+    // narrow material boundaries instead of creating detached biome islands.
+    float terrainSunHeightShift = 0.006f;
+    float terrainNoiseHeightShift = 0.008f;
+    float terrainGrassEnd = 0.28f;
+    float terrainRockStart = 0.30f;
+    float terrainSnowStart = 0.43f;
+    float terrainSnowEnd = 0.45f;
     float terrainBlendSharpness = 0.12f;
     float terrainTextureScale = 1.0f / 64.0f;
     int terrainDebugMode = 0;

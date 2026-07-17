@@ -438,13 +438,20 @@ void RendererScene::render(int width, int height)
                 -90.0f,
                 -12.0f);
         }
+        else if (sceneConfig.sceneSelection == SceneSelection::Default)
+        {
+            // The default material lab now includes the high-detail botaniq
+            // showcase, which uses the deferred vegetation material pipeline.
+            sceneConfig.renderMode = RenderMode::Lighting;
+            camera.SetPose(glm::vec3(0.0f, 1.1f, 7.5f), -90.0f, -4.0f);
+        }
         previousSceneSelection = sceneConfig.sceneSelection;
     }
     if (sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
     {
         const glm::vec3 cameraPosition = camera.Getposition();
         const glm::mat4 projection = glm::perspective(
-            glm::radians(45.0f),
+            glm::radians(Camera::DefaultFieldOfViewDegrees),
             static_cast<float>(std::max(width, 1)) /
                 static_cast<float>(std::max(height, 1)),
             0.1f,

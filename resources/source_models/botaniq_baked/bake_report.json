@@ -1,0 +1,1932 @@
+{
+  "picea_tall": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "picea_tall",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Picea-abies_B_spring-summer-autumn.blend",
+    "glb": "picea_tall.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        4096,
+        2048
+      ],
+      "cell_size": 2048,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png",
+          "atlas\\basecolor_mip9.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png",
+          "atlas\\normal_mip9.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png",
+          "atlas\\roughness_mip9.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png",
+          "atlas\\thickness_mip9.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png",
+          "atlas\\foliage_data_mip9.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Bark_Picea-abies",
+        "slug": "bq_bark_picea_abies",
+        "tile_index": 0,
+        "tile_rect": [
+          0.00390625,
+          0.0078125,
+          0.4921875,
+          0.984375
+        ],
+        "alpha_mode": "OPAQUE",
+        "alpha_cutoff": null,
+        "source_textures": {
+          "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+          "normal": "bq_Bark_Tilia-europaea_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_bark_picea_abies\\basecolor.png",
+          "normal": "materials\\bq_bark_picea_abies\\normal.png",
+          "roughness": "materials\\bq_bark_picea_abies\\roughness.png",
+          "thickness": "materials\\bq_bark_picea_abies\\thickness.png",
+          "foliage_data": "materials\\bq_bark_picea_abies\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.6388888955116272,
+          "specular": 0.0,
+          "translucency": 0.0,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 0.0,
+          "brightness": 1.0,
+          "random_per_branch": 0.0,
+          "random_per_leaf": 0.0,
+          "flexible": false
+        }
+      },
+      {
+        "name": "bq_Leaf_Picea-abies",
+        "slug": "bq_leaf_picea_abies",
+        "tile_index": 1,
+        "tile_rect": [
+          0.50390625,
+          0.0078125,
+          0.4921875,
+          0.984375
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Leaf_Picea-abies_Diffuse.png",
+          "normal": "bq_Leaf_Picea-abies_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_leaf_picea_abies\\basecolor.png",
+          "normal": "materials\\bq_leaf_picea_abies\\normal.png",
+          "roughness": "materials\\bq_leaf_picea_abies\\roughness.png",
+          "thickness": "materials\\bq_leaf_picea_abies\\thickness.png",
+          "foliage_data": "materials\\bq_leaf_picea_abies\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.6000000238418579,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 1.0,
+          "translucency_hue": 0.47999998927116394,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.2999999523162842,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "larix_broad": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "larix_broad",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Larix-decidua_A_spring-summer.blend",
+    "glb": "larix_broad.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        4096,
+        2048
+      ],
+      "cell_size": 2048,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png",
+          "atlas\\basecolor_mip9.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png",
+          "atlas\\normal_mip9.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png",
+          "atlas\\roughness_mip9.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png",
+          "atlas\\thickness_mip9.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png",
+          "atlas\\foliage_data_mip9.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Bark_Larix-decidua",
+        "slug": "bq_bark_larix_decidua",
+        "tile_index": 0,
+        "tile_rect": [
+          0.00390625,
+          0.0078125,
+          0.4921875,
+          0.984375
+        ],
+        "alpha_mode": "OPAQUE",
+        "alpha_cutoff": null,
+        "source_textures": {
+          "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+          "normal": "bq_Bark_Tilia-europaea_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_bark_larix_decidua\\basecolor.png",
+          "normal": "materials\\bq_bark_larix_decidua\\normal.png",
+          "roughness": "materials\\bq_bark_larix_decidua\\roughness.png",
+          "thickness": "materials\\bq_bark_larix_decidua\\thickness.png",
+          "foliage_data": "materials\\bq_bark_larix_decidua\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.6388888955116272,
+          "specular": 0.0,
+          "translucency": 0.0,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 0.0,
+          "brightness": 1.0,
+          "random_per_branch": 0.0,
+          "random_per_leaf": 0.0,
+          "flexible": false
+        }
+      },
+      {
+        "name": "bq_Leaf_Larix-decidua",
+        "slug": "bq_leaf_larix_decidua",
+        "tile_index": 1,
+        "tile_rect": [
+          0.50390625,
+          0.0078125,
+          0.4921875,
+          0.984375
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Leaf_Larix-decidua_2_Diffuse.png",
+          "normal": "bq_Leaf_Larix-decidua_2_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_leaf_larix_decidua\\basecolor.png",
+          "normal": "materials\\bq_leaf_larix_decidua\\normal.png",
+          "roughness": "materials\\bq_leaf_larix_decidua\\roughness.png",
+          "thickness": "materials\\bq_leaf_larix_decidua\\thickness.png",
+          "foliage_data": "materials\\bq_leaf_larix_decidua\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.4699999988079071,
+          "translucency_saturation": 1.100000023841858,
+          "translucency_value": 1.399999976158142,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "larix_sapling": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "larix_sapling",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Larix-decidua_A_winter.blend",
+    "glb": "larix_sapling.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        4096,
+        2048
+      ],
+      "cell_size": 2048,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png",
+          "atlas\\basecolor_mip9.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png",
+          "atlas\\normal_mip9.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png",
+          "atlas\\roughness_mip9.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png",
+          "atlas\\thickness_mip9.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png",
+          "atlas\\foliage_data_mip9.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Bark_Larix-decidua",
+        "slug": "bq_bark_larix_decidua",
+        "tile_index": 0,
+        "tile_rect": [
+          0.00390625,
+          0.0078125,
+          0.4921875,
+          0.984375
+        ],
+        "alpha_mode": "OPAQUE",
+        "alpha_cutoff": null,
+        "source_textures": {
+          "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+          "normal": "bq_Bark_Tilia-europaea_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_bark_larix_decidua\\basecolor.png",
+          "normal": "materials\\bq_bark_larix_decidua\\normal.png",
+          "roughness": "materials\\bq_bark_larix_decidua\\roughness.png",
+          "thickness": "materials\\bq_bark_larix_decidua\\thickness.png",
+          "foliage_data": "materials\\bq_bark_larix_decidua\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.6388888955116272,
+          "specular": 0.0,
+          "translucency": 0.0,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 0.0,
+          "brightness": 1.0,
+          "random_per_branch": 0.0,
+          "random_per_leaf": 0.0,
+          "flexible": false
+        }
+      },
+      {
+        "name": "bq_Leaf_Larix-decidua",
+        "slug": "bq_leaf_larix_decidua",
+        "tile_index": 1,
+        "tile_rect": [
+          0.50390625,
+          0.0078125,
+          0.4921875,
+          0.984375
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Leaf_Larix-decidua_3_Diffuse.png",
+          "normal": "bq_Leaf_Larix-decidua_3_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_leaf_larix_decidua\\basecolor.png",
+          "normal": "materials\\bq_leaf_larix_decidua\\normal.png",
+          "roughness": "materials\\bq_leaf_larix_decidua\\roughness.png",
+          "thickness": "materials\\bq_leaf_larix_decidua\\thickness.png",
+          "foliage_data": "materials\\bq_leaf_larix_decidua\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.6000000238418579,
+          "saturation": 0.75,
+          "value": 1.5,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.4699999988079071,
+          "translucency_saturation": 1.100000023841858,
+          "translucency_value": 1.399999976158142,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "grass_meadow": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "grass_meadow",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\grass\\bq_Grass_Bromus-erectus_A_winter.blend",
+    "glb": "grass_meadow.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 1,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Grass_Bromus-erectus",
+        "slug": "bq_grass_bromus_erectus",
+        "tile_index": 0,
+        "tile_rect": [
+          0.015625,
+          0.015625,
+          0.96875,
+          0.96875
+        ],
+        "alpha_mode": "OPAQUE",
+        "alpha_cutoff": null,
+        "source_textures": {
+          "diffuse": "bq_Grass_Diffuse.jpg",
+          "normal": "bq_Grass_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_grass_bromus_erectus\\basecolor.png",
+          "normal": "materials\\bq_grass_bromus_erectus\\normal.png",
+          "roughness": "materials\\bq_grass_bromus_erectus\\roughness.png",
+          "thickness": "materials\\bq_grass_bromus_erectus\\thickness.png",
+          "foliage_data": "materials\\bq_grass_bromus_erectus\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.72,
+          "specular": 0.35,
+          "translucency": 0.0,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 0.0,
+          "alpha": 0.0,
+          "snow_amount": 0.0,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 0.0,
+          "brightness": 1.0,
+          "random_per_branch": 0.0,
+          "random_per_leaf": 0.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "grass_seedhead": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "grass_seedhead",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\grass\\bq_Grass_Panicum-virgatum_E_spring.blend",
+    "glb": "grass_seedhead.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 1,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Grass_Panicum-virgatum",
+        "slug": "bq_grass_panicum_virgatum",
+        "tile_index": 0,
+        "tile_rect": [
+          0.015625,
+          0.015625,
+          0.96875,
+          0.96875
+        ],
+        "alpha_mode": "OPAQUE",
+        "alpha_cutoff": null,
+        "source_textures": {
+          "diffuse": "bq_Stem_Diffuse.jpg",
+          "normal": "bq_Stem_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_grass_panicum_virgatum\\basecolor.png",
+          "normal": "materials\\bq_grass_panicum_virgatum\\normal.png",
+          "roughness": "materials\\bq_grass_panicum_virgatum\\roughness.png",
+          "thickness": "materials\\bq_grass_panicum_virgatum\\thickness.png",
+          "foliage_data": "materials\\bq_grass_panicum_virgatum\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.5,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 0.75,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 0.8047722578048706,
+          "alpha": 1.0,
+          "snow_amount": 1.0,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "flower_bell": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "flower_bell",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Campanula-scheuchzeri_C_spring-summer.blend",
+    "glb": "flower_bell.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Flower_Bellflower",
+        "slug": "bq_flower_bellflower",
+        "tile_index": 0,
+        "tile_rect": [
+          0.0078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flowers_Diffuse.png",
+          "normal": "bq_Flowers_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_flower_bellflower\\basecolor.png",
+          "normal": "materials\\bq_flower_bellflower\\normal.png",
+          "roughness": "materials\\bq_flower_bellflower\\roughness.png",
+          "thickness": "materials\\bq_flower_bellflower\\thickness.png",
+          "foliage_data": "materials\\bq_flower_bellflower\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 0.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      },
+      {
+        "name": "bq_Grass",
+        "slug": "bq_grass",
+        "tile_index": 1,
+        "tile_rect": [
+          0.5078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "OPAQUE",
+        "alpha_cutoff": null,
+        "source_textures": {
+          "diffuse": "bq_Grass_Diffuse.jpg",
+          "normal": "bq_Grass_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_grass\\basecolor.png",
+          "normal": "materials\\bq_grass\\normal.png",
+          "roughness": "materials\\bq_grass\\roughness.png",
+          "thickness": "materials\\bq_grass\\thickness.png",
+          "foliage_data": "materials\\bq_grass\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.72,
+          "specular": 0.35,
+          "translucency": 0.0,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 0.0,
+          "alpha": 0.0,
+          "snow_amount": 0.0,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 0.0,
+          "brightness": 1.0,
+          "random_per_branch": 0.0,
+          "random_per_leaf": 0.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "flower_white": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "flower_white",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Achillea-millefolium_D_spring-summer.blend",
+    "glb": "flower_white.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        2048,
+        2048
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 2,
+      "rows": 2,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png",
+          "atlas\\basecolor_mip9.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png",
+          "atlas\\normal_mip9.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png",
+          "atlas\\roughness_mip9.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png",
+          "atlas\\thickness_mip9.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png",
+          "atlas\\foliage_data_mip9.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Leaf_Achillea-millefolium",
+        "slug": "bq_leaf_achillea_millefolium",
+        "tile_index": 0,
+        "tile_rect": [
+          0.0078125,
+          0.5078125,
+          0.484375,
+          0.484375
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Achillea-millefolium_Diffuse.png",
+          "normal": "bq_Flower_Achillea-millefolium_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_leaf_achillea_millefolium\\basecolor.png",
+          "normal": "materials\\bq_leaf_achillea_millefolium\\normal.png",
+          "roughness": "materials\\bq_leaf_achillea_millefolium\\roughness.png",
+          "thickness": "materials\\bq_leaf_achillea_millefolium\\thickness.png",
+          "foliage_data": "materials\\bq_leaf_achillea_millefolium\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.4300000071525574,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.4699999988079071,
+          "translucency_saturation": 1.1200000047683716,
+          "translucency_value": 1.399999976158142,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      },
+      {
+        "name": "bq_Stem_Achillea-millefolium",
+        "slug": "bq_stem_achillea_millefolium",
+        "tile_index": 1,
+        "tile_rect": [
+          0.5078125,
+          0.5078125,
+          0.484375,
+          0.484375
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Achillea-millefolium_Diffuse.png",
+          "normal": "bq_Flower_Achillea-millefolium_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_stem_achillea_millefolium\\basecolor.png",
+          "normal": "materials\\bq_stem_achillea_millefolium\\normal.png",
+          "roughness": "materials\\bq_stem_achillea_millefolium\\roughness.png",
+          "thickness": "materials\\bq_stem_achillea_millefolium\\thickness.png",
+          "foliage_data": "materials\\bq_stem_achillea_millefolium\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.175,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      },
+      {
+        "name": "bq_Flower_achillea-millefolium",
+        "slug": "bq_flower_achillea_millefolium",
+        "tile_index": 2,
+        "tile_rect": [
+          0.0078125,
+          0.0078125,
+          0.484375,
+          0.484375
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Achillea-millefolium_Diffuse.png",
+          "normal": "bq_Flower_Achillea-millefolium_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_flower_achillea_millefolium\\basecolor.png",
+          "normal": "materials\\bq_flower_achillea_millefolium\\normal.png",
+          "roughness": "materials\\bq_flower_achillea_millefolium\\roughness.png",
+          "thickness": "materials\\bq_flower_achillea_millefolium\\thickness.png",
+          "foliage_data": "materials\\bq_flower_achillea_millefolium\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "flower_yellow": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "flower_yellow",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Bunias-orientalis_A_summer.blend",
+    "glb": "flower_yellow.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Stem_Summer",
+        "slug": "bq_stem_summer",
+        "tile_index": 0,
+        "tile_rect": [
+          0.0078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Bunias-orientalis_summer_Diffuse.png",
+          "normal": "bq_Bunias-orientalis_summer_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_stem_summer\\basecolor.png",
+          "normal": "materials\\bq_stem_summer\\normal.png",
+          "roughness": "materials\\bq_stem_summer\\roughness.png",
+          "thickness": "materials\\bq_stem_summer\\thickness.png",
+          "foliage_data": "materials\\bq_stem_summer\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.36666667461395264,
+          "specular": 0.25,
+          "translucency": 0.175,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 2.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 1.0,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      },
+      {
+        "name": "bq_Flower_Summer",
+        "slug": "bq_flower_summer",
+        "tile_index": 1,
+        "tile_rect": [
+          0.5078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Bunias-orientalis_summer_Diffuse.png",
+          "normal": "bq_Bunias-orientalis_summer_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_flower_summer\\basecolor.png",
+          "normal": "materials\\bq_flower_summer\\normal.png",
+          "roughness": "materials\\bq_flower_summer\\roughness.png",
+          "thickness": "materials\\bq_flower_summer\\thickness.png",
+          "foliage_data": "materials\\bq_flower_summer\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.36666667461395264,
+          "specular": 0.25,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 2.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 1.0,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "flower_pink": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "flower_pink",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Thymus-serpyllum_C_summer.blend",
+    "glb": "flower_pink.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Flower_Thymus-serpyllum",
+        "slug": "bq_flower_thymus_serpyllum",
+        "tile_index": 0,
+        "tile_rect": [
+          0.0078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Thymus-serpyllum_Diffuse.png",
+          "normal": "bq_Flower_Thymus-serpyllum_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_flower_thymus_serpyllum\\basecolor.png",
+          "normal": "materials\\bq_flower_thymus_serpyllum\\normal.png",
+          "roughness": "materials\\bq_flower_thymus_serpyllum\\roughness.png",
+          "thickness": "materials\\bq_flower_thymus_serpyllum\\thickness.png",
+          "foliage_data": "materials\\bq_flower_thymus_serpyllum\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      },
+      {
+        "name": "bq_Leaf_Thymus-serpyllum",
+        "slug": "bq_leaf_thymus_serpyllum",
+        "tile_index": 1,
+        "tile_rect": [
+          0.5078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Thymus-serpyllum_Diffuse.png",
+          "normal": "bq_Flower_Thymus-serpyllum_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_leaf_thymus_serpyllum\\basecolor.png",
+          "normal": "materials\\bq_leaf_thymus_serpyllum\\normal.png",
+          "roughness": "materials\\bq_leaf_thymus_serpyllum\\roughness.png",
+          "thickness": "materials\\bq_leaf_thymus_serpyllum\\thickness.png",
+          "foliage_data": "materials\\bq_leaf_thymus_serpyllum\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  },
+  "flower_crocus": {
+    "schema": "openai.botaniq-runtime-material/1",
+    "asset": "flower_crocus",
+    "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Crocus-vernus_B_spring-summer.blend",
+    "glb": "flower_crocus.glb",
+    "bake_scope": {
+      "rasterized": [
+        "base_color_and_opacity",
+        "normal",
+        "roughness",
+        "derived_thickness_transmission"
+      ],
+      "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+      "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+      "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+    },
+    "atlas": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "cell_size": 1024,
+      "padding": 16,
+      "columns": 2,
+      "rows": 1,
+      "alpha_cutoff": 0.35,
+      "uv_addressing": "repeat-within-tile",
+      "tile_rect_origin": "bottom-left",
+      "channels": {
+        "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+        "normal": "RGB tangent-space normal",
+        "roughness": "RGB = scalar roughness",
+        "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+        "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+      },
+      "mips": {
+        "base_color": [
+          "atlas\\basecolor_mip0.png",
+          "atlas\\basecolor_mip1.png",
+          "atlas\\basecolor_mip2.png",
+          "atlas\\basecolor_mip3.png",
+          "atlas\\basecolor_mip4.png",
+          "atlas\\basecolor_mip5.png",
+          "atlas\\basecolor_mip6.png",
+          "atlas\\basecolor_mip7.png",
+          "atlas\\basecolor_mip8.png"
+        ],
+        "normal": [
+          "atlas\\normal_mip0.png",
+          "atlas\\normal_mip1.png",
+          "atlas\\normal_mip2.png",
+          "atlas\\normal_mip3.png",
+          "atlas\\normal_mip4.png",
+          "atlas\\normal_mip5.png",
+          "atlas\\normal_mip6.png",
+          "atlas\\normal_mip7.png",
+          "atlas\\normal_mip8.png"
+        ],
+        "roughness": [
+          "atlas\\roughness_mip0.png",
+          "atlas\\roughness_mip1.png",
+          "atlas\\roughness_mip2.png",
+          "atlas\\roughness_mip3.png",
+          "atlas\\roughness_mip4.png",
+          "atlas\\roughness_mip5.png",
+          "atlas\\roughness_mip6.png",
+          "atlas\\roughness_mip7.png",
+          "atlas\\roughness_mip8.png"
+        ],
+        "thickness": [
+          "atlas\\thickness_mip0.png",
+          "atlas\\thickness_mip1.png",
+          "atlas\\thickness_mip2.png",
+          "atlas\\thickness_mip3.png",
+          "atlas\\thickness_mip4.png",
+          "atlas\\thickness_mip5.png",
+          "atlas\\thickness_mip6.png",
+          "atlas\\thickness_mip7.png",
+          "atlas\\thickness_mip8.png"
+        ],
+        "foliage_data": [
+          "atlas\\foliage_data_mip0.png",
+          "atlas\\foliage_data_mip1.png",
+          "atlas\\foliage_data_mip2.png",
+          "atlas\\foliage_data_mip3.png",
+          "atlas\\foliage_data_mip4.png",
+          "atlas\\foliage_data_mip5.png",
+          "atlas\\foliage_data_mip6.png",
+          "atlas\\foliage_data_mip7.png",
+          "atlas\\foliage_data_mip8.png"
+        ]
+      }
+    },
+    "materials": [
+      {
+        "name": "bq_Leaf_Crocus-hybridus",
+        "slug": "bq_leaf_crocus_hybridus",
+        "tile_index": 0,
+        "tile_rect": [
+          0.0078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Crocus-hybridus_Diffuse.png",
+          "normal": "bq_Flower_Crocus-hybridus_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_leaf_crocus_hybridus\\basecolor.png",
+          "normal": "materials\\bq_leaf_crocus_hybridus\\normal.png",
+          "roughness": "materials\\bq_leaf_crocus_hybridus\\roughness.png",
+          "thickness": "materials\\bq_leaf_crocus_hybridus\\thickness.png",
+          "foliage_data": "materials\\bq_leaf_crocus_hybridus\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      },
+      {
+        "name": "bq_Flower_Crocus-hybridus",
+        "slug": "bq_flower_crocus_hybridus",
+        "tile_index": 1,
+        "tile_rect": [
+          0.5078125,
+          0.015625,
+          0.484375,
+          0.96875
+        ],
+        "alpha_mode": "MASK",
+        "alpha_cutoff": 0.35,
+        "source_textures": {
+          "diffuse": "bq_Flower_Crocus-hybridus_Diffuse.png",
+          "normal": "bq_Flower_Crocus-hybridus_Normal.jpg"
+        },
+        "runtime_textures": {
+          "base_color": "materials\\bq_flower_crocus_hybridus\\basecolor.png",
+          "normal": "materials\\bq_flower_crocus_hybridus\\normal.png",
+          "roughness": "materials\\bq_flower_crocus_hybridus\\roughness.png",
+          "thickness": "materials\\bq_flower_crocus_hybridus\\thickness.png",
+          "foliage_data": "materials\\bq_flower_crocus_hybridus\\foliage_data.png"
+        },
+        "parameters": {
+          "roughness": 0.3499999940395355,
+          "specular": 0.5,
+          "translucency": 0.5,
+          "hue": 0.5,
+          "saturation": 1.0,
+          "value": 1.0,
+          "normal_strength": 1.0,
+          "bump_strength": 1.0,
+          "alpha": 1.0,
+          "snow_amount": 0.75,
+          "snow_directional": 0.0,
+          "snow_angle": 0.0,
+          "moss_amount": 0.0,
+          "moss_directional": 0.0,
+          "moss_angle": 0.0,
+          "deciduous_coniferous": 0.0,
+          "translucency_hue": 0.5,
+          "translucency_saturation": 1.0,
+          "translucency_value": 1.0,
+          "season_offset": 1.0,
+          "brightness": 1.0,
+          "random_per_branch": 1.0,
+          "random_per_leaf": 1.0,
+          "flexible": true
+        }
+      }
+    ]
+  }
+}

@@ -141,6 +141,15 @@ void DirectionalShadowPass::render(
             vegetationSystem.drawDirectionalShadow(
                 vegetationShadowShader, camera, config);
         }
+        else if (config.sceneSelection == SceneSelection::Default &&
+                 config.enableVegetation)
+        {
+            vegetationShadowShader.use();
+            vegetationShadowShader.setMat4(
+                "lightSpaceMatrix", state.dirLightSpaceMatrix);
+            vegetationSystem.drawShowcaseShadow(
+                vegetationShadowShader, camera, config);
+        }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 

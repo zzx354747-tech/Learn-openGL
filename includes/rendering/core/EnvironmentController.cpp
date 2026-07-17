@@ -106,7 +106,7 @@ void EnvironmentController::applyPreset()
     renderParams_.enableParallaxMapping = false;
     renderParams_.bumpNormalStrength = 1.0f;
     renderParams_.numLayers = 32;
-    renderParams_.parallaxHeightScale = 0.1f;
+    renderParams_.parallaxHeightScale = 0.006f;
 
     // The procedural sky intentionally uses a flat color, so keep it visually
     // paired with the selected HDR environment instead of leaving the previous
@@ -154,7 +154,7 @@ void EnvironmentController::applyPreset()
         sceneConfig_.bloomThreshold = 0.46f;
         sceneConfig_.numBlurPasses = 10;
         renderParams_.enableParallaxMapping = true;
-        renderParams_.parallaxHeightScale = 0.1f;
+        renderParams_.parallaxHeightScale = 0.006f;
         renderParams_.bumpNormalStrength = 1.0f;
         renderParams_.numLayers = 32;
         lightSettings_.sunDiffuse = glm::vec3(38.0f, 31.0f, 15.0f);

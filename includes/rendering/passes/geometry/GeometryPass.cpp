@@ -90,6 +90,9 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     const bool alpineVegetation =
         config.sceneSelection == SceneSelection::FujiTerrain &&
         config.enableVegetation && resources.vegetationSystem;
+    const bool showcaseVegetation =
+        config.sceneSelection == SceneSelection::Default &&
+        config.enableVegetation && resources.vegetationSystem;
     if (alpineVegetation)
         resources.vegetationSystem->bindTerrainDensity(*shader);
     else
@@ -99,7 +102,8 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     // mountain occlusion and enables early depth rejection for hidden foliage.
     modelDrawer.draw(*shader);
 
-    if (alpineVegetation && resources.shaderLibrary)
+    if ((alpineVegetation || showcaseVegetation) &&
+        resources.shaderLibrary)
     {
         // Restate the full depth contract instead of inheriting state from a
         // previous pass: foliage writes depth, and fragments behind terrain
@@ -110,8 +114,12 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
         glDepthRange(0.0, 1.0);
         glDepthMask(GL_TRUE);
         glDepthFunc(GL_LESS);
-        resources.vegetationSystem->drawGeometry(
-            resources.shaderLibrary->vegetationGeometry, camera, config);
+        if (showcaseVegetation)
+            resources.vegetationSystem->drawShowcase(
+                resources.shaderLibrary->vegetationGeometry, camera, config);
+        else
+            resources.vegetationSystem->drawGeometry(
+                resources.shaderLibrary->vegetationGeometry, camera, config);
     }
 }
 

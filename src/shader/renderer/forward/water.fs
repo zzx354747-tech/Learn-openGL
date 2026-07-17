@@ -44,6 +44,7 @@ uniform float dispersionBlend;
 uniform float dispersionDepthFalloff;
 uniform float dispersionMaxPixels;
 uniform float spectralGlintStrength;
+uniform float ambientLightFactor;
 
 uniform float cloudAmbientTransmission;
 uniform bool hasCloudOpticalDepthMap;
@@ -289,7 +290,8 @@ void main()
                              maxAbsorptionDistance);
     vec3 transmittance = exp(-absorptionCoefficient * pathLength);
     vec3 refractedColor = dispersedSample * transmittance +
-                          scatteringColor * (1.0 - transmittance);
+                          scatteringColor * (1.0 - transmittance) *
+                          ambientLightFactor;
     // Caustics belong to the submerged receiver and are applied in deferred
     // lighting. Keeping them out of this surface composition prevents a bright
     // decal from appearing to float on the water plane.
@@ -297,7 +299,7 @@ void main()
     vec3 reflectionDirection = iblSunRotation * reflect(-V, N);
     vec3 reflectedColor = textureLod(prefilterMap, reflectionDirection,
                                      waterRoughness * 5.0).rgb *
-                          cloudAmbientTransmission;
+                          cloudAmbientTransmission * ambientLightFactor;
     float fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
     vec3 waterColor = mix(refractedColor, reflectedColor, fresnel);
 
@@ -323,7 +325,11 @@ void main()
 
     vec3 composed = mix(texture(sceneColorOpaque, screenUV).rgb,
                         waterColor, waterCoverage);
-    composed = mix(composed, vec3(0.76, 0.84, 0.82), foam * 0.78);
+    float sunLuminance = dot(sunColor, vec3(0.2126, 0.7152, 0.0722));
+    float foamIllumination = max(ambientLightFactor,
+                                 clamp(sunLuminance, 0.0, 1.0));
+    composed = mix(composed, vec3(0.76, 0.84, 0.82) * foamIllumination,
+                   foam * 0.78);
     FragColor = vec4(composed, 1.0);
 
     float brightness = dot(composed, vec3(0.2126, 0.7152, 0.0722));

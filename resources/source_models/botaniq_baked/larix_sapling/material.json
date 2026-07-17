@@ -1,0 +1,201 @@
+{
+  "schema": "openai.botaniq-runtime-material/1",
+  "asset": "larix_sapling",
+  "source_blend": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Larix-decidua_A_winter.blend",
+  "glb": "larix_sapling.glb",
+  "bake_scope": {
+    "rasterized": [
+      "base_color_and_opacity",
+      "normal",
+      "roughness",
+      "derived_thickness_transmission"
+    ],
+    "base_color_evaluation": "source diffuse plus top-level Hue, Saturation and Value",
+    "thickness_source": "derived from Bonatiq Translucency Factor, base-color luminance and opacity; the source library has no dedicated thickness bitmap",
+    "procedural_controls": "season, snow, moss and per-branch/per-leaf controls are recorded below but not collapsed into the atlas because the source meshes use overlapping/repeating UVs"
+  },
+  "atlas": {
+    "dimensions": [
+      4096,
+      2048
+    ],
+    "cell_size": 2048,
+    "padding": 16,
+    "columns": 2,
+    "rows": 1,
+    "alpha_cutoff": 0.35,
+    "uv_addressing": "repeat-within-tile",
+    "tile_rect_origin": "bottom-left",
+    "channels": {
+      "base_color": "RGBA = linearised botaniq colour converted to sRGB + opacity",
+      "normal": "RGB tangent-space normal",
+      "roughness": "RGB = scalar roughness",
+      "thickness": "RGB = derived thin-leaf transmission proxy; white means more back-light transmission",
+      "foliage_data": "R=AO, G=roughness, B=transmission, A=normal strength"
+    },
+    "mips": {
+      "base_color": [
+        "atlas\\basecolor_mip0.png",
+        "atlas\\basecolor_mip1.png",
+        "atlas\\basecolor_mip2.png",
+        "atlas\\basecolor_mip3.png",
+        "atlas\\basecolor_mip4.png",
+        "atlas\\basecolor_mip5.png",
+        "atlas\\basecolor_mip6.png",
+        "atlas\\basecolor_mip7.png",
+        "atlas\\basecolor_mip8.png",
+        "atlas\\basecolor_mip9.png"
+      ],
+      "normal": [
+        "atlas\\normal_mip0.png",
+        "atlas\\normal_mip1.png",
+        "atlas\\normal_mip2.png",
+        "atlas\\normal_mip3.png",
+        "atlas\\normal_mip4.png",
+        "atlas\\normal_mip5.png",
+        "atlas\\normal_mip6.png",
+        "atlas\\normal_mip7.png",
+        "atlas\\normal_mip8.png",
+        "atlas\\normal_mip9.png"
+      ],
+      "roughness": [
+        "atlas\\roughness_mip0.png",
+        "atlas\\roughness_mip1.png",
+        "atlas\\roughness_mip2.png",
+        "atlas\\roughness_mip3.png",
+        "atlas\\roughness_mip4.png",
+        "atlas\\roughness_mip5.png",
+        "atlas\\roughness_mip6.png",
+        "atlas\\roughness_mip7.png",
+        "atlas\\roughness_mip8.png",
+        "atlas\\roughness_mip9.png"
+      ],
+      "thickness": [
+        "atlas\\thickness_mip0.png",
+        "atlas\\thickness_mip1.png",
+        "atlas\\thickness_mip2.png",
+        "atlas\\thickness_mip3.png",
+        "atlas\\thickness_mip4.png",
+        "atlas\\thickness_mip5.png",
+        "atlas\\thickness_mip6.png",
+        "atlas\\thickness_mip7.png",
+        "atlas\\thickness_mip8.png",
+        "atlas\\thickness_mip9.png"
+      ],
+      "foliage_data": [
+        "atlas\\foliage_data_mip0.png",
+        "atlas\\foliage_data_mip1.png",
+        "atlas\\foliage_data_mip2.png",
+        "atlas\\foliage_data_mip3.png",
+        "atlas\\foliage_data_mip4.png",
+        "atlas\\foliage_data_mip5.png",
+        "atlas\\foliage_data_mip6.png",
+        "atlas\\foliage_data_mip7.png",
+        "atlas\\foliage_data_mip8.png",
+        "atlas\\foliage_data_mip9.png"
+      ]
+    }
+  },
+  "materials": [
+    {
+      "name": "bq_Bark_Larix-decidua",
+      "slug": "bq_bark_larix_decidua",
+      "tile_index": 0,
+      "tile_rect": [
+        0.00390625,
+        0.0078125,
+        0.4921875,
+        0.984375
+      ],
+      "alpha_mode": "OPAQUE",
+      "alpha_cutoff": null,
+      "source_textures": {
+        "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+        "normal": "bq_Bark_Tilia-europaea_Normal.jpg"
+      },
+      "runtime_textures": {
+        "base_color": "materials\\bq_bark_larix_decidua\\basecolor.png",
+        "normal": "materials\\bq_bark_larix_decidua\\normal.png",
+        "roughness": "materials\\bq_bark_larix_decidua\\roughness.png",
+        "thickness": "materials\\bq_bark_larix_decidua\\thickness.png",
+        "foliage_data": "materials\\bq_bark_larix_decidua\\foliage_data.png"
+      },
+      "parameters": {
+        "roughness": 0.6388888955116272,
+        "specular": 0.0,
+        "translucency": 0.0,
+        "hue": 0.5,
+        "saturation": 1.0,
+        "value": 1.0,
+        "normal_strength": 1.0,
+        "bump_strength": 1.0,
+        "alpha": 0.0,
+        "snow_amount": 0.75,
+        "snow_directional": 0.0,
+        "snow_angle": 0.0,
+        "moss_amount": 0.0,
+        "moss_directional": 0.0,
+        "moss_angle": 0.0,
+        "deciduous_coniferous": 0.0,
+        "translucency_hue": 0.5,
+        "translucency_saturation": 1.0,
+        "translucency_value": 1.0,
+        "season_offset": 0.0,
+        "brightness": 1.0,
+        "random_per_branch": 0.0,
+        "random_per_leaf": 0.0,
+        "flexible": false
+      }
+    },
+    {
+      "name": "bq_Leaf_Larix-decidua",
+      "slug": "bq_leaf_larix_decidua",
+      "tile_index": 1,
+      "tile_rect": [
+        0.50390625,
+        0.0078125,
+        0.4921875,
+        0.984375
+      ],
+      "alpha_mode": "MASK",
+      "alpha_cutoff": 0.35,
+      "source_textures": {
+        "diffuse": "bq_Leaf_Larix-decidua_3_Diffuse.png",
+        "normal": "bq_Leaf_Larix-decidua_3_Normal.jpg"
+      },
+      "runtime_textures": {
+        "base_color": "materials\\bq_leaf_larix_decidua\\basecolor.png",
+        "normal": "materials\\bq_leaf_larix_decidua\\normal.png",
+        "roughness": "materials\\bq_leaf_larix_decidua\\roughness.png",
+        "thickness": "materials\\bq_leaf_larix_decidua\\thickness.png",
+        "foliage_data": "materials\\bq_leaf_larix_decidua\\foliage_data.png"
+      },
+      "parameters": {
+        "roughness": 0.3499999940395355,
+        "specular": 0.5,
+        "translucency": 0.5,
+        "hue": 0.6000000238418579,
+        "saturation": 0.75,
+        "value": 1.5,
+        "normal_strength": 1.0,
+        "bump_strength": 1.0,
+        "alpha": 0.0,
+        "snow_amount": 0.75,
+        "snow_directional": 0.0,
+        "snow_angle": 0.0,
+        "moss_amount": 0.0,
+        "moss_directional": 0.0,
+        "moss_angle": 0.0,
+        "deciduous_coniferous": 0.0,
+        "translucency_hue": 0.4699999988079071,
+        "translucency_saturation": 1.100000023841858,
+        "translucency_value": 1.399999976158142,
+        "season_offset": 1.0,
+        "brightness": 1.0,
+        "random_per_branch": 1.0,
+        "random_per_leaf": 1.0,
+        "flexible": true
+      }
+    }
+  ]
+}

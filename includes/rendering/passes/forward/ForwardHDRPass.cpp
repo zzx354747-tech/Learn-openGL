@@ -1,5 +1,6 @@
 #include "rendering/passes/forward/ForwardHDRPass.h"
 #include "rendering/passes/forward/SceneObjectPass.h"
+#include "rendering/assets/mesh/AlpineVegetationSystem.h"
 
 ForwardHDRPass::ForwardHDRPass(
     Camera& camera,
@@ -34,6 +35,31 @@ void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
         modelDrawer,
         bfwidth,
         bfheight);
+
+    const bool alpineVegetation =
+        config.sceneSelection == SceneSelection::FujiTerrain &&
+        config.enableVegetation && resources.vegetationSystem;
+    const bool showcaseVegetation =
+        config.sceneSelection == SceneSelection::Default &&
+        config.enableVegetation && resources.vegetationSystem;
+    if ((alpineVegetation || showcaseVegetation) &&
+        resources.shaderLibrary)
+    {
+        // Basic/reflection modes still need the vegetation material and alpha
+        // path. Only the lighting evaluation disappears in these modes.
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glDepthRange(0.0, 1.0);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        if (showcaseVegetation)
+            resources.vegetationSystem->drawShowcase(
+                resources.shaderLibrary->vegetationUnlit, camera, config);
+        else
+            resources.vegetationSystem->drawGeometry(
+                resources.shaderLibrary->vegetationUnlit, camera, config);
+    }
 
     lightVisualPass::renderLightVisualPass(camera, resources, state, config, bfwidth, bfheight);
     framebuffer.unbind();

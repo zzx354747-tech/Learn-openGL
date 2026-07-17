@@ -8,7 +8,7 @@ void SkyboxCameraUniformSetter::apply( Shader& shader, Camera& camera, int width
 
         glm::mat4 projection =
             glm::perspective(
-                glm::radians(45.0f),
+                glm::radians(Camera::DefaultFieldOfViewDegrees),
                 static_cast<float>(width) / height,
                 0.1f,
                 20000.0f

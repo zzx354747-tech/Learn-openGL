@@ -65,6 +65,9 @@ ShaderLibrary::ShaderLibrary()
     , vegetationGeometry(
         "../src/shader/renderer/deferred/vegetation.vs",
         "../src/shader/renderer/deferred/vegetation.fs")
+    , vegetationUnlit(
+        "../src/shader/renderer/deferred/vegetation.vs",
+        "../src/shader/renderer/forward/vegetation_unlit.fs")
     , vegetationShadow(
         "../src/shader/renderer/shadow/vegetation.vs",
         "../src/shader/renderer/shadow/vegetation.fs")

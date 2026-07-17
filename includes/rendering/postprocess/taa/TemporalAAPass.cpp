@@ -42,12 +42,14 @@ void TemporalAAPass::beginFrame(int width, int height)
     TemporalJitter::set(jitter, width, height);
 
     glm::mat4 projection = glm::perspective(
-        glm::radians(45.0f),
+        glm::radians(Camera::DefaultFieldOfViewDegrees),
         static_cast<float>(width) / static_cast<float>(height),
         0.1f,
         20000.0f);
-    projection = TemporalJitter::apply(projection, width, height);
     const glm::mat4 view = camera_.GetViewMatrix();
+    // History is stored on the stable, unjittered output grid. Render passes
+    // still consume TemporalJitter, but reprojection matrices must describe
+    // that stable grid or low-confidence pixels expose the camera jitter.
     currentViewProjection_ = projection * view;
     currentSkyViewProjection_ = projection * glm::mat4(glm::mat3(view));
 }
@@ -74,6 +76,7 @@ GLuint TemporalAAPass::resolve(int width, int height, Framebuffer& source,
     shader.setFloat("historyWeight", config_.taaHistoryWeight);
     shader.setFloat("sharpness", config_.taaSharpness);
     shader.setVec2("invResolution", glm::vec2(1.0f / width, 1.0f / height));
+    shader.setVec2("currentJitterPixels", TemporalJitter::get());
     shader.setMat4("inverseCurrentViewProjection", glm::inverse(currentViewProjection_));
     shader.setMat4("previousViewProjection", previousViewProjection_);
     shader.setMat4("inverseCurrentSkyViewProjection",

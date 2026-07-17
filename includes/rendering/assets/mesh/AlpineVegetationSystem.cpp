@@ -9,6 +9,7 @@
 #include <iostream>
 #include <numeric>
 #include <random>
+#include <string>
 #include <unordered_map>
 
 #include <glm/common.hpp>
@@ -23,7 +24,7 @@
 namespace
 {
 constexpr std::uint32_t CacheMagic = 0x56475041u; // APGV
-constexpr std::uint32_t CacheVersion = 11u;
+constexpr std::uint32_t CacheVersion = 13u;
 constexpr int DensityResolution = 256;
 constexpr float Pi = 3.14159265358979323846f;
 
@@ -119,8 +120,8 @@ AlpineBiomeParameters biomeParameters(const SceneRenderConfig& config)
 bool isTree(std::size_t i) { return i <= 2u; }
 bool isShrub(std::size_t i) { return i >= 3u && i <= 4u; }
 bool isGrass(std::size_t i) { return i >= 5u && i <= 7u; }
-bool isFlower(std::size_t i) { return i >= 8u && i <= 10u; }
-bool isCushion(std::size_t i) { return i >= 11u; }
+bool isFlower(std::size_t i) { return i >= 8u && i <= 12u; }
+bool isCushion(std::size_t i) { return i >= 13u; }
 }
 
 AlpineVegetationSystem::AlpineVegetationSystem(const TerrainMesh& terrain)
@@ -160,8 +161,10 @@ AlpineVegetationSystem::AlpineVegetationSystem(const TerrainMesh& terrain,
               << buckets_[5].instances.size() << "/" << buckets_[6].instances.size()
               << "/" << buckets_[7].instances.size() << ", flowers="
               << buckets_[8].instances.size() << "/" << buckets_[9].instances.size()
-              << "/" << buckets_[10].instances.size() << ", cushion="
+              << "/" << buckets_[10].instances.size() << "/"
               << buckets_[11].instances.size() << "/" << buckets_[12].instances.size()
+              << ", cushion=" << buckets_[13].instances.size() << "/"
+              << buckets_[14].instances.size()
               << std::endl;
 }
 
@@ -178,6 +181,7 @@ void AlpineVegetationSystem::buildMeshSets()
         Species::ShrubRound, Species::ShrubWindSwept,
         Species::GrassA, Species::GrassB, Species::GrassC,
         Species::FlowerStar, Species::FlowerBell, Species::FlowerSpike,
+        Species::FlowerPink, Species::FlowerCrocus,
         Species::CushionA, Species::CushionB}};
     for (std::size_t i = 0; i < buckets_.size(); ++i)
         buckets_[i].species = species[i];
@@ -192,8 +196,31 @@ void AlpineVegetationSystem::buildMeshSets()
     buckets_[8].cpuMeshes = AlpineVegetationMeshFactory::makeStarFlower(s + 97u);
     buckets_[9].cpuMeshes = AlpineVegetationMeshFactory::makeBellFlower(s + 101u);
     buckets_[10].cpuMeshes = AlpineVegetationMeshFactory::makeSpikeFlower(s + 107u);
-    buckets_[11].cpuMeshes = AlpineVegetationMeshFactory::makeCushionPlantA(s + 109u);
-    buckets_[12].cpuMeshes = AlpineVegetationMeshFactory::makeCushionPlantB(s + 127u);
+    buckets_[11].cpuMeshes = AlpineVegetationMeshFactory::makePinkFlower(s + 109u);
+    buckets_[12].cpuMeshes = AlpineVegetationMeshFactory::makeCrocusFlower(s + 113u);
+    buckets_[13].cpuMeshes = AlpineVegetationMeshFactory::makeCushionPlantA(s + 127u);
+    buckets_[14].cpuMeshes = AlpineVegetationMeshFactory::makeCushionPlantB(s + 131u);
+
+    showcaseCpuMeshes_[0] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "picea_tall", 45.0f, 0.34f, 0.82f);
+    showcaseCpuMeshes_[1] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "larix_broad", 34.0f, 0.42f, 0.88f);
+    showcaseCpuMeshes_[2] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "larix_sapling", 18.0f, 0.48f, 0.92f);
+    showcaseCpuMeshes_[3] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "grass_meadow", 3.2f, 0.88f, 0.72f);
+    showcaseCpuMeshes_[4] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "grass_seedhead", 3.2f, 0.94f, 0.82f);
+    showcaseCpuMeshes_[5] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "flower_yellow", 4.2f, 0.72f, 0.58f);
+    showcaseCpuMeshes_[6] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "flower_bell", 4.2f, 0.78f, 0.62f);
+    showcaseCpuMeshes_[7] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "flower_white", 4.8f, 0.74f, 0.55f);
+    showcaseCpuMeshes_[8] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "flower_pink", 3.8f, 0.78f, 0.60f);
+    showcaseCpuMeshes_[9] = AlpineVegetationMeshFactory::makeShowcaseAsset(
+        "flower_crocus", 3.6f, 0.74f, 0.56f);
 }
 
 float AlpineVegetationSystem::sampleDensityField(const glm::vec2& worldXZ) const
@@ -219,6 +246,7 @@ void AlpineVegetationSystem::generateDistribution()
     {
         glm::vec2 center;
         float radius;
+        int dominantVariant = -1;
     };
     std::vector<HabitatPatch> meadowPatches;
     std::vector<HabitatPatch> flowerPatches;
@@ -274,28 +302,44 @@ void AlpineVegetationSystem::generateDistribution()
         flowerPatches.push_back({meadow.center + glm::vec2(
             (random01(static_cast<std::uint32_t>(i) * 401u + 11u) - 0.5f) * meadow.radius * 0.55f,
             (random01(static_cast<std::uint32_t>(i) * 409u + 13u) - 0.5f) * meadow.radius * 0.55f),
-            meadow.radius * (0.48f + random01(static_cast<std::uint32_t>(i) * 419u + 17u) * 0.25f)});
+            meadow.radius * (0.48f + random01(static_cast<std::uint32_t>(i) * 419u + 17u) * 0.25f),
+            static_cast<int>((i / 2u) % 5u)});
     }
-    // Give the default meadow viewpoint several compact, overlapping flower
-    // fields. Duplicating these domains is intentional weighting: roughly half
-    // of the flower budget becomes a readable near-field flower sea while the
-    // remaining domains still distribute colour across the wider grassland.
+    // Give the default meadow viewpoint several distinct flower fields. Each
+    // field appears once: repeated overlapping copies created severe density
+    // spikes and assigned several competing dominant colours to the same land.
     const glm::vec2 meadowView = terrainSettings.meadowLakeCenter +
         glm::vec2(0.0f, terrainSettings.meadowLakeRadii.y * 2.35f);
     constexpr std::array<glm::vec2, 6> LocalFlowerOffsets = {{
         {-115.0f, -80.0f}, {95.0f, -65.0f}, {-55.0f, 45.0f},
         {125.0f, 80.0f}, {-145.0f, 120.0f}, {20.0f, 155.0f}}};
-    for (int repeat = 0; repeat < 6; ++repeat)
-        for (std::size_t i = 0; i < LocalFlowerOffsets.size(); ++i)
-            flowerPatches.push_back({meadowView + LocalFlowerOffsets[i],
-                105.0f + 12.0f * static_cast<float>((i + repeat) % 3u)});
+    for (std::size_t i = 0; i < LocalFlowerOffsets.size(); ++i)
+        flowerPatches.push_back({meadowView + LocalFlowerOffsets[i],
+            125.0f + 10.0f * static_cast<float>(i % 3u),
+            static_cast<int>(i % 5u)});
     if (meadowPatches.empty())
         meadowPatches.push_back({terrainSettings.meadowLakeCenter + glm::vec2(0.0f, 500.0f), 180.0f});
     if (flowerPatches.empty())
-        flowerPatches.push_back({meadowPatches.front().center, meadowPatches.front().radius * 0.45f});
+        flowerPatches.push_back({meadowPatches.front().center,
+                                 meadowPatches.front().radius * 0.45f, 0});
     std::cout << "Vegetation habitats: " << meadowPatches.size()
               << " meadow patches, " << flowerPatches.size()
               << " flower fields" << std::endl;
+
+    const auto meadowCoreInfluence = [&](const glm::vec2& xz)
+    {
+        float influence = 0.0f;
+        for (const HabitatPatch& meadow : meadowPatches)
+        {
+            const float normalizedDistance =
+                glm::distance(xz, meadow.center) / std::max(meadow.radius, 1.0f);
+            influence = std::max(influence, 1.0f -
+                alpineSmoothstep(0.62f, 1.05f, normalizedDistance));
+            if (influence > 0.995f)
+                break;
+        }
+        return influence;
+    };
 
     const auto addCategory = [&](std::size_t firstBucket, std::size_t bucketCount,
                                  std::uint32_t budget, float minimumSpacing,
@@ -310,29 +354,31 @@ void AlpineVegetationSystem::generateDistribution()
         const std::uint32_t attemptsPerInstance = category == 4 ? 1600u :
             (category == 2 ? 8u : category == 3 ? 14u : 28u);
         const std::uint32_t maxAttempts = std::max(budget * attemptsPerInstance, 1000u);
+        const std::uint32_t streamSalt =
+            static_cast<std::uint32_t>(firstBucket * 2141u + bucketCount * 811u);
         for (std::uint32_t attempt = 0; attempt < maxAttempts && accepted < budget; ++attempt)
         {
             const float u = fractf((attempt + 0.5f) * 0.61803398875f +
-                                   random01(settings_.seed + category * 101u));
+                                   random01(settings_.seed + category * 101u + streamSalt));
             const float v = fractf((attempt + 0.5f) * 0.75487766625f +
-                                   random01(settings_.seed + category * 313u));
-            const float jitterX = (random01(attempt * 17u + category * 977u) - 0.5f) * 1.7f;
-            const float jitterZ = (random01(attempt * 29u + category * 1237u) - 0.5f) * 1.7f;
+                                   random01(settings_.seed + category * 313u + streamSalt));
+            const float jitterX = (random01(attempt * 17u + category * 977u + streamSalt) - 0.5f) * 1.7f;
+            const float jitterZ = (random01(attempt * 29u + category * 1237u + streamSalt) - 0.5f) * 1.7f;
             glm::vec2 xz(glm::mix(-half, half, u) + jitterX,
                          glm::mix(-half, half, v) + jitterZ);
-            // Grass uses both a broad biome-wide base layer and overlapping
-            // meadow domains. Flowers stay clustered, but their larger,
-            // overlapping domains produce readable flower fields rather than
-            // isolated speckles. Grass is predominantly biome-wide; flowers
-            // keep dense fields but also receive a biome-wide base layer.
+            int habitatVariant = -1;
+            // Grass has a broad biome-wide layer. Flowers always belong to a
+            // named field so one stable dominant species can be selected for
+            // the whole patch instead of changing colour point by point.
             const bool useHabitatPatch =
                 (category == 2 && (attempt & 3u) == 0u) ||
-                (category == 3 && (attempt & 3u) != 0u);
+                category == 3;
             if (useHabitatPatch)
             {
                 const std::vector<HabitatPatch>& patches = category == 2
                     ? meadowPatches : flowerPatches;
                 const HabitatPatch& patch = patches[attempt % patches.size()];
+                habitatVariant = patch.dominantVariant;
                 const float angle = random01(attempt * 811u + category * 43u) * 2.0f * Pi;
                 const float edgeNoise = 0.94f + 0.06f * std::sin(angle * 5.0f +
                     static_cast<float>(attempt % patches.size()));
@@ -354,9 +400,19 @@ void AlpineVegetationSystem::generateDistribution()
                 const float treeLine = 0.45f + sunFacing * 0.05f;
                 const float lineFade = 1.0f - alpineSmoothstep(treeLine - 0.035f,
                                                                treeLine + 0.025f, tdm.x);
+                const float meadowCore = meadowCoreInfluence(xz);
+                const float clearing = 1.0f - meadowCore;
+                const float forestNoise = valueNoise(
+                    xz / 720.0f, settings_.seed + 3181u);
+                const float forestCluster = glm::mix(
+                    0.18f, 1.28f,
+                    alpineSmoothstep(0.38f, 0.70f, forestNoise));
+                const float shadePreference = glm::mix(
+                    1.08f, 0.72f, sunFacing * 0.5f + 0.5f);
                 probability = biome.x * lineFade * (tdm.y < 0.39f ? 1.0f : 0.0f) *
                               glm::mix(0.18f, 1.0f, density) *
-                              (tdm.w > 0.55f ? 1.4f : 1.0f) * 0.64f;
+                              (tdm.w > 0.55f ? 1.32f : 0.92f) *
+                              clearing * forestCluster * shadePreference * 0.30f;
             }
             else if (category == 1)
             {
@@ -379,12 +435,12 @@ void AlpineVegetationSystem::generateDistribution()
             }
             else if (category == 3)
             {
-                const float cluster = valueNoise(xz / 95.0f, settings_.seed + 2017u);
-                const float nearWater = std::abs(surface.signedDistanceToWater) < 40.0f ? 1.0f : 0.72f;
-                probability = biome.x * glm::mix(0.48f, 1.0f,
-                              alpineSmoothstep(0.42f, 0.72f, cluster)) *
-                              nearWater * (tdm.w > 0.55f ? 1.18f : 1.0f) *
-                              (tdm.y < 0.44f ? 0.88f : 0.0f);
+                const float cluster = valueNoise(
+                    xz / 150.0f, settings_.seed + 2017u);
+                probability = biome.x * glm::mix(
+                    0.72f, 0.92f,
+                    alpineSmoothstep(0.35f, 0.70f, cluster)) *
+                    (tdm.y < 0.44f ? 0.78f : 0.0f);
             }
             else
             {
@@ -393,7 +449,8 @@ void AlpineVegetationSystem::generateDistribution()
                 probability = biome.y * alpineBand * (tdm.y < 0.33f ? 1.0f : 0.0f) *
                               alpineSmoothstep(0.50f, 0.62f, tdm.w);
             }
-            if (random01(attempt * 1664525u + settings_.seed + category * 733u) >
+            if (random01(attempt * 1664525u + settings_.seed +
+                         category * 733u + streamSalt) >
                 glm::clamp(probability, 0.0f, 1.0f))
                 continue;
 
@@ -417,16 +474,42 @@ void AlpineVegetationSystem::generateDistribution()
                 (void)occupancyResolution;
             }
 
-            std::size_t variant = static_cast<std::size_t>(random01(attempt + category * 4099u) * bucketCount);
+            std::size_t variant = static_cast<std::size_t>(
+                random01(attempt + category * 4099u + streamSalt) * bucketCount);
             variant = std::min(variant, bucketCount - 1u);
             if (category == 0)
             {
-                const float high = alpineSmoothstep(0.24f, 0.46f, tdm.x);
-                const float selector = random01(attempt * 43u + 19u);
-                const float saplingChance = glm::mix(0.16f, 0.42f, high);
-                const float broadChance = glm::mix(0.30f, 0.40f, high);
-                variant = selector < saplingChance ? 2u :
-                    (selector < saplingChance + broadChance ? 1u : 0u);
+                if (bucketCount == 2u)
+                {
+                    const float high = alpineSmoothstep(0.24f, 0.46f, tdm.x);
+                    const float broadChance = glm::mix(0.30f, 0.46f, high);
+                    variant = random01(attempt * 43u + 19u + streamSalt) <
+                              broadChance ? 1u : 0u;
+                }
+                else
+                {
+                    variant = 0u;
+                }
+            }
+            else if (category == 3)
+            {
+                int dominant = habitatVariant;
+                if (dominant < 0)
+                {
+                    const float speciesField = valueNoise(
+                        xz / 260.0f, settings_.seed + 4243u);
+                    dominant = std::min(
+                        static_cast<int>(speciesField * bucketCount),
+                        static_cast<int>(bucketCount - 1u));
+                }
+                // Broad patches remain recognisably one species, with a small
+                // neighbouring-species admixture rather than pixel noise.
+                if (random01(attempt * 47u + streamSalt) < 0.96f)
+                    variant = static_cast<std::size_t>(dominant);
+                else
+                    variant = static_cast<std::size_t>(
+                        (dominant + 1 + static_cast<int>(attempt & 1u)) %
+                        static_cast<int>(bucketCount));
             }
             Bucket& bucket = buckets_[firstBucket + variant];
             const glm::vec3 normal = surface.normal;
@@ -468,11 +551,13 @@ void AlpineVegetationSystem::generateDistribution()
                       << " / " << budget << std::endl;
     };
 
-    addCategory(0, 3, settings_.treeBudget, 6.0f, 0);
+    const std::uint32_t adultTreeBudget = settings_.treeBudget * 7u / 10u;
+    addCategory(0, 2, adultTreeBudget, 24.0f, 0);
+    addCategory(2, 1, settings_.treeBudget - adultTreeBudget, 11.0f, 0);
     addCategory(3, 2, settings_.shrubBudget, 3.0f, 1);
     addCategory(5, 3, settings_.grassBudget, 0.0f, 2);
-    addCategory(8, 3, settings_.flowerBudget, 0.0f, 3);
-    addCategory(11, 2, settings_.cushionBudget, 1.6f, 4);
+    addCategory(8, 5, settings_.flowerBudget, 1.8f, 3);
+    addCategory(13, 2, settings_.cushionBudget, 1.6f, 4);
     for (Bucket& bucket : buckets_)
         buildChunks(bucket);
     const float seconds = std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
@@ -544,7 +629,70 @@ void AlpineVegetationSystem::buildDensityTexture()
 
 void AlpineVegetationSystem::upload()
 {
-    const auto uploadMesh = [](GpuMesh& gpu, const VegetationMeshData& cpu, GLuint instanceBuffer)
+    const auto uploadImage = [](const VegetationImageData& image, bool srgb)
+    {
+        if (image.empty()) return GLuint{0};
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
+                     image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                     image.rgba.data());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (GLAD_GL_EXT_texture_filter_anisotropic)
+        {
+            GLfloat maximum = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maximum);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT,
+                            std::min(maximum, 8.0f));
+        }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        return texture;
+    };
+    const auto uploadMipChain = [](
+        const std::vector<VegetationImageData>& mips, bool srgb)
+    {
+        if (mips.empty() || mips.front().empty())
+            return GLuint{0};
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        for (std::size_t level = 0; level < mips.size(); ++level)
+        {
+            const VegetationImageData& image = mips[level];
+            glTexImage2D(
+                GL_TEXTURE_2D, static_cast<GLint>(level),
+                srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
+                image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                image.rgba.data());
+        }
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL,
+                        static_cast<GLint>(mips.size() - 1));
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                        mips.size() > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (GLAD_GL_EXT_texture_filter_anisotropic)
+        {
+            GLfloat maximum = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maximum);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT,
+                            std::min(maximum, 8.0f));
+        }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        return texture;
+    };
+    const auto uploadMesh = [&uploadImage, &uploadMipChain](
+        GpuMesh& gpu, const VegetationMeshData& cpu, GLuint instanceBuffer,
+        const GpuMesh* sharedTextures = nullptr)
     {
         if (cpu.vertices.empty()) return;
         glGenVertexArrays(1, &gpu.vao);
@@ -556,53 +704,161 @@ void AlpineVegetationSystem::upload()
         {
             glGenBuffers(1, &gpu.indexBuffer);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gpu.indexBuffer);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(cpu.indices.size() * sizeof(std::uint16_t)), cpu.indices.data(), GL_STATIC_DRAW);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(cpu.indices.size() * sizeof(std::uint32_t)), cpu.indices.data(), GL_STATIC_DRAW);
         }
         glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VegetationVertex), reinterpret_cast<void*>(offsetof(VegetationVertex, position)));
         glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VegetationVertex), reinterpret_cast<void*>(offsetof(VegetationVertex, normal)));
         glEnableVertexAttribArray(2); glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(VegetationVertex), reinterpret_cast<void*>(offsetof(VegetationVertex, colorRoughness)));
         glEnableVertexAttribArray(3); glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(VegetationVertex), reinterpret_cast<void*>(offsetof(VegetationVertex, windVariation)));
-        glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer);
-        glEnableVertexAttribArray(5); glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), nullptr); glVertexAttribDivisor(5, 1);
-        glEnableVertexAttribArray(6); glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), reinterpret_cast<void*>(sizeof(glm::vec4))); glVertexAttribDivisor(6, 1);
+        glEnableVertexAttribArray(4); glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(VegetationVertex), reinterpret_cast<void*>(offsetof(VegetationVertex, uvMaterial)));
+        if (instanceBuffer != 0)
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer);
+            glEnableVertexAttribArray(5); glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), nullptr); glVertexAttribDivisor(5, 1);
+            glEnableVertexAttribArray(6); glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), reinterpret_cast<void*>(sizeof(glm::vec4))); glVertexAttribDivisor(6, 1);
+        }
         gpu.indexCount = static_cast<GLsizei>(cpu.indices.size());
+        if (sharedTextures)
+        {
+            gpu.baseColorTextures = sharedTextures->baseColorTextures;
+            gpu.normalTextures = sharedTextures->normalTextures;
+            gpu.baseColorTextureCount = sharedTextures->baseColorTextureCount;
+            gpu.normalTextureCount = sharedTextures->normalTextureCount;
+            gpu.baseColorAtlas = sharedTextures->baseColorAtlas;
+            gpu.normalAtlas = sharedTextures->normalAtlas;
+            gpu.foliageDataAtlas = sharedTextures->foliageDataAtlas;
+            gpu.materialSlots = sharedTextures->materialSlots;
+            gpu.materialCount = sharedTextures->materialCount;
+            gpu.hasRuntimeMaterialAtlas =
+                sharedTextures->hasRuntimeMaterialAtlas;
+        }
+        else
+        {
+            if (cpu.hasRuntimeMaterialAtlas())
+            {
+                gpu.baseColorAtlas =
+                    uploadMipChain(cpu.baseColorAtlasMips, true);
+                gpu.normalAtlas =
+                    uploadMipChain(cpu.normalAtlasMips, false);
+                gpu.foliageDataAtlas =
+                    uploadMipChain(cpu.foliageDataAtlasMips, false);
+                gpu.materialSlots = cpu.materialSlots;
+                gpu.materialCount = cpu.materialCount;
+                gpu.hasRuntimeMaterialAtlas =
+                    gpu.baseColorAtlas != 0 && gpu.normalAtlas != 0 &&
+                    gpu.foliageDataAtlas != 0;
+            }
+            else
+            {
+                gpu.baseColorTextureCount = static_cast<int>(
+                    std::min<std::size_t>(cpu.baseColorTextures.size(),
+                                          gpu.baseColorTextures.size()));
+                gpu.normalTextureCount = static_cast<int>(
+                    std::min<std::size_t>(cpu.normalTextures.size(),
+                                          gpu.normalTextures.size()));
+                for (int i = 0; i < gpu.baseColorTextureCount; ++i)
+                    gpu.baseColorTextures[static_cast<std::size_t>(i)] =
+                        uploadImage(
+                            cpu.baseColorTextures[static_cast<std::size_t>(i)],
+                            true);
+                for (int i = 0; i < gpu.normalTextureCount; ++i)
+                    gpu.normalTextures[static_cast<std::size_t>(i)] =
+                        uploadImage(
+                            cpu.normalTextures[static_cast<std::size_t>(i)],
+                            false);
+            }
+            gpu.ownsTextures = true;
+        }
+        gpu.alphaCutoff = cpu.alphaCutoff;
+        gpu.alphaMask = cpu.alphaMask;
+        gpu.doubleSided = cpu.doubleSided;
         glBindVertexArray(0);
     };
-    for (Bucket& bucket : buckets_)
+    static constexpr std::array<glm::vec3, 15> FarSpeciesColors = {{
+        {0.030f, 0.105f, 0.030f}, {0.090f, 0.185f, 0.040f},
+        {0.105f, 0.205f, 0.045f}, {0.085f, 0.160f, 0.040f},
+        {0.075f, 0.145f, 0.035f}, {0.125f, 0.225f, 0.060f},
+        {0.180f, 0.235f, 0.065f}, {0.105f, 0.195f, 0.050f},
+        {0.920f, 0.560f, 0.055f}, {0.255f, 0.285f, 0.880f},
+        {0.900f, 0.855f, 0.720f}, {0.800f, 0.185f, 0.410f},
+        {0.580f, 0.300f, 0.880f}, {0.120f, 0.145f, 0.050f},
+        {0.105f, 0.130f, 0.045f}}};
+    for (std::size_t bucketIndex = 0; bucketIndex < buckets_.size(); ++bucketIndex)
     {
+        Bucket& bucket = buckets_[bucketIndex];
         glGenBuffers(1, &bucket.instanceBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, bucket.instanceBuffer);
         glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(bucket.instances.size() * sizeof(Instance)), bucket.instances.data(), GL_STATIC_DRAW);
         uploadMesh(bucket.meshes[0], bucket.cpuMeshes.lod0, bucket.instanceBuffer);
-        uploadMesh(bucket.meshes[1], bucket.cpuMeshes.lod1, bucket.instanceBuffer);
-        uploadMesh(bucket.meshes[2], bucket.cpuMeshes.lod2, bucket.instanceBuffer);
-        uploadMesh(bucket.meshes[3], bucket.cpuMeshes.shadow, bucket.instanceBuffer);
+        uploadMesh(bucket.meshes[1], bucket.cpuMeshes.lod1, bucket.instanceBuffer,
+                   &bucket.meshes[0]);
+        uploadMesh(bucket.meshes[2], bucket.cpuMeshes.lod2, bucket.instanceBuffer,
+                   &bucket.meshes[0]);
+        uploadMesh(bucket.meshes[3], bucket.cpuMeshes.shadow, bucket.instanceBuffer,
+                   &bucket.meshes[0]);
 
         // One point vertex per species. The far pass instances this vertex for
         // the complete bucket and rejects near instances in the vertex shader.
         VegetationMeshData point;
+        float averageRoughness = 0.9f;
         const VegetationMeshData& source = !bucket.cpuMeshes.lod2.vertices.empty()
             ? bucket.cpuMeshes.lod2 : bucket.cpuMeshes.lod0;
-        glm::vec3 averageColor(0.08f, 0.18f, 0.04f);
-        float averageRoughness = 0.9f;
         if (!source.vertices.empty())
         {
-            averageColor = glm::vec3(0.0f);
             averageRoughness = 0.0f;
             for (const VegetationVertex& vertex : source.vertices)
-            {
-                averageColor += glm::vec3(vertex.colorRoughness);
                 averageRoughness += vertex.colorRoughness.w;
-            }
             const float inverseCount = 1.0f / static_cast<float>(source.vertices.size());
-            averageColor *= inverseCount;
             averageRoughness *= inverseCount;
         }
         point.vertices.push_back({glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
-                                  glm::vec4(averageColor, averageRoughness),
+                                  glm::vec4(FarSpeciesColors[bucketIndex],
+                                            averageRoughness),
                                   glm::vec2(0.0f)});
         uploadMesh(bucket.meshes[4], point, bucket.instanceBuffer);
+
+        // The GL objects now own the material data. Retaining the decoded
+        // 2K/4K atlas mip chains in every bucket would unnecessarily duplicate
+        // hundreds of megabytes of CPU memory for the lifetime of the scene.
+        bucket.cpuMeshes.lod0.baseColorTextures.clear();
+        bucket.cpuMeshes.lod0.normalTextures.clear();
+        bucket.cpuMeshes.lod0.baseColorAtlasMips.clear();
+        bucket.cpuMeshes.lod0.normalAtlasMips.clear();
+        bucket.cpuMeshes.lod0.foliageDataAtlasMips.clear();
+        bucket.cpuMeshes.lod0.baseColorTextures.shrink_to_fit();
+        bucket.cpuMeshes.lod0.normalTextures.shrink_to_fit();
+        bucket.cpuMeshes.lod0.baseColorAtlasMips.shrink_to_fit();
+        bucket.cpuMeshes.lod0.normalAtlasMips.shrink_to_fit();
+        bucket.cpuMeshes.lod0.foliageDataAtlasMips.shrink_to_fit();
     }
+
+    // The default material-sphere scene is an inspection scene, so it uses the
+    // complete baked source geometry instead of any of the runtime LOD meshes.
+    // Textures are shared with the corresponding runtime bucket to avoid
+    // uploading the same atlas twice.
+    static constexpr std::array<std::size_t, ShowcaseModelCount>
+        ShowcaseTextureBuckets = {{
+            0u, 1u, 2u, 5u, 6u, 8u, 9u, 10u, 11u, 12u
+        }};
+    std::uint64_t showcaseTriangleCount = 0;
+    std::size_t uploadedShowcaseCount = 0;
+    for (std::size_t i = 0; i < ShowcaseModelCount; ++i)
+    {
+        VegetationMeshData& cpu = showcaseCpuMeshes_[i];
+        showcaseTriangleCount += cpu.indices.size() / 3u;
+        uploadMesh(showcaseMeshes_[i], cpu, 0,
+                   &buckets_[ShowcaseTextureBuckets[i]].meshes[0]);
+        if (showcaseMeshes_[i].vao != 0)
+            ++uploadedShowcaseCount;
+        cpu.vertices.clear();
+        cpu.indices.clear();
+        cpu.vertices.shrink_to_fit();
+        cpu.indices.shrink_to_fit();
+    }
+    std::cout << "Vegetation showcase: " << uploadedShowcaseCount
+              << " high-detail source models, " << showcaseTriangleCount
+              << " triangles" << std::endl;
+
     glGenTextures(1, &densityTexture_);
     glBindTexture(GL_TEXTURE_2D, densityTexture_);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, DensityResolution, DensityResolution, 0,
@@ -623,8 +879,27 @@ void AlpineVegetationSystem::destroyGpuResources()
             if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
             if (mesh.vertexBuffer) glDeleteBuffers(1, &mesh.vertexBuffer);
             if (mesh.indexBuffer) glDeleteBuffers(1, &mesh.indexBuffer);
+            if (mesh.ownsTextures)
+            {
+                for (GLuint texture : mesh.baseColorTextures)
+                    if (texture) glDeleteTextures(1, &texture);
+                for (GLuint texture : mesh.normalTextures)
+                    if (texture) glDeleteTextures(1, &texture);
+                if (mesh.baseColorAtlas)
+                    glDeleteTextures(1, &mesh.baseColorAtlas);
+                if (mesh.normalAtlas)
+                    glDeleteTextures(1, &mesh.normalAtlas);
+                if (mesh.foliageDataAtlas)
+                    glDeleteTextures(1, &mesh.foliageDataAtlas);
+            }
         }
         if (bucket.instanceBuffer) glDeleteBuffers(1, &bucket.instanceBuffer);
+    }
+    for (GpuMesh& mesh : showcaseMeshes_)
+    {
+        if (mesh.vao) glDeleteVertexArrays(1, &mesh.vao);
+        if (mesh.vertexBuffer) glDeleteBuffers(1, &mesh.vertexBuffer);
+        if (mesh.indexBuffer) glDeleteBuffers(1, &mesh.indexBuffer);
     }
     if (densityTexture_) glDeleteTextures(1, &densityTexture_);
 }
@@ -634,7 +909,7 @@ void AlpineVegetationSystem::beginFrame(const Camera& camera, int width, int hei
     previousViewProjection_ = frameInitialized_ ? currentViewProjection_ : glm::mat4(1.0f);
     previousWindTime_ = frameInitialized_ ? currentWindTime_ : elapsedSeconds();
     currentWindTime_ = elapsedSeconds();
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f),
+    glm::mat4 projection = glm::perspective(glm::radians(Camera::DefaultFieldOfViewDegrees),
         static_cast<float>(std::max(width, 1)) / static_cast<float>(std::max(height, 1)), 0.1f, 20000.0f);
     projection = TemporalJitter::apply(projection, width, height);
     currentViewProjection_ = projection * camera.GetViewMatrix();
@@ -656,6 +931,167 @@ void AlpineVegetationSystem::drawDirectionalShadow(Shader& shader, const Camera&
     drawBuckets(shader, camera, config, true);
 }
 
+void AlpineVegetationSystem::drawShowcase(
+    Shader& shader, const Camera& camera,
+    const SceneRenderConfig& config) const
+{
+    drawShowcaseMeshes(shader, camera, config, false);
+}
+
+void AlpineVegetationSystem::drawShowcaseShadow(
+    Shader& shader, const Camera& camera,
+    const SceneRenderConfig& config) const
+{
+    drawShowcaseMeshes(shader, camera, config, true);
+}
+
+void AlpineVegetationSystem::drawShowcaseMeshes(
+    Shader& shader, const Camera& camera, const SceneRenderConfig& config,
+    bool shadow) const
+{
+    struct ShowcaseItem
+    {
+        std::size_t bucket;
+        glm::vec3 position;
+        float scale;
+        float yaw;
+    };
+    // One instance for every unique imported botaniq asset. These are the
+    // complete source GLBs, not the decimated runtime LODs.
+    static constexpr std::array<ShowcaseItem, 10> Items = {{
+        {0u, {-5.7f, -1.65f, -10.5f}, 0.075f,  0.18f}, // Picea
+        {1u, {-4.1f, -1.65f, -10.5f}, 0.090f, -0.28f}, // Larix
+        {2u, {-2.6f, -1.65f, -10.3f}, 0.130f,  0.12f}, // Larix sapling
+        {5u, {-1.0f, -1.55f,  -8.6f}, 0.520f, -0.10f}, // Meadow grass
+        {6u, { 0.4f, -1.55f,  -8.6f}, 0.480f,  0.22f}, // Seed-head grass
+        {8u, { 1.8f, -1.50f,  -8.8f}, 0.340f, -0.12f}, // Yellow flower
+        {9u, { 2.9f, -1.50f,  -9.0f}, 0.340f,  0.20f}, // Bell flower
+        {10u,{ 4.0f, -1.50f,  -9.2f}, 0.300f, -0.18f}, // White flower
+        {11u,{ 5.0f, -1.50f,  -9.4f}, 0.340f,  0.12f}, // Pink flower
+        {12u,{ 6.0f, -1.50f,  -9.6f}, 0.340f, -0.08f}, // Crocus
+    }};
+    static constexpr std::array<glm::vec3, 15> SpeciesTints = {{
+        {0.78f, 0.92f, 0.78f}, {0.86f, 0.96f, 0.78f},
+        {0.88f, 0.98f, 0.80f}, {0.88f, 0.96f, 0.82f},
+        {0.84f, 0.94f, 0.78f}, {0.82f, 0.94f, 0.74f},
+        {0.88f, 0.94f, 0.70f}, {0.80f, 0.92f, 0.72f},
+        {1.02f, 0.98f, 0.92f}, {0.96f, 0.98f, 1.05f},
+        {1.00f, 0.98f, 0.93f}, {1.04f, 0.96f, 1.00f},
+        {1.00f, 0.96f, 1.06f}, {0.90f, 0.94f, 0.78f},
+        {0.88f, 0.92f, 0.76f}}};
+    static constexpr std::array<float, 15> SpeciesSaturation = {{
+        0.78f, 0.82f, 0.84f, 0.72f, 0.70f,
+        0.62f, 0.58f, 0.60f, 1.08f, 1.10f,
+        0.82f, 1.12f, 1.12f, 0.65f, 0.62f}};
+
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+    shader.use();
+    if (!shadow)
+    {
+        shader.setMat4("u_viewProjection", currentViewProjection_);
+        shader.setMat4("u_previousViewProjection", previousViewProjection_);
+        shader.setVec3("u_cameraPosition", camera.Getposition());
+        shader.setBool("u_pointMode", false);
+    }
+    shader.setFloat("u_time", currentWindTime_);
+    shader.setFloat("u_previousTime", previousWindTime_);
+    shader.setFloat("u_windSpeed", config.vegetationWindSpeed);
+    // The material lab is a source-asset inspection scene. Keep it static so
+    // alpha, normals and attachment points can be judged without animation.
+    shader.setFloat("u_windStrength", 0.0f);
+    const float windLength = glm::length(config.vegetationWindDirection);
+    shader.setVec2("u_windDir", windLength > 0.0001f
+        ? config.vegetationWindDirection / windLength
+        : glm::vec2(1.0f, 0.0f));
+    shader.setFloat("u_materialMipScale", 1.0f);
+    shader.setInt("u_baseColorAtlas", 0);
+    shader.setInt("u_normalAtlas", 1);
+    shader.setInt("u_foliageDataAtlas", 2);
+    shader.setInt("u_baseColorTexture0", 3);
+    shader.setInt("u_baseColorTexture1", 4);
+    shader.setInt("u_baseColorTexture2", 5);
+    shader.setInt("u_baseColorTexture3", 6);
+    shader.setInt("u_normalTexture0", 7);
+    shader.setInt("u_normalTexture1", 8);
+    shader.setInt("u_normalTexture2", 9);
+    shader.setInt("u_normalTexture3", 10);
+
+    constexpr std::uint32_t ShowcasePackedColour =
+        128u | (153u << 8u);
+    for (std::size_t showcaseIndex = 0;
+         showcaseIndex < Items.size(); ++showcaseIndex)
+    {
+        const ShowcaseItem& item = Items[showcaseIndex];
+        const GpuMesh& mesh = showcaseMeshes_[showcaseIndex];
+        if (!mesh.vao || mesh.indexCount <= 0)
+            continue;
+
+        shader.setVec3("u_speciesTint", SpeciesTints[item.bucket]);
+        shader.setFloat(
+            "u_speciesSaturation", SpeciesSaturation[item.bucket]);
+        shader.setBool(
+            "u_hasMaterialAtlas", mesh.hasRuntimeMaterialAtlas);
+        shader.setBool(
+            "u_hasBaseColorTexture", mesh.baseColorTextureCount > 0);
+        shader.setBool(
+            "u_hasNormalTexture", mesh.normalTextureCount > 0);
+        shader.setBool("u_alphaMask", mesh.alphaMask);
+        shader.setFloat("u_alphaCutoff", mesh.alphaCutoff);
+        for (int i = 0; i < 4; ++i)
+        {
+            const VegetationMaterialSlot& slot =
+                mesh.materialSlots[static_cast<std::size_t>(i)];
+            const std::string suffix = "[" + std::to_string(i) + "]";
+            shader.setVec4("u_materialTileRects" + suffix, slot.tileRect);
+            shader.setFloat(
+                "u_materialAlphaCutoffs" + suffix, slot.alphaCutoff);
+            const int flags = (slot.alphaMask ? 1 : 0) |
+                              (slot.doubleSided ? 2 : 0);
+            shader.setInt("u_materialFlags" + suffix, flags);
+        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mesh.baseColorAtlas);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mesh.normalAtlas);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, mesh.foliageDataAtlas);
+        for (int i = 0; i < 4; ++i)
+        {
+            glActiveTexture(GL_TEXTURE3 + i);
+            glBindTexture(GL_TEXTURE_2D,
+                mesh.baseColorTextures[static_cast<std::size_t>(i)]);
+            glActiveTexture(GL_TEXTURE7 + i);
+            glBindTexture(GL_TEXTURE_2D,
+                mesh.normalTextures[static_cast<std::size_t>(i)]);
+        }
+
+        if (mesh.doubleSided)
+            glDisable(GL_CULL_FACE);
+        else
+            glEnable(GL_CULL_FACE);
+        glBindVertexArray(mesh.vao);
+        glDisableVertexAttribArray(5);
+        glDisableVertexAttribArray(6);
+        const glm::vec4 positionScale(item.position, item.scale);
+        const glm::vec4 rotationColour(
+            item.yaw, 0.0f, 0.0f,
+            static_cast<float>(ShowcasePackedColour));
+        glVertexAttrib4fv(5, &positionScale[0]);
+        glVertexAttrib4fv(6, &rotationColour[0]);
+        glDrawElements(
+            GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
+        // Attribute enable state belongs to the VAO. Restore it so switching
+        // back to Fuji Terrain still uses the bucket's instance buffer.
+        glEnableVertexAttribArray(5);
+        glEnableVertexAttribArray(6);
+    }
+    glBindVertexArray(0);
+    glEnable(GL_CULL_FACE);
+}
+
 void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
                                          const SceneRenderConfig& config, bool shadow) const
 {
@@ -672,10 +1108,42 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
     shader.setFloat("u_previousTime", previousWindTime_);
     shader.setFloat("u_windSpeed", config.vegetationWindSpeed);
     shader.setFloat("u_windStrength", config.vegetationWindStrength);
+    shader.setFloat(
+        "u_materialMipScale",
+        std::exp2(config.vegetationMaterialMipBias));
     const float windLength = glm::length(config.vegetationWindDirection);
     shader.setVec2("u_windDir", windLength > 0.0001f
         ? config.vegetationWindDirection / windLength : glm::vec2(1.0f, 0.0f));
     shader.setVec3("u_cameraPosition", camera.Getposition());
+    shader.setInt("u_baseColorAtlas", 0);
+    shader.setInt("u_normalAtlas", 1);
+    shader.setInt("u_foliageDataAtlas", 2);
+    shader.setInt("u_baseColorTexture0", 3);
+    shader.setInt("u_baseColorTexture1", 4);
+    shader.setInt("u_baseColorTexture2", 5);
+    shader.setInt("u_baseColorTexture3", 6);
+    shader.setInt("u_normalTexture0", 7);
+    shader.setInt("u_normalTexture1", 8);
+    shader.setInt("u_normalTexture2", 9);
+    shader.setInt("u_normalTexture3", 10);
+    static constexpr std::array<glm::vec3, 15> SpeciesTints = {{
+        {0.78f, 0.92f, 0.78f}, {0.86f, 0.96f, 0.78f},
+        {0.88f, 0.98f, 0.80f}, {0.88f, 0.96f, 0.82f},
+        {0.84f, 0.94f, 0.78f}, {0.82f, 0.94f, 0.74f},
+        {0.88f, 0.94f, 0.70f}, {0.80f, 0.92f, 0.72f},
+        {1.02f, 0.98f, 0.92f}, {0.96f, 0.98f, 1.05f},
+        {1.00f, 0.98f, 0.93f}, {1.04f, 0.96f, 1.00f},
+        {1.00f, 0.96f, 1.06f}, {0.90f, 0.94f, 0.78f},
+        {0.88f, 0.92f, 0.76f}}};
+    static constexpr std::array<float, 15> SpeciesSaturation = {{
+        0.78f, 0.82f, 0.84f, 0.72f, 0.70f,
+        0.62f, 0.58f, 0.60f, 1.08f, 1.10f,
+        0.82f, 1.12f, 1.12f, 0.65f, 0.62f}};
+    const auto setSpeciesGrade = [&](std::size_t bucketIndex)
+    {
+        shader.setVec3("u_speciesTint", SpeciesTints[bucketIndex]);
+        shader.setFloat("u_speciesSaturation", SpeciesSaturation[bucketIndex]);
+    };
     if (!shadow)
         shader.setBool("u_pointMode", false);
     struct DrawCommand
@@ -691,8 +1159,10 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
     {
         const Bucket& bucket = buckets_[b];
         float maximumDistance = isTree(b) ? (shadow ? 300.0f : config.vegetationTreeDistance) :
-            isShrub(b) ? 320.0f : isGrass(b) ? config.vegetationGrassDistance :
-            isFlower(b) ? config.vegetationFlowerDistance : 240.0f;
+            isShrub(b) ? 320.0f :
+            isGrass(b) ? config.vegetationGrassDistance :
+            isFlower(b) ? config.vegetationFlowerDistance :
+            240.0f;
         if (shadow && !isTree(b)) continue;
         for (std::size_t c = 0; c < bucket.chunks.size(); ++c)
         {
@@ -703,10 +1173,10 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
             int lod = shadow ? 3 : 0;
             if (!shadow)
             {
-                if (isTree(b)) lod = distance > 220.0f ? 2 : (distance > 80.0f ? 1 : 0);
+                if (isTree(b)) lod = distance > 380.0f ? 2 : (distance > 140.0f ? 1 : 0);
                 else if (isShrub(b)) lod = distance > 140.0f ? 2 : (distance > 50.0f ? 1 : 0);
                 else if (isGrass(b)) lod = distance > 70.0f ? 2 : (distance > 25.0f ? 1 : 0);
-                else if (isFlower(b)) lod = distance > 45.0f ? 1 : 0;
+                else if (isFlower(b)) lod = distance > 85.0f ? 1 : 0;
                 else lod = distance > 100.0f ? 2 : (distance > 40.0f ? 1 : 0);
             }
             if (bucket.meshes[static_cast<std::size_t>(lod)].indexCount > 0)
@@ -757,8 +1227,41 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
         const Bucket& bucket = buckets_[b];
         const Chunk& chunk = bucket.chunks[command.chunk];
         const GpuMesh& mesh = bucket.meshes[static_cast<std::size_t>(command.lod)];
-        if (isGrass(b) || isFlower(b)) glDisable(GL_CULL_FACE);
+        setSpeciesGrade(b);
+        if (mesh.doubleSided || isGrass(b) || isFlower(b)) glDisable(GL_CULL_FACE);
         else glEnable(GL_CULL_FACE);
+        shader.setBool("u_hasMaterialAtlas", mesh.hasRuntimeMaterialAtlas);
+        shader.setBool("u_hasBaseColorTexture", mesh.baseColorTextureCount > 0);
+        shader.setBool("u_hasNormalTexture", mesh.normalTextureCount > 0);
+        shader.setBool("u_alphaMask", mesh.alphaMask);
+        shader.setFloat("u_alphaCutoff", mesh.alphaCutoff);
+        for (int i = 0; i < 4; ++i)
+        {
+            const VegetationMaterialSlot& slot =
+                mesh.materialSlots[static_cast<std::size_t>(i)];
+            const std::string suffix = "[" + std::to_string(i) + "]";
+            shader.setVec4("u_materialTileRects" + suffix, slot.tileRect);
+            shader.setFloat(
+                "u_materialAlphaCutoffs" + suffix, slot.alphaCutoff);
+            const int flags = (slot.alphaMask ? 1 : 0) |
+                              (slot.doubleSided ? 2 : 0);
+            shader.setInt("u_materialFlags" + suffix, flags);
+        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mesh.baseColorAtlas);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mesh.normalAtlas);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, mesh.foliageDataAtlas);
+        for (int i = 0; i < 4; ++i)
+        {
+            glActiveTexture(GL_TEXTURE3 + i);
+            glBindTexture(GL_TEXTURE_2D,
+                mesh.baseColorTextures[static_cast<std::size_t>(i)]);
+            glActiveTexture(GL_TEXTURE7 + i);
+            glBindTexture(GL_TEXTURE_2D,
+                mesh.normalTextures[static_cast<std::size_t>(i)]);
+        }
         std::uint32_t count = chunk.count;
         if (!shadow && command.distance > command.maximumDistance * 0.72f &&
             (isGrass(b) || isFlower(b)))
@@ -768,7 +1271,7 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
         const std::size_t byteOffset = static_cast<std::size_t>(chunk.first) * sizeof(Instance);
         glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), reinterpret_cast<void*>(byteOffset));
         glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), reinterpret_cast<void*>(byteOffset + sizeof(glm::vec4)));
-        glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_SHORT,
+        glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT,
                                 nullptr, static_cast<GLsizei>(count));
     }
 
@@ -777,13 +1280,19 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
         // One point-sprite draw per species keeps the entire terrain resident
         // and visible. The vertex shader removes the near range, so these
         // points never overlap their geometric LODs and never evaluate wind.
-        static constexpr std::array<float, 13> PointWorldHeights = {{
+        static constexpr std::array<float, 15> PointWorldHeights = {{
             48.0f, 36.0f, 20.0f, 3.6f, 3.2f,
-            3.2f, 3.2f, 3.2f, 4.2f, 4.2f, 4.8f, 1.5f, 1.5f}};
-        static constexpr std::array<float, 13> PointMaximumPixels = {{
+            3.2f, 3.2f, 3.2f, 4.2f, 4.2f, 4.8f,
+            3.8f, 3.6f, 1.5f, 1.5f}};
+        static constexpr std::array<float, 15> PointMaximumPixels = {{
             12.0f, 11.0f, 8.0f, 4.0f, 4.0f,
-            2.5f, 2.5f, 2.5f, 3.5f, 3.5f, 4.0f, 2.0f, 2.0f}};
+            2.5f, 2.5f, 2.5f, 3.5f, 3.5f, 4.0f,
+            3.5f, 3.5f, 2.0f, 2.0f}};
         shader.setBool("u_pointMode", true);
+        shader.setBool("u_hasMaterialAtlas", false);
+        shader.setBool("u_hasBaseColorTexture", false);
+        shader.setBool("u_hasNormalTexture", false);
+        shader.setBool("u_alphaMask", false);
         shader.setFloat("u_pointPixelScale",
                         static_cast<float>(frameViewportHeight_) * 1.20710678f);
         glEnable(GL_PROGRAM_POINT_SIZE);
@@ -795,11 +1304,19 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
             if (!point.vao || bucket.instances.empty())
                 continue;
             const float nearDistance = isTree(b) ? config.vegetationTreeDistance :
-                isShrub(b) ? 320.0f : isGrass(b) ? config.vegetationGrassDistance :
-                isFlower(b) ? config.vegetationFlowerDistance : 240.0f;
+                isShrub(b) ? 320.0f :
+                isGrass(b) ? config.vegetationGrassDistance :
+                isFlower(b) ? config.vegetationFlowerDistance :
+                240.0f;
+            const float farDistance = isTree(b) ? 3200.0f :
+                isShrub(b) ? 1200.0f : isGrass(b) ? 700.0f :
+                isFlower(b) ? 1400.0f : 800.0f;
+            setSpeciesGrade(b);
             shader.setFloat("u_pointMinDistance", nearDistance);
+            shader.setFloat("u_pointMaxDistance", farDistance);
             shader.setFloat("u_pointWorldHeight", PointWorldHeights[b]);
             shader.setFloat("u_pointMaxPixels", PointMaximumPixels[b]);
+            shader.setInt("u_pointShape", static_cast<int>(b));
             glBindVertexArray(point.vao);
             glDrawArraysInstanced(GL_POINTS, 0, 1,
                                   static_cast<GLsizei>(bucket.instances.size()));

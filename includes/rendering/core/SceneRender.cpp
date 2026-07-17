@@ -11,7 +11,8 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         gpuProfiler_.beginFrame();
         temporalAAPass.beginFrame(bfwidth, bfheight);
         if (resources.vegetationSystem && config.enableVegetation &&
-            config.sceneSelection == SceneSelection::FujiTerrain)
+            (config.sceneSelection == SceneSelection::FujiTerrain ||
+             config.sceneSelection == SceneSelection::Default))
             resources.vegetationSystem->beginFrame(camera, bfwidth, bfheight);
         // Cloud transmittance is consumed by deferred surface lighting, so it
         // must be current before the lighting pass begins.

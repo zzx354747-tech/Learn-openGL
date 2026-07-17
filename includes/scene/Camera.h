@@ -16,6 +16,8 @@ class Camera
 {
 
 public:
+    static constexpr float DefaultFieldOfViewDegrees = 72.0f;
+    static constexpr float DefaultMovementSpeed = 180.0f;
 //构造函数
     Camera( 
         glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), 
@@ -25,7 +27,7 @@ public:
         float lastX = 400.0f, 
         float lastY = 300.0f,
         float sensitivity = 0.1f,
-        float speed = 90.0f
+        float speed = DefaultMovementSpeed
 );
 
 //对外接口
@@ -56,7 +58,7 @@ private:
     float Pitch;
 	float MovementSpeed;
 	float MouseSensitivity;
-	glm::vec3 MovementVelocity;
+    glm::vec3 MovementVelocity;
 	float LastX;
 	float LastY;
     bool firstMouse;

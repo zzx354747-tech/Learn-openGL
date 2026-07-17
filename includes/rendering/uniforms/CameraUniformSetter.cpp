@@ -6,7 +6,7 @@ void CameraUniformSetter::apply( Shader& shader, Camera& camera, int width, int 
         glm::mat4 view = camera.GetViewMatrix();
 
         glm::mat4 projection = glm::perspective(
-            glm::radians(45.0f),
+            glm::radians(Camera::DefaultFieldOfViewDegrees),
             static_cast<float>(width) / static_cast<float>(height),
             0.1f,
             20000.0f

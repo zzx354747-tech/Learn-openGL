@@ -22,7 +22,7 @@ glm::mat4 inverseViewProjection(
     int height)
 {
     glm::mat4 projection = glm::perspective(
-        glm::radians(45.0f),
+        glm::radians(Camera::DefaultFieldOfViewDegrees),
         static_cast<float>(std::max(width, 1)) /
             static_cast<float>(std::max(height, 1)),
         0.1f,

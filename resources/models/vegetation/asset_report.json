@@ -1,0 +1,342 @@
+{
+  "picea_tall": {
+    "lod0": {
+      "source_triangles": 212760,
+      "target_triangles": 60000,
+      "output_triangles": 60000,
+      "source_parts": 7931,
+      "output_parts": 249,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 212760,
+      "target_triangles": 18000,
+      "output_triangles": 18000,
+      "source_parts": 7931,
+      "output_parts": 95,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 212760,
+      "target_triangles": 5000,
+      "output_triangles": 5000,
+      "source_parts": 7931,
+      "output_parts": 42,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 212760,
+      "target_triangles": 8000,
+      "output_triangles": 8000,
+      "source_parts": 7931,
+      "output_parts": 61,
+      "method": "whole_loose_parts"
+    }
+  },
+  "larix_broad": {
+    "lod0": {
+      "source_triangles": 72997,
+      "target_triangles": 36000,
+      "output_triangles": 36000,
+      "source_parts": 19508,
+      "output_parts": 1146,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 72997,
+      "target_triangles": 14000,
+      "output_triangles": 14000,
+      "source_parts": 19508,
+      "output_parts": 305,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 72997,
+      "target_triangles": 4000,
+      "output_triangles": 4000,
+      "source_parts": 19508,
+      "output_parts": 73,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 72997,
+      "target_triangles": 6500,
+      "output_triangles": 6500,
+      "source_parts": 19508,
+      "output_parts": 121,
+      "method": "whole_loose_parts"
+    }
+  },
+  "larix_sapling": {
+    "lod0": {
+      "source_triangles": 57351,
+      "target_triangles": 28000,
+      "output_triangles": 28000,
+      "source_parts": 3862,
+      "output_parts": 705,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 57351,
+      "target_triangles": 10000,
+      "output_triangles": 10000,
+      "source_parts": 3862,
+      "output_parts": 193,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 57351,
+      "target_triangles": 2800,
+      "output_triangles": 2800,
+      "source_parts": 3862,
+      "output_parts": 48,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 57351,
+      "target_triangles": 4500,
+      "output_triangles": 4500,
+      "source_parts": 3862,
+      "output_parts": 81,
+      "method": "whole_loose_parts"
+    }
+  },
+  "grass_meadow": {
+    "lod0": {
+      "source_triangles": 2252,
+      "target_triangles": 800,
+      "output_triangles": 799,
+      "source_parts": 523,
+      "output_parts": 97,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 2252,
+      "target_triangles": 320,
+      "output_triangles": 320,
+      "source_parts": 523,
+      "output_parts": 37,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 2252,
+      "target_triangles": 120,
+      "output_triangles": 119,
+      "source_parts": 523,
+      "output_parts": 16,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 2252,
+      "target_triangles": 180,
+      "output_triangles": 179,
+      "source_parts": 523,
+      "output_parts": 23,
+      "method": "whole_loose_parts"
+    }
+  },
+  "grass_seedhead": {
+    "lod0": {
+      "source_triangles": 61360,
+      "target_triangles": 4000,
+      "output_triangles": 3916,
+      "source_parts": 419,
+      "output_parts": 24,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 61360,
+      "target_triangles": 1400,
+      "output_triangles": 1324,
+      "source_parts": 419,
+      "output_parts": 9,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 61360,
+      "target_triangles": 450,
+      "output_triangles": 332,
+      "source_parts": 419,
+      "output_parts": 2,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 61360,
+      "target_triangles": 700,
+      "output_triangles": 596,
+      "source_parts": 419,
+      "output_parts": 4,
+      "method": "whole_loose_parts"
+    }
+  },
+  "flower_bell": {
+    "lod0": {
+      "source_triangles": 240,
+      "target_triangles": 240,
+      "output_triangles": 240,
+      "source_parts": 36,
+      "output_parts": 36,
+      "method": "full_mesh"
+    },
+    "lod1": {
+      "source_triangles": 240,
+      "target_triangles": 140,
+      "output_triangles": 140,
+      "source_parts": 36,
+      "output_parts": 11,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 240,
+      "target_triangles": 80,
+      "output_triangles": 80,
+      "source_parts": 36,
+      "output_parts": 7,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 240,
+      "target_triangles": 100,
+      "output_triangles": 100,
+      "source_parts": 36,
+      "output_parts": 10,
+      "method": "whole_loose_parts"
+    }
+  },
+  "flower_white": {
+    "lod0": {
+      "source_triangles": 8858,
+      "target_triangles": 1200,
+      "output_triangles": 1200,
+      "source_parts": 3512,
+      "output_parts": 56,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 8858,
+      "target_triangles": 450,
+      "output_triangles": 450,
+      "source_parts": 3512,
+      "output_parts": 23,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 8858,
+      "target_triangles": 140,
+      "output_triangles": 140,
+      "source_parts": 3512,
+      "output_parts": 5,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 8858,
+      "target_triangles": 200,
+      "output_triangles": 200,
+      "source_parts": 3512,
+      "output_parts": 11,
+      "method": "whole_loose_parts"
+    }
+  },
+  "flower_yellow": {
+    "lod0": {
+      "source_triangles": 2499,
+      "target_triangles": 700,
+      "output_triangles": 700,
+      "source_parts": 192,
+      "output_parts": 24,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 2499,
+      "target_triangles": 280,
+      "output_triangles": 279,
+      "source_parts": 192,
+      "output_parts": 9,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 2499,
+      "target_triangles": 100,
+      "output_triangles": 151,
+      "source_parts": 192,
+      "output_parts": 1,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 2499,
+      "target_triangles": 140,
+      "output_triangles": 151,
+      "source_parts": 192,
+      "output_parts": 1,
+      "method": "whole_loose_parts"
+    }
+  },
+  "flower_pink": {
+    "lod0": {
+      "source_triangles": 12204,
+      "target_triangles": 1800,
+      "output_triangles": 1800,
+      "source_parts": 1880,
+      "output_parts": 173,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 12204,
+      "target_triangles": 650,
+      "output_triangles": 650,
+      "source_parts": 1880,
+      "output_parts": 60,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 12204,
+      "target_triangles": 180,
+      "output_triangles": 180,
+      "source_parts": 1880,
+      "output_parts": 17,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 12204,
+      "target_triangles": 260,
+      "output_triangles": 260,
+      "source_parts": 1880,
+      "output_parts": 26,
+      "method": "whole_loose_parts"
+    }
+  },
+  "flower_crocus": {
+    "lod0": {
+      "source_triangles": 1200,
+      "target_triangles": 900,
+      "output_triangles": 900,
+      "source_parts": 52,
+      "output_parts": 36,
+      "method": "whole_loose_parts"
+    },
+    "lod1": {
+      "source_triangles": 1200,
+      "target_triangles": 360,
+      "output_triangles": 360,
+      "source_parts": 52,
+      "output_parts": 14,
+      "method": "whole_loose_parts"
+    },
+    "lod2": {
+      "source_triangles": 1200,
+      "target_triangles": 120,
+      "output_triangles": 120,
+      "source_parts": 52,
+      "output_parts": 4,
+      "method": "whole_loose_parts"
+    },
+    "shadow": {
+      "source_triangles": 1200,
+      "target_triangles": 180,
+      "output_triangles": 172,
+      "source_parts": 52,
+      "output_parts": 6,
+      "method": "whole_loose_parts"
+    }
+  }
+}

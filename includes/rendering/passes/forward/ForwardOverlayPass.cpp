@@ -80,9 +80,20 @@ void ForwardOverlayPass::renderWater(int bfwidth, int bfheight)
     shader.setFloat("waterTime", time);
     shader.setVec2("viewportSize", glm::vec2(static_cast<float>(bfwidth), static_cast<float>(bfheight)));
     shader.setVec3("sunDirection", lightSettings.sunDirection);
-    shader.setVec3("sunColor", lightSettings.sunDiffuse * lightSettings.sunIntensity *
-                                  lightSettings.sunIntensityScale *
-                                  config.daylightFactor);
+    const glm::vec3 waterSunColor = config.enableDirectionalLight
+        ? lightSettings.sunDiffuse * lightSettings.sunIntensity *
+          lightSettings.sunIntensityScale * config.daylightFactor
+        : glm::vec3(0.0f);
+    shader.setVec3("sunColor", waterSunColor);
+    const bool anyLightEnabled = config.enableDirectionalLight ||
+                                 config.enablePointLight ||
+                                 config.enableFlashlight;
+    const float ambientLightFactor = anyLightEnabled
+        ? (config.enableIBL
+            ? glm::clamp(glm::mix(0.08f, 1.0f, config.daylightFactor), 0.0f, 1.0f)
+            : glm::clamp(config.fixedAmbientStrength, 0.0f, 1.0f))
+        : 0.0f;
+    shader.setFloat("ambientLightFactor", ambientLightFactor);
     shader.setFloat("cloudAmbientTransmission",
                     calculateCloudAmbientTransmission(config));
     shader.setMat3("iblSunRotation", calculateIblSunRotation(lightSettings));

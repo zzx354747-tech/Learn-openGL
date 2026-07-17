@@ -1,0 +1,218 @@
+{
+  "pink_flower.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Thymus-serpyllum_C_summer.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\pink_flower.glb",
+    "materials": [
+      {
+        "material": "bq_Flower_Thymus-serpyllum",
+        "diffuse": "bq_Flower_Thymus-serpyllum_Diffuse.png",
+        "normal": "bq_Flower_Thymus-serpyllum_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Leaf_Thymus-serpyllum",
+        "diffuse": "bq_Flower_Thymus-serpyllum_Diffuse.png",
+        "normal": "bq_Flower_Thymus-serpyllum_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "crocus_flower.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Crocus-vernus_B_spring-summer.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\crocus_flower.glb",
+    "materials": [
+      {
+        "material": "bq_Leaf_Crocus-hybridus",
+        "diffuse": "bq_Flower_Crocus-hybridus_Diffuse.png",
+        "normal": "bq_Flower_Crocus-hybridus_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Flower_Crocus-hybridus",
+        "diffuse": "bq_Flower_Crocus-hybridus_Diffuse.png",
+        "normal": "bq_Flower_Crocus-hybridus_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "planet_tree.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Picea-abies_B_spring-summer-autumn.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\planet_tree.glb",
+    "materials": [
+      {
+        "material": "bq_Bark_Picea-abies",
+        "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+        "normal": "bq_Bark_Tilia-europaea_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Leaf_Picea-abies",
+        "diffuse": "bq_Leaf_Picea-abies_Diffuse.png",
+        "normal": "bq_Leaf_Picea-abies_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "planet_treeA.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Larix-decidua_A_spring-summer.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\planet_treeA.glb",
+    "materials": [
+      {
+        "material": "bq_Bark_Larix-decidua",
+        "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+        "normal": "bq_Bark_Tilia-europaea_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Leaf_Larix-decidua",
+        "diffuse": "bq_Leaf_Larix-decidua_2_Diffuse.png",
+        "normal": "bq_Leaf_Larix-decidua_2_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "snow_tree.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Picea-abies_A_winter.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\snow_tree.glb",
+    "materials": [
+      {
+        "material": "bq_Bark_Picea-abies",
+        "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+        "normal": "bq_Bark_Tilia-europaea_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Leaf_Picea-abies",
+        "diffuse": "bq_Leaf_Picea-abies_Diffuse.png",
+        "normal": "bq_Leaf_Picea-abies_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Snow",
+        "diffuse": null,
+        "normal": null,
+        "alpha": false
+      }
+    ]
+  },
+  "snow_treeA.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\coniferous\\bq_Tree_Larix-decidua_A_winter.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\snow_treeA.glb",
+    "materials": [
+      {
+        "material": "bq_Bark_Larix-decidua",
+        "diffuse": "bq_Bark_Tilia-europaea_Diffuse.jpg",
+        "normal": "bq_Bark_Tilia-europaea_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Leaf_Larix-decidua",
+        "diffuse": "bq_Leaf_Larix-decidua_3_Diffuse.png",
+        "normal": "bq_Leaf_Larix-decidua_3_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "planet_grass.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\grass\\bq_Grass_Panicum-virgatum_E_spring.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\planet_grass.glb",
+    "materials": [
+      {
+        "material": "bq_Grass_Panicum-virgatum",
+        "diffuse": "bq_Stem_Diffuse.jpg",
+        "normal": "bq_Stem_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "snow_grass.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\grass\\bq_Grass_Bromus-erectus_A_winter.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\snow_grass.glb",
+    "materials": [
+      {
+        "material": "bq_Grass_Bromus-erectus",
+        "diffuse": "bq_Grass_Diffuse.jpg",
+        "normal": "bq_Grass_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "purple_flower.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Campanula-scheuchzeri_C_spring-summer.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\purple_flower.glb",
+    "materials": [
+      {
+        "material": "bq_Flower_Bellflower",
+        "diffuse": "bq_Flowers_Diffuse.png",
+        "normal": "bq_Flowers_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Grass",
+        "diffuse": "bq_Grass_Diffuse.jpg",
+        "normal": "bq_Grass_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "white_flower.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Achillea-millefolium_D_spring-summer.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\white_flower.glb",
+    "materials": [
+      {
+        "material": "bq_Leaf_Achillea-millefolium",
+        "diffuse": "bq_Flower_Achillea-millefolium_Diffuse.png",
+        "normal": "bq_Flower_Achillea-millefolium_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Stem_Achillea-millefolium",
+        "diffuse": "bq_Flower_Achillea-millefolium_Diffuse.png",
+        "normal": "bq_Flower_Achillea-millefolium_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Flower_achillea-millefolium",
+        "diffuse": "bq_Flower_Achillea-millefolium_Diffuse.png",
+        "normal": "bq_Flower_Achillea-millefolium_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "yellow_flower.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Bunias-orientalis_A_summer.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\yellow_flower.glb",
+    "materials": [
+      {
+        "material": "bq_Stem_Summer",
+        "diffuse": "bq_Bunias-orientalis_summer_Diffuse.png",
+        "normal": "bq_Bunias-orientalis_summer_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Flower_Summer",
+        "diffuse": "bq_Bunias-orientalis_summer_Diffuse.png",
+        "normal": "bq_Bunias-orientalis_summer_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  },
+  "red_flower.glb": {
+    "source": "C:\\Users\\16495\\polygoniq_asset_packs\\botaniq_full\\blends\\models\\flowers\\bq_Flower_Dahlia-pinnata_F_summer-autumn.blend",
+    "output": "D:\\openGL\\Learn-openGL\\resources\\source_models\\botaniq_corrected\\red_flower.glb",
+    "materials": [
+      {
+        "material": "bq_Leaf_Dahlia-pinnata",
+        "diffuse": "bq_Flower_Dahlia-pinata_Diffuse.png",
+        "normal": "bq_Flower_Dahlia-pinata_Normal.jpg",
+        "alpha": true
+      },
+      {
+        "material": "bq_Flower_Dahlia-pinnata",
+        "diffuse": "bq_Flower_Dahlia-pinata_Diffuse.png",
+        "normal": "bq_Flower_Dahlia-pinata_Normal.jpg",
+        "alpha": true
+      }
+    ]
+  }
+}

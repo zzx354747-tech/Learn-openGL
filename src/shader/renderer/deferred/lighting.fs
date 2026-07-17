@@ -85,6 +85,7 @@ uniform float phongDiffuseStrength;
 uniform float phongSpecularStrength;
 uniform float phongIBLDiffuseStrength;
 uniform float phongIBLSpecularStrength;
+uniform float foliageTransmissionStrength;
 uniform float bloomThreshold;
 uniform float pointShadowStrength;
 uniform float sunShadowStrength;
@@ -586,6 +587,19 @@ vec3 calcFixedAmbient(vec3 albedo, float ao)
     return fixedAmbientColor * fixedAmbientStrength * albedo * ao;
 }
 
+vec3 calcFoliageTransmission(vec3 normal, vec3 lightDir, vec3 radiance,
+                             vec3 albedo, float transmission)
+{
+    float backLighting = pow(max(dot(-normal, lightDir), 0.0), 1.35);
+    float wrappedEdge = max((dot(normal, lightDir) + 0.28) / 1.28, 0.0);
+    wrappedEdge *= 1.0 - max(dot(normal, lightDir), 0.0);
+    vec3 transmissionTint = mix(
+        vec3(1.0), sqrt(max(albedo, vec3(0.0))), 0.72);
+    return transmissionTint * radiance * transmission *
+           (backLighting * 0.72 + wrappedEdge * 0.10) *
+           foliageTransmissionStrength;
+}
+
 float giHash(vec2 p)
 {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -666,8 +680,8 @@ vec3 calcScreenSpaceGI(vec3 fragPos, vec3 normal, vec3 albedo,
             sourceIrradiance += sun.diffuse * sourceNdotL / PI *
                                 cloudShadowVisibility(samplePos);
         }
-        if (enablePointLight)
-        {
+if (enablePointLight)
+{
             vec3 toPointLight = pointLight.position - samplePos;
             float pointDistance = length(toPointLight);
             float attenuation = 1.0 / (pointLight.constant +
@@ -778,10 +792,14 @@ vec3 calcUnderwaterCaustics(
 void main()
 {
     vec3 FragPos = texture(gPosition, TexCoords).rgb;
-    vec3 Normal = normalize(texture(gNormalRoughness, TexCoords).rgb);
-    vec3 albedo = texture(gAlbedoMetallic, TexCoords).rgb;
-    float metallic = texture(gAlbedoMetallic, TexCoords).a;
-    float roughness = texture(gNormalRoughness, TexCoords).a;
+    vec4 normalRoughness = texture(gNormalRoughness, TexCoords);
+    vec4 albedoPayload = texture(gAlbedoMetallic, TexCoords);
+    vec3 Normal = normalize(normalRoughness.rgb);
+    vec3 albedo = albedoPayload.rgb;
+    bool foliage = normalRoughness.a < 0.0;
+    float transmission = foliage ? albedoPayload.a : 0.0;
+    float metallic = foliage ? 0.0 : albedoPayload.a;
+    float roughness = clamp(abs(normalRoughness.a), 0.04, 1.0);
     // 现实中几乎非金属材料反射率都在2%-5%,金属材质反射率为它本身的颜色
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
@@ -822,6 +840,18 @@ void main()
                     FragPos, viewDir, 
                     albedo, roughness, 
                     metallic);
+    if (foliage && transmission > 0.001)
+    {
+        vec3 lightDir = normalize(pointLight.position - FragPos);
+        float distanceToLight = length(pointLight.position - FragPos);
+        float attenuation = 1.0 / (
+            pointLight.constant + pointLight.linear * distanceToLight +
+            pointLight.quadratic * distanceToLight * distanceToLight);
+        float shadow = PointShadowCalculation(FragPos) * pointShadowStrength;
+        result += calcFoliageTransmission(
+            Normal, lightDir, pointLight.diffuse * attenuation,
+            albedo, transmission) * (1.0 - shadow);
+    }
 }
 
 if (enableDirectionalLight)
@@ -837,6 +867,15 @@ if (enableDirectionalLight)
                     viewDir, albedo,
                     FragPosLightSpace,
                     roughness, metallic) * cloudVisibility;
+    if (foliage && transmission > 0.001)
+    {
+        vec3 lightDir = normalize(-sun.direction);
+        float transmissionShadow = ShadowCalculation(
+            FragPosLightSpace, -Normal, lightDir) * sunShadowStrength;
+        result += calcFoliageTransmission(
+            Normal, lightDir, sun.diffuse, albedo, transmission) *
+            cloudVisibility * (1.0 - transmissionShadow * 0.72);
+    }
 }
 
 vec3 underwaterCaustics = calcUnderwaterCaustics(
@@ -857,6 +896,25 @@ if (enableFlashlight)
                     FragPos, viewDir, 
                     albedo, FragPosSpotLightSpace,
                     roughness, metallic);
+    if (foliage && transmission > 0.001)
+    {
+        vec3 lightDir = normalize(flashLight.position - FragPos);
+        float distanceToLight = length(flashLight.position - FragPos);
+        float attenuation = 1.0 / (
+            flashLight.constant + flashLight.linear * distanceToLight +
+            flashLight.quadratic * distanceToLight * distanceToLight);
+        float theta = dot(lightDir, normalize(-flashLight.direction));
+        float epsilon = max(
+            flashLight.cutOff - flashLight.outerCutOff, 0.0001);
+        float intensity = clamp(
+            (theta - flashLight.outerCutOff) / epsilon, 0.0, 1.0);
+        float shadow = SpotShadowCalculation(
+            FragPosSpotLightSpace) * flashShadowStrength;
+        result += calcFoliageTransmission(
+            Normal, lightDir,
+            flashLight.diffuse * attenuation * intensity,
+            albedo, transmission) * (1.0 - shadow);
+    }
 }
     FragColor = vec4(result, 1.0);
 

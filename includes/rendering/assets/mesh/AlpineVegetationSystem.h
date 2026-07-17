@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -17,13 +18,15 @@ struct SceneRenderConfig;
 class AlpineVegetationSystem
 {
 public:
+    static constexpr std::size_t ShowcaseModelCount = 10;
+
     struct Settings
     {
         std::uint32_t seed = 0x5a17b3c9u;
-        std::uint32_t treeBudget = 20000;
+        std::uint32_t treeBudget = 3000;
         std::uint32_t shrubBudget = 30000;
         std::uint32_t grassBudget = 400000;
-        std::uint32_t flowerBudget = 100000;
+        std::uint32_t flowerBudget = 50000;
         std::uint32_t cushionBudget = 1200;
         float chunkSize = 256.0f;
     };
@@ -40,6 +43,10 @@ public:
                       const SceneRenderConfig& config) const;
     void drawDirectionalShadow(Shader& shader, const Camera& camera,
                                const SceneRenderConfig& config) const;
+    void drawShowcase(Shader& shader, const Camera& camera,
+                      const SceneRenderConfig& config) const;
+    void drawShowcaseShadow(Shader& shader, const Camera& camera,
+                            const SceneRenderConfig& config) const;
     void bindTerrainDensity(Shader& shader, int textureUnit = 20) const;
 
     // Replace this implementation with a moisture-field texture sampler after
@@ -58,7 +65,7 @@ private:
         ConiferTall, ConiferBroad, ConiferSapling,
         ShrubRound, ShrubWindSwept,
         GrassA, GrassB, GrassC,
-        FlowerStar, FlowerBell, FlowerSpike,
+        FlowerStar, FlowerBell, FlowerSpike, FlowerPink, FlowerCrocus,
         CushionA, CushionB,
         Count
     };
@@ -82,7 +89,21 @@ private:
         GLuint vao = 0;
         GLuint vertexBuffer = 0;
         GLuint indexBuffer = 0;
+        std::array<GLuint, 4> baseColorTextures{};
+        std::array<GLuint, 4> normalTextures{};
+        GLuint baseColorAtlas = 0;
+        GLuint normalAtlas = 0;
+        GLuint foliageDataAtlas = 0;
+        std::array<VegetationMaterialSlot, 4> materialSlots{};
+        int materialCount = 0;
+        int baseColorTextureCount = 0;
+        int normalTextureCount = 0;
+        bool hasRuntimeMaterialAtlas = false;
+        bool ownsTextures = false;
         GLsizei indexCount = 0;
+        float alphaCutoff = 0.5f;
+        bool alphaMask = false;
+        bool doubleSided = false;
     };
 
     struct Bucket
@@ -99,6 +120,8 @@ private:
     const TerrainMesh& terrain_;
     Settings settings_;
     std::array<Bucket, static_cast<std::size_t>(Species::Count)> buckets_;
+    std::array<VegetationMeshData, ShowcaseModelCount> showcaseCpuMeshes_;
+    std::array<GpuMesh, ShowcaseModelCount> showcaseMeshes_;
     std::vector<std::uint8_t> densityPixels_;
     GLuint densityTexture_ = 0;
     glm::mat4 currentViewProjection_ = glm::mat4(1.0f);
@@ -122,6 +145,9 @@ private:
     void validateBiomeParity() const;
     void drawBuckets(Shader& shader, const Camera& camera,
                      const SceneRenderConfig& config, bool shadow) const;
+    void drawShowcaseMeshes(Shader& shader, const Camera& camera,
+                            const SceneRenderConfig& config,
+                            bool shadow) const;
 };
 
 static_assert(sizeof(AlpineVegetationSystem::Settings) >= 20,

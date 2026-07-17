@@ -24,6 +24,7 @@ struct ShaderLibrary
     Shader blur;
     Shader geometryPBR;
     Shader vegetationGeometry;
+    Shader vegetationUnlit;
     Shader vegetationShadow;
     Shader basicForward;
     Shader water;

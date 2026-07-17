@@ -354,12 +354,22 @@ void SceneRenderUI::renderUI(
             ImGui::SliderFloat("Vegetation Wind Strength",
                                &uiState.sceneConfig.vegetationWindStrength,
                                0.0f, 1.2f, "%.2f m");
+            ImGui::SliderFloat("Foliage Mip Bias",
+                               &uiState.sceneConfig.vegetationMaterialMipBias,
+                               -0.5f, 1.5f, "%.2f");
+            ImGui::SetItemTooltip(
+                "Positive values select smoother alpha/normal mips and reduce "
+                "sub-pixel foliage shimmer");
+            ImGui::SliderFloat(
+                "Foliage Transmission",
+                &uiState.sceneConfig.vegetationTransmissionStrength,
+                0.0f, 1.5f, "%.2f");
             ImGui::SliderFloat("Grass Draw Distance",
                                &uiState.sceneConfig.vegetationGrassDistance,
                                40.0f, 220.0f, "%.0f m");
             ImGui::SliderFloat("Flower Draw Distance",
                                &uiState.sceneConfig.vegetationFlowerDistance,
-                               30.0f, 140.0f, "%.0f m");
+                               30.0f, 240.0f, "%.0f m");
             ImGui::SliderFloat("Tree Draw Distance",
                                &uiState.sceneConfig.vegetationTreeDistance,
                                300.0f, 2400.0f, "%.0f m");
@@ -408,7 +418,7 @@ void SceneRenderUI::renderUI(
         ImGui::SeparatorText("Material Mapping");
         ImGui::Checkbox("Normal Mapping", &uiState.renderParams.enableNormalMapping);
         ImGui::Checkbox("Parallax Mapping", &uiState.renderParams.enableParallaxMapping);
-        ImGui::SliderFloat("Parallax Height Scale", &uiState.renderParams.parallaxHeightScale, 0.0f, 0.1f, "%.3f");
+        ImGui::SliderFloat("Parallax Height Scale", &uiState.renderParams.parallaxHeightScale, 0.0f, 0.02f, "%.3f");
         ImGui::SliderFloat("Bump Normal Strength", &uiState.renderParams.bumpNormalStrength, 0.0f, 10.0f, "%.2f");
         ImGui::SliderInt("Parallax Layers", &uiState.renderParams.numLayers, 1, 64);
 

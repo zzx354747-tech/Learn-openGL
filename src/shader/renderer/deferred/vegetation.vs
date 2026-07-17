@@ -4,6 +4,7 @@ layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec4 aColorRoughness;
 layout(location=3) in vec2 aWindVariation;
+layout(location=4) in vec4 aUVMaterial;
 layout(location=5) in vec4 iPosScale;
 layout(location=6) in vec4 iRotColor;
 
@@ -11,6 +12,7 @@ out vec3 vWorldPosition;
 out vec3 vNormal;
 out vec4 vColorRoughness;
 out vec2 vVelocity;
+out vec4 vUVMaterial;
 flat out int vPointMode;
 
 uniform mat4 u_viewProjection;
@@ -26,6 +28,7 @@ uniform float u_pointWorldHeight;
 uniform float u_pointPixelScale;
 uniform float u_pointMaxPixels;
 uniform float u_pointMinDistance;
+uniform float u_pointMaxDistance;
 
 float hash12(vec2 p)
 {
@@ -84,12 +87,13 @@ void main()
 {
     uint packedValue = uint(iRotColor.w + .5);
     float hue = float(packedValue & 255u) / 255.;
-    float value = float((packedValue >> 8u) & 255u) / 255. * .70 + .65;
+    float value = float((packedValue >> 8u) & 255u) / 255. * .30 + .82;
     uint flags = (packedValue >> 23u) & 1u;
-    vec3 color = hueRotate(aColorRoughness.rgb, (hue - .5) * .32) * value;
+    vec3 color = hueRotate(aColorRoughness.rgb, (hue - .5) * .12) * value;
     if (flags != 0u)
         color = mix(color, vec3(.220,.145,.040), .58 * aWindVariation.y);
     vColorRoughness = vec4(color, aColorRoughness.a);
+    vUVMaterial = aUVMaterial;
 
     if (u_pointMode)
     {
@@ -99,11 +103,13 @@ void main()
         vPointMode = 1;
         vNormal = vec3(0,1,0);
         vVelocity = vec2(0);
+        vUVMaterial = vec4(0);
         vWorldPosition = iPosScale.xyz +
             vec3(0, u_pointWorldHeight * iPosScale.w * .48, 0);
         vec4 clip = u_viewProjection * vec4(vWorldPosition, 1);
         float distanceXZ = length(iPosScale.xz - u_cameraPosition.xz);
-        if (distanceXZ < u_pointMinDistance || clip.w <= 0.0)
+        if (distanceXZ < u_pointMinDistance ||
+            distanceXZ > u_pointMaxDistance || clip.w <= 0.0)
         {
             gl_Position = vec4(2,2,2,1);
             gl_PointSize = 1.0;

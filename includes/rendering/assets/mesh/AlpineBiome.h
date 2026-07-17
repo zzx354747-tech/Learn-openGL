@@ -7,12 +7,12 @@
 struct AlpineBiomeParameters
 {
     float sunAzimuth = 0.0f;
-    float sunHeightShift = 0.06f;
-    float noiseHeightShift = 0.08f;
-    float grassEnd = 0.36f;
-    float rockStart = 0.39f;
-    float snowStart = 0.53f;
-    float snowEnd = 0.56f;
+    float sunHeightShift = 0.006f;
+    float noiseHeightShift = 0.008f;
+    float grassEnd = 0.28f;
+    float rockStart = 0.30f;
+    float snowStart = 0.43f;
+    float snowEnd = 0.45f;
 };
 
 inline float alpineSmoothstep(float a, float b, float x)
