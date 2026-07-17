@@ -341,6 +341,27 @@ void SceneRenderUI::renderUI(
                                0.0f, 0.18f, "%.3f");
             ImGui::SliderFloat("Height Blend", &uiState.sceneConfig.terrainBlendSharpness,
                                0.0f, 0.6f, "%.3f");
+            ImGui::SeparatorText("Vegetation");
+            ImGui::Checkbox("Enable Alpine Vegetation",
+                            &uiState.sceneConfig.enableVegetation);
+            ImGui::SliderFloat2("Vegetation Wind Direction",
+                                glm::value_ptr(uiState.sceneConfig.vegetationWindDirection),
+                                -1.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Vegetation Wind Speed",
+                               &uiState.sceneConfig.vegetationWindSpeed,
+                               0.0f, 4.0f, "%.2f");
+            ImGui::SliderFloat("Vegetation Wind Strength",
+                               &uiState.sceneConfig.vegetationWindStrength,
+                               0.0f, 1.2f, "%.2f m");
+            ImGui::SliderFloat("Grass Draw Distance",
+                               &uiState.sceneConfig.vegetationGrassDistance,
+                               40.0f, 220.0f, "%.0f m");
+            ImGui::SliderFloat("Flower Draw Distance",
+                               &uiState.sceneConfig.vegetationFlowerDistance,
+                               30.0f, 140.0f, "%.0f m");
+            ImGui::SliderFloat("Tree Draw Distance",
+                               &uiState.sceneConfig.vegetationTreeDistance,
+                               300.0f, 2400.0f, "%.0f m");
             ImGui::TreePop();
         }
         if (ImGui::TreeNodeEx("Volumetric Sun Scattering", ImGuiTreeNodeFlags_DefaultOpen))

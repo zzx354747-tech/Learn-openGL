@@ -13,6 +13,7 @@
 #include "rendering/assets/mesh/SkyboxMesh.h"
 #include "rendering/assets/mesh/TerrainMesh.h"
 #include "rendering/assets/mesh/WaterMesh.h"
+#include "rendering/assets/mesh/AlpineVegetationSystem.h"
 #include "rendering/resources/shadow/DirectionalShadowMap.h"
 #include "rendering/resources/shadow/PointShadowMap.h"
 #include "rendering/resources/shadow/SpotShadowMap.h"
@@ -57,6 +58,7 @@ struct RendererScene
     SkyboxMesh skyboxMesh;
     TerrainMesh terrainMesh;
     WaterMesh waterMesh;
+    AlpineVegetationSystem vegetationSystem;
 
     DirectionalShadowMap shadowMap;
     PointShadowMap pointShadowMap;

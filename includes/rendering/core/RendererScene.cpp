@@ -263,6 +263,7 @@ RendererScene::RendererScene(int width, int height)
     , sceneGBuffer(width, height)
     , sceneSSAO(width, height)
     , waterMesh(terrainMesh)
+    , vegetationSystem(terrainMesh)
     , shadowMap(4096, 4096)
     , pointShadowMap(1024, 1024, 1.0f, 50.0f)
     , spotShadowMap(1024, 1024, 1.0f, 50.0f)
@@ -277,6 +278,7 @@ RendererScene::RendererScene(int width, int height)
                       sceneResources.lightingHandles.depthCubeMap)
     , directionalShadowPass(shadowMap,
                             shaderLibrary.shadowMap,
+                            shaderLibrary.vegetationShadow,
                             shaderLibrary.cloudOpticalDepth,
                             shaderLibrary.cloudOpticalDepthBlur,
                             shaderLibrary.cloudOpticalDepthToTransmittance,
@@ -286,6 +288,7 @@ RendererScene::RendererScene(int width, int height)
                             sceneState,
                             lightSettings,
                             sceneConfig,
+                            vegetationSystem,
                             sceneResources.registry,
                             sceneResources.lightingHandles.shadowMap)
     , spotShadowPass(spotShadowMap,
@@ -353,6 +356,7 @@ RendererScene::RendererScene(int width, int height)
       }
 {
     sceneResources.shaderLibrary = &shaderLibrary;
+    sceneResources.vegetationSystem = &vegetationSystem;
     sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
     sceneResources.skyboxMesh = &skyboxMesh;
@@ -420,10 +424,19 @@ void RendererScene::render(int width, int height)
     {
         if (sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
         {
+            // Alpine vegetation is a deferred GBuffer system by design.
+            sceneConfig.renderMode = RenderMode::Lighting;
+            const TerrainMesh::Settings& terrainSettings = terrainMesh.getSettings();
+            const glm::vec2 meadowViewXZ = terrainSettings.meadowLakeCenter +
+                glm::vec2(0.0f, terrainSettings.meadowLakeRadii.y * 2.35f);
+            const TerrainMesh::SurfaceSample meadowSurface =
+                terrainMesh.sampleSurface(meadowViewXZ.x, meadowViewXZ.y);
             camera.SetPose(
-                glm::vec3(0.0f, 300.0f, 2300.0f),
+                glm::vec3(meadowViewXZ.x,
+                          meadowSurface.worldPosition.y + 28.0f,
+                          meadowViewXZ.y),
                 -90.0f,
-                13.0f);
+                -12.0f);
         }
         previousSceneSelection = sceneConfig.sceneSelection;
     }

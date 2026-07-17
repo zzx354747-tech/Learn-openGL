@@ -15,12 +15,14 @@
 #include "scene/Camera.h"
 
 class GpuProfiler;
+class AlpineVegetationSystem;
 
 class DirectionalShadowPass
 {
 public:
     DirectionalShadowPass(DirectionalShadowMap& shadowMap,
         Shader& shadowShader,
+        Shader& vegetationShadowShader,
         Shader& cloudOpticalDepthShader,
         Shader& cloudOpticalDepthBlurShader,
         Shader& cloudOpticalDepthToTransmittanceShader,
@@ -28,6 +30,7 @@ public:
         Camera& camera,
         SceneRenderState& state, LightSettings& lightSettings,
         SceneRenderConfig& config,
+        AlpineVegetationSystem& vegetationSystem,
         ResourceRegistry& registry, ResourceHandle shadowMapHandle);
     ~DirectionalShadowPass();
 
@@ -46,6 +49,7 @@ private:
     ResourceHandle shadowMapHandle;
     DirectionalShadowMap& shadowMap;
     Shader& shadowShader;
+    Shader& vegetationShadowShader;
     Shader& cloudOpticalDepthShader;
     Shader& cloudOpticalDepthBlurShader;
     Shader& cloudOpticalDepthToTransmittanceShader;
@@ -55,6 +59,7 @@ private:
     SceneRenderState& state;
     LightSettings& lightSettings;
     SceneRenderConfig& config;
+    AlpineVegetationSystem& vegetationSystem;
     unsigned int rawCloudOpticalDepthTexture = 0;
     unsigned int filteredCloudOpticalDepthTexture = 0;
     unsigned int cloudTransmittanceTextureId = 0;

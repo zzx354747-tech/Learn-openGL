@@ -1,4 +1,5 @@
 #include "rendering/passes/geometry/GeometryPass.h"
+#include "rendering/assets/mesh/AlpineVegetationSystem.h"
 
 GeometryPass::GeometryPass(
     SceneRenderResources& resources,
@@ -24,6 +25,11 @@ void GeometryPass::render(int bfwidth, int bfheight)
     glViewport(0, 0, bfwidth, bfheight);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthRange(0.0, 1.0);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     renderSpheres(bfwidth, bfheight);
@@ -43,34 +49,33 @@ void GeometryPass::render(int bfwidth, int bfheight)
         resources.lightingHandles.gAlbedoMetallic,
         gBuffer.getAlbedoMetallicTexture()
     );
+    resources.registry.setTexture(
+        resources.lightingHandles.gVelocity,
+        gBuffer.getVelocityTexture()
+    );
 }
 
 void GeometryPass::renderSpheres(int bfwidth, int bfheight)
 {
     Shader* shader = getPBRShader();
-
     if (!shader)
         return;
 
     shader->use();
-
-    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
-    renderParams.apply(*shader);                                     // Owner B
-
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+    renderParams.apply(*shader);
     sphereDrawer.draw(*shader);
 }
 
 void GeometryPass::renderModels(int bfwidth, int bfheight)
 {
-    Shader* shader = getPBRShader();   // 复用同一份 GeometryPass shader
-
+    Shader* shader = getPBRShader();
     if (!shader)
         return;
 
     shader->use();
-
-    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
-    renderParams.apply(*shader);                                     // Owner B
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);
+    renderParams.apply(*shader);
     shader->setFloat("u_sunAzimuth", config.terrainSunAzimuth);
     shader->setFloat("u_terrainSunHeightShift", config.terrainSunHeightShift);
     shader->setFloat("u_terrainNoiseHeightShift", config.terrainNoiseHeightShift);
@@ -82,7 +87,32 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     shader->setFloat("u_terrainTextureScale", config.terrainTextureScale);
     shader->setInt("u_terrainDebugMode", config.terrainDebugMode);
 
-    modelDrawer.draw(*shader);   // Owner C：model 矩阵在这里面设置
+    const bool alpineVegetation =
+        config.sceneSelection == SceneSelection::FujiTerrain &&
+        config.enableVegetation && resources.vegetationSystem;
+    if (alpineVegetation)
+        resources.vegetationSystem->bindTerrainDensity(*shader);
+    else
+        shader->setBool("hasVegetationDensity", false);
+
+    // Populate terrain depth before drawing vegetation. This both guarantees
+    // mountain occlusion and enables early depth rejection for hidden foliage.
+    modelDrawer.draw(*shader);
+
+    if (alpineVegetation && resources.shaderLibrary)
+    {
+        // Restate the full depth contract instead of inheriting state from a
+        // previous pass: foliage writes depth, and fragments behind terrain
+        // fail the fixed-function depth test before reaching the GBuffer.
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glDepthRange(0.0, 1.0);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        resources.vegetationSystem->drawGeometry(
+            resources.shaderLibrary->vegetationGeometry, camera, config);
+    }
 }
 
 Shader* GeometryPass::getPBRShader()

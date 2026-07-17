@@ -23,6 +23,8 @@ struct ShaderLibrary
     Shader brdf;
     Shader blur;
     Shader geometryPBR;
+    Shader vegetationGeometry;
+    Shader vegetationShadow;
     Shader basicForward;
     Shader water;
     Shader waterCausticPhotons;

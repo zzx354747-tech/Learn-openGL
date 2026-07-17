@@ -62,6 +62,12 @@ ShaderLibrary::ShaderLibrary()
     , geometryPBR(
         "../src/shader/renderer/deferred/geometry.vs",
         "../src/shader/renderer/deferred/geometry.fs")
+    , vegetationGeometry(
+        "../src/shader/renderer/deferred/vegetation.vs",
+        "../src/shader/renderer/deferred/vegetation.fs")
+    , vegetationShadow(
+        "../src/shader/renderer/shadow/vegetation.vs",
+        "../src/shader/renderer/shadow/vegetation.fs")
     , basicForward(
         "../src/shader/renderer/forward/unlit.vs",
         "../src/shader/renderer/forward/unlit.fs")

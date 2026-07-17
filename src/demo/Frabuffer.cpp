@@ -107,6 +107,8 @@ int main(int argc, char** argv)
     const bool waterCheck = argc > 1 && std::string(argv[1]) == "--water-check";
     const bool waterEffectsCheck = argc > 1 &&
         std::string(argv[1]) == "--water-effects-check";
+    const bool fujiPreview = argc > 1 &&
+        std::string(argv[1]) == "--fuji-preview";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -144,10 +146,10 @@ int main(int argc, char** argv)
         {
             TerrainMesh terrainCheck;
             WaterMesh waterCheckMesh(terrainCheck);
-            if (terrainCheck.getLakeRegions().size() != 2u ||
+            if (terrainCheck.getLakeRegions().size() != 7u ||
                 terrainCheck.getLakeDataTexture() == 0u)
             {
-                std::cerr << "Water check failed: expected two uploaded lake regions"
+                std::cerr << "Water check failed: expected seven uploaded lake regions"
                           << std::endl;
                 return 2;
             }
@@ -155,7 +157,7 @@ int main(int argc, char** argv)
             const auto& terrainSettings = terrainCheck.getSettings();
             const std::array<glm::vec2, 2> lakeCenters{{
                 terrainSettings.lakeCenter, terrainSettings.meadowLakeCenter}};
-            for (std::size_t i = 0; i < lakes.size(); ++i)
+            for (std::size_t i = 0; i < lakeCenters.size(); ++i)
             {
                 const float floorHeight = terrainCheck.sampleHeight(
                     lakeCenters[i].x, lakeCenters[i].y);
@@ -257,7 +259,7 @@ int main(int argc, char** argv)
 
     RendererScene scene(bfwidth, bfheight);
 
-    if (waterEffectsCheck)
+    if (waterEffectsCheck || fujiPreview)
     {
         scene.sceneConfig.sceneSelection = SceneSelection::FujiTerrain;
         scene.sceneConfig.renderMode = RenderMode::Lighting;
@@ -287,7 +289,8 @@ int main(int argc, char** argv)
 
         float FPS = 1.0f / deltaTime;
 
-        scene.renderUI(FPS, swapWaitMs);
+        if (!fujiPreview)
+            scene.renderUI(FPS, swapWaitMs);
 
         processInput(window, ctx, deltaTime);
 
@@ -297,7 +300,8 @@ int main(int argc, char** argv)
 
         // 渲染ImGui界面
         ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if (!fujiPreview)
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         double beforeSwap = glfwGetTime();
         glfwSwapBuffers(window);

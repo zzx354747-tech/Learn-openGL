@@ -3,6 +3,7 @@
 layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormalRoughness;
 layout (location = 2) out vec4 gAlbedoMetallic;
+layout (location = 3) out vec2 gVelocity;
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -65,6 +66,9 @@ uniform float u_snowEnd;
 uniform float u_terrainBlendSharpness;
 uniform float u_terrainTextureScale;
 uniform int u_terrainDebugMode;
+uniform sampler2D vegetationDensityMap;
+uniform bool hasVegetationDensity;
+uniform float vegetationTerrainSize;
 
 #include "../common/terrain_biomes.glsl"
 
@@ -207,6 +211,13 @@ void main()
                           sunFacing * 0.5 + 0.5);
         albedo = rockAlbedo * weights.x +
                  grassAlbedo * weights.y + snowAlbedo * weights.z;
+        if (hasVegetationDensity)
+        {
+            vec2 densityUV = FragPos.xz / vegetationTerrainSize + 0.5;
+            float vegetationDensity = texture(vegetationDensityMap,
+                                              clamp(densityUV, 0.0, 1.0)).r;
+            albedo *= mix(1.0, 0.90, vegetationDensity * weights.y);
+        }
 
         if (enableNormalMapping)
         {
@@ -303,4 +314,5 @@ void main()
     gPosition = FragPos;
     gNormalRoughness = vec4(normal, clamp(roughness, 0.04, 1.0));
     gAlbedoMetallic = vec4(albedo, clamp(metallic, 0.0, 1.0));
+    gVelocity = vec2(0.0);
 }

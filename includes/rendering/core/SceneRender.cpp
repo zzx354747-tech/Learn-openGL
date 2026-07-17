@@ -1,6 +1,7 @@
 #include "rendering/core/SceneRender.h"
+#include "rendering/assets/mesh/AlpineVegetationSystem.h"
 
-SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass, SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer, int width, int height) : config(config), resources(resources), state(state), directionalShadowPass(directionalShadowPass), pointShadowPass(pointShadowPass), spotShadowPass(spotShadowPass), shadowDebugPass(resources, shadowResources), deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass), forwardHDRPass(camera, resources, config, state, lightSettings, sphereDrawer, modelDrawer), forwardOverlayPass(camera, resources, state, config, lightSettings), volumetricSkyPass(camera, resources, config, lightSettings, width, height), volumetricLightPass(camera, shadowResources, resources, config, state, lightSettings, width, height), screenPass(config, resources, camera, lightSettings), temporalAAPass(width, height, camera, config)
+SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass, SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer, int width, int height) : camera(camera), config(config), resources(resources), state(state), directionalShadowPass(directionalShadowPass), pointShadowPass(pointShadowPass), spotShadowPass(spotShadowPass), shadowDebugPass(resources, shadowResources), deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass), forwardHDRPass(camera, resources, config, state, lightSettings, sphereDrawer, modelDrawer), forwardOverlayPass(camera, resources, state, config, lightSettings), volumetricSkyPass(camera, resources, config, lightSettings, width, height), volumetricLightPass(camera, shadowResources, resources, config, state, lightSettings, width, height), screenPass(config, resources, camera, lightSettings), temporalAAPass(width, height, camera, config)
 {
         (void)lightSettings;
     }
@@ -9,6 +10,9 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
 {
         gpuProfiler_.beginFrame();
         temporalAAPass.beginFrame(bfwidth, bfheight);
+        if (resources.vegetationSystem && config.enableVegetation &&
+            config.sceneSelection == SceneSelection::FujiTerrain)
+            resources.vegetationSystem->beginFrame(camera, bfwidth, bfheight);
         // Cloud transmittance is consumed by deferred surface lighting, so it
         // must be current before the lighting pass begins.
         volumetricSkyPass.updateCloudAcceleration(screenQuad, gpuProfiler_);
@@ -82,13 +86,19 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
                     ? resources.registry.resolveTexture(
                           resources.lightingHandles.gPosition)
                     : 0;
+            const GLuint currentVelocityTexture =
+                config.renderMode == RenderMode::Lighting
+                    ? resources.registry.resolveTexture(
+                          resources.lightingHandles.gVelocity)
+                    : 0;
             sceneTexture = temporalAAPass.resolve(
                 bfwidth,
                 bfheight,
                 framebuffer,
                 screenQuad,
                 resources.shaderLibrary->taa,
-                currentPositionTexture);
+                currentPositionTexture,
+                currentVelocityTexture);
         }
 
         {

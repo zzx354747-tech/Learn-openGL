@@ -87,6 +87,7 @@ struct SceneRenderConfig
     bool enableIBL = false;
     bool enableGI = true;
     bool enableWater = true;
+    bool enableVegetation = true;
     bool enableTAA = true;
     bool enableProceduralSky = true;
     bool enableVolumetricClouds = true;
@@ -101,6 +102,12 @@ struct SceneRenderConfig
     WaterRenderSettings water;
     float taaHistoryWeight = 0.88f;
     float taaSharpness = 0.28f;
+    glm::vec2 vegetationWindDirection = glm::vec2(0.88f, 0.47f);
+    float vegetationWindSpeed = 1.15f;
+    float vegetationWindStrength = 0.32f;
+    float vegetationGrassDistance = 150.0f;
+    float vegetationFlowerDistance = 100.0f;
+    float vegetationTreeDistance = 1400.0f;
     glm::vec3 skyTopColor = glm::vec3(0.24f, 0.55f, 0.90f);
     CloudWeatherPreset cloudWeatherPreset = CloudWeatherPreset::Sunny;
     unsigned int cloudWeatherTransitionRequest = 0;

@@ -37,6 +37,7 @@ public:
     const GpuProfiler& gpuProfiler() const { return gpuProfiler_; }
 
 private:
+    Camera& camera;
     SceneRenderConfig& config;
     SceneRenderResources& resources;
     SceneRenderState& state;

@@ -1,6 +1,7 @@
 #include "rendering/passes/shadow/DirectionalShadowPass.h"
 #include "rendering/debug/GpuProfiler.h"
 #include "rendering/assets/mesh/TerrainMesh.h"
+#include "rendering/assets/mesh/AlpineVegetationSystem.h"
 
 #include <algorithm>
 #include <cmath>
@@ -51,6 +52,7 @@ void createR16FTarget(
 DirectionalShadowPass::DirectionalShadowPass(
     DirectionalShadowMap& shadowMap,
     Shader& shadowShader,
+    Shader& vegetationShadowShader,
     Shader& cloudOpticalDepthShader,
     Shader& cloudOpticalDepthBlurShader,
     Shader& cloudOpticalDepthToTransmittanceShader,
@@ -60,12 +62,14 @@ DirectionalShadowPass::DirectionalShadowPass(
     SceneRenderState& state,
     LightSettings& lightSettings,
     SceneRenderConfig& config,
+    AlpineVegetationSystem& vegetationSystem,
     ResourceRegistry& registry,
     ResourceHandle shadowMapHandle)
     : registry(registry)
     , shadowMapHandle(shadowMapHandle)
     , shadowMap(shadowMap)
     , shadowShader(shadowShader)
+    , vegetationShadowShader(vegetationShadowShader)
     , cloudOpticalDepthShader(cloudOpticalDepthShader)
     , cloudOpticalDepthBlurShader(cloudOpticalDepthBlurShader)
     , cloudOpticalDepthToTransmittanceShader(
@@ -76,6 +80,7 @@ DirectionalShadowPass::DirectionalShadowPass(
     , state(state)
     , lightSettings(lightSettings)
     , config(config)
+    , vegetationSystem(vegetationSystem)
 {
     createCloudTextures();
 }
@@ -128,6 +133,14 @@ void DirectionalShadowPass::render(
         glClear(GL_DEPTH_BUFFER_BIT);
         sphereDrawer.draw(shadowShader);
         modelDrawer.draw(shadowShader);
+        if (config.sceneSelection == SceneSelection::FujiTerrain &&
+            config.enableVegetation)
+        {
+            vegetationShadowShader.use();
+            vegetationShadowShader.setMat4("lightSpaceMatrix", state.dirLightSpaceMatrix);
+            vegetationSystem.drawDirectionalShadow(
+                vegetationShadowShader, camera, config);
+        }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 

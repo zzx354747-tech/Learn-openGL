@@ -21,6 +21,19 @@ public:
         float maximumDepth = 0.0f;
     };
 
+    // Stable CPU contract for systems that must attach content to the exact
+    // rendered terrain. Vegetation consumes this atomically so height, normal,
+    // biome classification and hydrology can never come from different paths.
+    struct SurfaceSample
+    {
+        glm::vec3 worldPosition = glm::vec3(0.0f);
+        glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::vec4 tdm = glm::vec4(0.0f, 0.0f, 0.5f, 0.5f);
+        float signedDistanceToWater = -128.0f;
+        float waterDepth = 0.0f;
+        bool underwater = false;
+    };
+
     struct Peak
     {
         float bezierT;
@@ -92,6 +105,10 @@ public:
     glm::vec3 sampleNormal(float worldX, float worldZ) const;
     float sampleWorldHeight(float worldX, float worldZ) const;
     glm::vec3 sampleWorldNormal(float worldX, float worldZ) const;
+    // Bilinear CPU view of the immutable Terrain Data Map:
+    // x=normalized height, y=slope, z=aspect, w=curvature.
+    glm::vec4 sampleTerrainData(float worldX, float worldZ) const;
+    SurfaceSample sampleSurface(float worldX, float worldZ) const;
     bool isBelowWater(float worldX, float worldZ) const;
     glm::vec2 sampleLakeData(float worldX, float worldZ) const;
     float sampleWaterDepth(float worldX, float worldZ) const;
@@ -114,6 +131,7 @@ public:
     float getMaximumWaterDepth() const { return maximumWaterDepth; }
     const std::vector<LakeRegion>& getLakeRegions() const { return lakeRegions; }
     bool wasLoadedFromCache() const { return cacheHit; }
+    std::uint64_t getParameterHash() const { return parameterHash(); }
 
 private:
     Settings settings;

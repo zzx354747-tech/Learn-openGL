@@ -6,6 +6,7 @@ struct LightingPassResourceHandles
     ResourceHandle gPosition = 0;
     ResourceHandle gNormalRoughness = 0;
     ResourceHandle gAlbedoMetallic = 0;
+    ResourceHandle gVelocity = 0;
     ResourceHandle ao = 0;
     ResourceHandle shadowMap = 0;
     ResourceHandle depthCubeMap = 0;

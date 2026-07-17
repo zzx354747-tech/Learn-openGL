@@ -13,11 +13,14 @@
 #include "rendering/passes/lighting/LightingPassResourceHandles.h"
 #include "rendering/resources/shader/ShaderLibrary.h"
 
+class AlpineVegetationSystem;
+
 struct SceneRenderResources : SceneRenderInputResources, SceneRenderOutputResources
 {
     ResourceRegistry registry;
     LightingPassResourceHandles lightingHandles;
     ShaderLibrary* shaderLibrary = nullptr;
+    AlpineVegetationSystem* vegetationSystem = nullptr;
     unsigned int cloudAccelerationTexture = 0;
     unsigned int cloudSunLocalTexture = 0;
     unsigned int cloudOpticalDepthTexture = 0;

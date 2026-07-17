@@ -7,6 +7,7 @@ uniform sampler2D currentColor;
 uniform sampler2D historyColor;
 uniform sampler2D currentDepth;
 uniform sampler2D currentPosition;
+uniform sampler2D currentVelocity;
 uniform vec2 invResolution;
 uniform mat4 inverseCurrentViewProjection;
 uniform mat4 previousViewProjection;
@@ -16,6 +17,7 @@ uniform float historyWeight;
 uniform float sharpness;
 uniform bool historyValid;
 uniform bool hasCurrentPosition;
+uniform bool hasCurrentVelocity;
 
 vec3 sampleCurrent(vec2 uv)
 {
@@ -61,6 +63,8 @@ void main()
         previousClip = previousViewProjection * world;
     }
     vec2 historyUV = previousClip.xy / max(previousClip.w, 1e-5) * 0.5 + 0.5;
+    if (!background && hasCurrentVelocity)
+        historyUV += texture(currentVelocity, TexCoords).rg;
 
     vec3 neighborhoodMin = vec3(1e20);
     vec3 neighborhoodMax = vec3(-1e20);
