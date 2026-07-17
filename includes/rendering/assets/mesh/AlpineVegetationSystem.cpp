@@ -198,11 +198,12 @@ void AlpineVegetationSystem::buildMeshSets()
 
 float AlpineVegetationSystem::sampleDensityField(const glm::vec2& worldXZ) const
 {
-    // Current implementation: threshold-softened 150-300 m value noise.
-    // This is the sole function to replace with a moisture-field texture read.
-    const float coarse = valueNoise(worldXZ / 260.0f, settings_.seed + 401u);
+    // Macro distribution comes from the same catchment/slope/curvature field
+    // used by terrain materials. Noise only breaks up local plant spacing.
+    const float moisture = terrain_.sampleEnvironmentData(worldXZ.x,
+                                                           worldXZ.y).x;
     const float detail = valueNoise(worldXZ / 150.0f, settings_.seed + 877u);
-    return alpineSmoothstep(0.24f, 0.72f, coarse * 0.72f + detail * 0.28f);
+    return glm::clamp(moisture * glm::mix(0.86f, 1.12f, detail), 0.0f, 1.0f);
 }
 
 void AlpineVegetationSystem::generateDistribution()

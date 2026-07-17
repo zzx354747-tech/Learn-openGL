@@ -19,6 +19,8 @@ uniform sampler2D parallaxTexture;
 uniform sampler2D roughnessTexture;
 uniform sampler2D metallicTexture;
 uniform sampler2D terrainDataMap;
+uniform sampler2D terrainEnvironmentMap;
+uniform sampler2D terrainLakeDataMap;
 uniform sampler2D terrainNoiseTexture;
 uniform sampler2D terrainRockHeight;
 uniform sampler2D terrainGrassAlbedo;
@@ -44,6 +46,8 @@ uniform bool hasMetallicMap;
 uniform bool usePackedMetallicRoughness;
 uniform bool useTerrainBlend;
 uniform bool hasTerrainData;
+uniform bool hasTerrainEnvironment;
+uniform bool hasTerrainLakeData;
 uniform bool hasTerrainGrassNormal;
 uniform bool hasTerrainGrassRoughness;
 uniform bool hasTerrainGrassMetallic;
@@ -178,6 +182,36 @@ void main()
         float edgeNoise = texture(terrainNoiseTexture, FragPos.xz / 34.0).g;
         float biomeNoise = mix(macroNoise, edgeNoise, 0.65);
         vec3 biome = biomeWeights(data.r, data.b, biomeNoise);
+        vec2 environment = hasTerrainEnvironment
+            ? texture(terrainEnvironmentMap, TexCoords1).rg
+            : vec2(0.5, biome.z);
+        if (hasTerrainEnvironment)
+        {
+            float steepRock = smoothstep(0.32, 0.62, data.g);
+            float retainedSnow = environment.y;
+            float grass = biome.x * mix(0.58, 1.22, environment.x) *
+                          (1.0 - steepRock) * (1.0 - retainedSnow);
+            float rock = max(biome.y, steepRock) * (1.0 - retainedSnow);
+            biome = vec3(grass, rock, retainedSnow);
+            biome /= max(dot(biome, vec3(1.0)), 1e-5);
+        }
+
+        // Seasonal retained snow controls the lower transition, but the high
+        // alpine cap is a continuous, pure snow PBR material.
+        float permanentSnowStart = max(u_snowEnd + 0.10, 0.70);
+        float permanentSnowEnd = max(u_snowEnd + 0.20, 0.80);
+        float pureSnow = smoothstep(permanentSnowStart,
+                                    permanentSnowEnd, data.r);
+        float signedShoreDistance = hasTerrainLakeData
+            ? texture(terrainLakeDataMap, TexCoords1).g : -128.0;
+        float dryShore = 1.0 - smoothstep(-1.0, 2.0,
+                                         signedShoreDistance);
+        float shoreBand = smoothstep(-34.0, -2.0,
+                                     signedShoreDistance) * dryShore *
+                          (1.0 - pureSnow);
+        float wetShore = smoothstep(-13.0, -1.0,
+                                    signedShoreDistance) * dryShore *
+                         (1.0 - pureSnow);
 
         float scale = u_terrainTextureScale;
         vec3 planeWeights = triplanarWeights(normal);
@@ -190,6 +224,7 @@ void main()
         vec3 materialBiome = vec3(biome.y, biome.x, biome.z);
         vec3 weights = heightBlend(materialBiome,
             vec3(rockHeight, grassHeight, snowHeight));
+        weights = mix(weights, vec3(0.0, 0.0, 1.0), pureSnow);
 
         vec3 rockAlbedo = triplanarColor(
             albedoTexture, FragPos, planeWeights, scale);
@@ -211,6 +246,15 @@ void main()
                           sunFacing * 0.5 + 0.5);
         albedo = rockAlbedo * weights.x +
                  grassAlbedo * weights.y + snowAlbedo * weights.z;
+        // Reuse the authored rock PBR surface as bank gravel, tinting and
+        // wetting it with the analytic shoreline distance instead of noise.
+        float gravelVariation = texture(
+            terrainNoiseTexture, FragPos.xz / 9.0).b;
+        vec3 gravelAlbedo = mix(rockAlbedo,
+            vec3(0.075, 0.055, 0.035),
+            mix(0.32, 0.56, gravelVariation));
+        albedo = mix(albedo, gravelAlbedo, shoreBand * 0.86);
+        albedo *= mix(1.0, 0.68, wetShore);
         if (hasVegetationDensity)
         {
             vec2 densityUV = FragPos.xz / vegetationTerrainSize + 0.5;
@@ -254,6 +298,8 @@ void main()
             float detailStrength = dot(weights, vec3(0.72, 0.48, 0.18));
             normal = normalize(mix(normal, detailNormal,
                                    detailStrength * 0.24));
+            normal = normalize(mix(normal, rockNormal,
+                                   shoreBand * 0.42));
         }
 
         float rockRoughness = hasRoughnessMap
@@ -267,11 +313,15 @@ void main()
                       FragPos.xz * scale * 0.82).r : 0.42;
         roughness = dot(vec3(rockRoughness, grassRoughness,
                              snowRoughness), weights);
+        float bankRoughness = mix(0.78, 0.32, wetShore);
+        roughness = mix(roughness, bankRoughness, shoreBand * 0.88);
         metallic = 0.0;
 
         if (u_terrainDebugMode > 0)
         {
-            float debugValue = data[u_terrainDebugMode - 1];
+            float debugValue = u_terrainDebugMode <= 4
+                ? data[u_terrainDebugMode - 1]
+                : environment[u_terrainDebugMode - 5];
             if (u_terrainDebugMode == 3 && data.g < 0.001)
                 albedo = vec3(0.5); // flat: no orientation
             else

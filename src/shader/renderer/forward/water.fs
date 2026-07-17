@@ -3,7 +3,7 @@
 in vec3 WorldPos;
 in vec3 WaterNormal;
 in vec2 LakeUV;
-flat in float SurfaceWaterLevel;
+in float SurfaceWaterLevel;
 
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
@@ -195,14 +195,16 @@ void main()
     float surfaceWaterLevel = SurfaceWaterLevel;
     float shoreAA = max(fwidth(shoreDistance) * 1.5, 0.35);
     float depthAA = max(fwidth(waterDepth) * 1.5, 0.10);
-    float shorelineCoverage = smoothstep(-shoreAA, shoreAA, shoreDistance);
+    // Pixel AA removes shimmer; the eight-metre world-space ramp creates the
+    // physical shallow-water transition that was missing at the old hard mask.
+    float shorelineCoverage = smoothstep(-shoreAA, 8.0, shoreDistance);
     float waterCoverage = shorelineCoverage *
-                          smoothstep(0.0, depthAA * 2.0, waterDepth);
+                          smoothstep(0.0, max(depthAA * 2.0, 1.35), waterDepth);
     if (waterCoverage < 0.001)
         discard;
 
-    float shoreFade = smoothstep(0.3, 2.0, shoreDistance);
-    float depthFade = smoothstep(0.3, 3.0, waterDepth);
+    float shoreFade = smoothstep(1.5, 12.0, shoreDistance);
+    float depthFade = smoothstep(0.25, 3.0, waterDepth);
     vec2 microRipple = vec2(
         sin(dot(WorldPos.xz, vec2(1.71, 0.84)) + waterTime * 2.45) +
         sin(dot(WorldPos.xz, vec2(-0.63, 2.12)) - waterTime * 1.83),

@@ -15,7 +15,7 @@ uniform float waterTime;
 out vec3 WorldPos;
 out vec3 WaterNormal;
 out vec2 LakeUV;
-flat out float SurfaceWaterLevel;
+out float SurfaceWaterLevel;
 
 const float TWO_PI = 6.28318530718;
 
@@ -57,9 +57,10 @@ void evaluateWaterWaves(vec2 worldXZ, out float height, out vec2 gradient)
 void main()
 {
     vec3 localPosition = aPos;
-    vec2 lakeData = texture(lakeDataMap, aTexCoords).rg;
+    vec3 lakeData = texture(lakeDataMap, aTexCoords).rgb;
+    localPosition.y = lakeData.b;
     float depthFade = smoothstep(0.15, 2.0, lakeData.r);
-    float shoreFade = smoothstep(0.5, 8.0, lakeData.g);
+    float shoreFade = smoothstep(1.5, 12.0, lakeData.g);
     float waveFade = depthFade * shoreFade;
     float height;
     vec2 gradient;
@@ -72,6 +73,6 @@ void main()
     WorldPos = world.xyz;
     WaterNormal = normalize(normalMatrix * vec3(-gradient.x, 1.0, -gradient.y));
     LakeUV = aTexCoords;
-    SurfaceWaterLevel = aPos.y;
+    SurfaceWaterLevel = lakeData.b;
     gl_Position = projection * view * world;
 }

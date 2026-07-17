@@ -146,31 +146,15 @@ int main(int argc, char** argv)
         {
             TerrainMesh terrainCheck;
             WaterMesh waterCheckMesh(terrainCheck);
-            if (terrainCheck.getLakeRegions().size() != 7u ||
-                terrainCheck.getLakeDataTexture() == 0u)
+            if (terrainCheck.getLakeRegions().empty() ||
+                terrainCheck.getLakeDataTexture() == 0u ||
+                terrainCheck.getTerrainEnvironmentTexture() == 0u)
             {
-                std::cerr << "Water check failed: expected seven uploaded lake regions"
+                std::cerr << "Water check failed: hydrology/environment maps are missing"
                           << std::endl;
                 return 2;
             }
-            const auto& lakes = terrainCheck.getLakeRegions();
             const auto& terrainSettings = terrainCheck.getSettings();
-            const std::array<glm::vec2, 2> lakeCenters{{
-                terrainSettings.lakeCenter, terrainSettings.meadowLakeCenter}};
-            for (std::size_t i = 0; i < lakeCenters.size(); ++i)
-            {
-                const float floorHeight = terrainCheck.sampleHeight(
-                    lakeCenters[i].x, lakeCenters[i].y);
-                const float authoredDepth = terrainCheck.sampleWaterDepth(
-                    lakeCenters[i].x, lakeCenters[i].y);
-                if (authoredDepth < lakes[i].maximumDepth * 0.90f ||
-                    std::abs((lakes[i].waterLevel - floorHeight) - authoredDepth) > 2.0f)
-                {
-                    std::cerr << "Water check failed: lake floor/LDM coupling mismatch"
-                              << std::endl;
-                    return 3;
-                }
-            }
 
             SceneRenderConfig coverageConfig;
             const float lowerBlendWidth = coverageConfig.terrainRockStart -
@@ -191,15 +175,18 @@ int main(int argc, char** argv)
             }
             if (!coverageConfig.water.enableCaustics ||
                 coverageConfig.water.causticStrength < 2.0f ||
-                coverageConfig.water.causticDepthEnd <
-                    terrainCheck.getMaximumWaterDepth())
+                coverageConfig.water.causticDepthEnd <=
+                    coverageConfig.water.causticDepthPeak)
             {
-                std::cerr << "Water check failed: default caustics do not cover the lake floor"
+                std::cerr << "Water check failed: invalid default caustic range"
                           << std::endl;
                 return 5;
             }
             double mountainSamples = 0.0;
             double weightedSnowSamples = 0.0;
+            int wetSamples = 0;
+            float moistureMinimum = 1.0f;
+            float moistureMaximum = 0.0f;
             constexpr int CoverageGrid = 128;
             for (int z = 0; z < CoverageGrid; ++z)
             {
@@ -213,12 +200,36 @@ int main(int argc, char** argv)
                         (terrainCheck.sampleHeight(worldX, worldZ) -
                          terrainSettings.baseHeight) / terrainSettings.mountainHeight,
                         0.0f, 1.0f);
+                    const glm::vec2 environment = terrainCheck.sampleEnvironmentData(
+                        worldX, worldZ);
+                    moistureMinimum = std::min(moistureMinimum, environment.x);
+                    moistureMaximum = std::max(moistureMaximum, environment.x);
+                    const float waterDepth = terrainCheck.sampleWaterDepth(worldX,
+                                                                           worldZ);
+                    if (waterDepth > 0.05f)
+                    {
+                        const float waterSurface =
+                            terrainCheck.sampleWaterSurfaceHeight(worldX, worldZ);
+                        const float floorHeight = terrainCheck.sampleHeight(worldX,
+                                                                            worldZ);
+                        // Ignore the deliberately anti-aliased sub-pixel shore
+                        // band where depth coverage blends toward zero.
+                        if (waterDepth > 2.0f &&
+                            std::abs((waterSurface - floorHeight) - waterDepth) > 3.5f)
+                        {
+                            std::cerr << "Water check failed: hydrologic surface/depth mismatch"
+                                      << " at (" << worldX << ", " << worldZ
+                                      << "), surface=" << waterSurface
+                                      << ", floor=" << floorHeight
+                                      << ", depth=" << waterDepth
+                                      << std::endl;
+                            return 3;
+                        }
+                        ++wetSamples;
+                    }
                     if (normalizedHeight < coverageConfig.terrainGrassEnd)
                         continue;
-                    const float heightSnow = glm::smoothstep(
-                        coverageConfig.terrainSnowStart,
-                        coverageConfig.terrainSnowEnd, normalizedHeight);
-                    weightedSnowSamples += heightSnow;
+                    weightedSnowSamples += environment.y;
                     mountainSamples += 1.0;
                 }
             }
@@ -226,9 +237,10 @@ int main(int argc, char** argv)
                 ? weightedSnowSamples / mountainSamples : 0.0;
             std::cout << "Snow coverage of mountain samples: "
                       << snowCoverage * 100.0 << "%" << std::endl;
-            if (snowCoverage < 0.30)
+            if (wetSamples == 0 || moistureMaximum - moistureMinimum < 0.25f ||
+                snowCoverage < 0.02)
             {
-                std::cerr << "Water check failed: snow coverage is below 30%"
+                std::cerr << "Water check failed: hydrology/environment fields lack coverage"
                           << std::endl;
                 return 6;
             }

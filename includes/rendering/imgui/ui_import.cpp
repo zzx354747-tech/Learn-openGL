@@ -324,9 +324,10 @@ void SceneRenderUI::renderUI(
         if (uiState.sceneConfig.sceneSelection == SceneSelection::FujiTerrain &&
             ImGui::TreeNodeEx("Alpine Terrain", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            const char* debugModes[] = {"Material", "Height", "Slope", "Aspect", "Curvature"};
+            const char* debugModes[] = {"Material", "Height", "Slope", "Aspect",
+                                        "Curvature", "Moisture", "Snow Retention"};
             ImGui::Combo("TDM Debug", &uiState.sceneConfig.terrainDebugMode,
-                         debugModes, 5);
+                         debugModes, 7);
             ImGui::SliderFloat("Grass/Rock Blend Start", &uiState.sceneConfig.terrainGrassEnd,
                                0.0f, 0.8f, "%.3f");
             ImGui::SliderFloat("Grass/Rock Blend End", &uiState.sceneConfig.terrainRockStart,

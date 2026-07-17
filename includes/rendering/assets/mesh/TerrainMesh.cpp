@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <queue>
 #include <stdexcept>
 #include <thread>
 
@@ -17,7 +18,7 @@
 namespace
 {
 constexpr std::uint32_t CacheMagic = 0x4D445441u; // ATDM
-constexpr std::uint32_t CacheVersion = 9u;
+constexpr std::uint32_t CacheVersion = 16u;
 constexpr float Pi = 3.14159265358979323846f;
 constexpr std::size_t MaximumWaterRegions = 8u;
 
@@ -112,115 +113,6 @@ float smoothMax(float a, float b, float k)
         return std::max(a, b);
     const float h = std::max(k - std::abs(a - b), 0.0f) / k;
     return std::max(a, b) + h * h * k * 0.25f;
-}
-
-struct DesignedLake
-{
-    glm::vec2 center;
-    glm::vec2 radii;
-    float waterLevel;
-    float maximumDepth;
-    float rimHeight;
-    float bankWidth;
-    float rotation;
-    std::uint32_t seed;
-};
-
-float designedLakeSignedDistance(const glm::vec2& worldXZ,
-                                 const DesignedLake& lake)
-{
-    const glm::vec2 worldDelta = worldXZ - lake.center;
-    const float c = std::cos(lake.rotation);
-    const float s = std::sin(lake.rotation);
-    const glm::vec2 delta(c * worldDelta.x + s * worldDelta.y,
-                         -s * worldDelta.x + c * worldDelta.y);
-
-    // Very elongated authored water bodies are river reaches rather than
-    // elliptical lakes. Bend their local centre line before evaluating the
-    // same signed-distance profile so banks, depth and the LDM all agree on a
-    // continuous winding channel. Taper the bend at both ends to keep the
-    // authored bounds stable and avoid abrupt terminal hooks.
-    glm::vec2 shapedDelta = delta;
-    if (lake.radii.x > lake.radii.y * 4.0f)
-    {
-        const float along = glm::clamp(delta.x / lake.radii.x, -1.0f, 1.0f);
-        const float endTaper = 1.0f - smoothStep(
-            0.72f, 1.0f, std::abs(along));
-        const float phase = static_cast<float>(lake.seed & 1023u) *
-            (2.0f * Pi / 1024.0f);
-        shapedDelta.y -= std::sin(along * Pi * 2.25f + phase) *
-            lake.radii.y * 1.15f * endTaper;
-    }
-    const glm::vec2 normalized = shapedDelta / lake.radii;
-    const float angle = std::atan2(normalized.y, normalized.x);
-    const float outline = 1.0f +
-        0.080f * std::sin(angle * 3.0f + 0.7f) +
-        0.048f * std::sin(angle * 5.0f - 1.9f) +
-        0.025f * std::sin(angle * 9.0f + 2.4f) +
-        0.025f * gradientNoise(worldXZ.x * 0.0045f + 13.1f,
-                               worldXZ.y * 0.0045f - 7.4f, lake.seed);
-    const float normalizedRadius = glm::length(normalized);
-    const glm::vec2 direction = normalizedRadius > 0.0001f
-        ? normalized / normalizedRadius : glm::vec2(1.0f, 0.0f);
-    const float metresPerNormalizedUnit = 1.0f / std::sqrt(
-        direction.x * direction.x / (lake.radii.x * lake.radii.x) +
-        direction.y * direction.y / (lake.radii.y * lake.radii.y));
-    return (outline - normalizedRadius) * metresPerNormalizedUnit;
-}
-
-float designedLakeDepth(float signedDistance, const DesignedLake& lake)
-{
-    const float depthCoordinate = glm::clamp(
-        signedDistance / (0.82f * std::min(lake.radii.x, lake.radii.y)),
-        0.0f, 1.0f);
-    return lake.maximumDepth * smoothStep(0.0f, 1.0f, depthCoordinate);
-}
-
-float sculptDesignedLake(float naturalHeight, const glm::vec2& worldXZ,
-                         const DesignedLake& lake)
-{
-    const float shoreDistance = designedLakeSignedDistance(worldXZ, lake);
-    if (shoreDistance <= -lake.bankWidth)
-        return naturalHeight;
-
-    if (shoreDistance >= 0.0f)
-        return lake.waterLevel - designedLakeDepth(shoreDistance, lake);
-
-    const float outside = glm::clamp(-shoreDistance / lake.bankWidth,
-                                     0.0f, 1.0f);
-    const float authoredBank = lake.waterLevel + (-shoreDistance) * 0.34f +
-        lake.rimHeight * std::sin(outside * Pi);
-    const float influence = 1.0f - smoothStep(0.0f, 1.0f, outside);
-    return glm::mix(naturalHeight, authoredBank, influence);
-}
-
-std::array<DesignedLake, 7> makeDesignedLakes(
-    const TerrainMesh::Settings& settings)
-{
-    return {{
-        {settings.lakeCenter, settings.lakeRadii, settings.lakeWaterLevel,
-         settings.lakeBasinDepth, settings.lakeRimHeight,
-         settings.lakeBankWidth, 0.0f, settings.seed + 1709u},
-        {settings.meadowLakeCenter, settings.meadowLakeRadii,
-         settings.meadowLakeWaterLevel, settings.meadowLakeBasinDepth,
-         settings.meadowLakeRimHeight, settings.meadowLakeBankWidth,
-         0.0f, settings.seed + 3911u},
-
-        // Additional grassland tarns (haizi).
-        {glm::vec2(-3060.0f, 1510.0f), glm::vec2(205.0f, 125.0f),
-         58.0f, 18.0f, 8.0f, 58.0f, -0.18f, settings.seed + 5101u},
-        {glm::vec2(-1540.0f, 2110.0f), glm::vec2(255.0f, 150.0f),
-         108.0f, 22.0f, 10.0f, 66.0f, 0.26f, settings.seed + 6113u},
-
-        // Long narrow authored water bodies read as winding river reaches at
-        // landscape distance while retaining the same LDM/water renderer.
-        {glm::vec2(-3190.0f, 430.0f), glm::vec2(660.0f, 54.0f),
-         46.0f, 8.0f, 3.0f, 34.0f, 0.22f, settings.seed + 7121u},
-        {glm::vec2(-1510.0f, 520.0f), glm::vec2(720.0f, 48.0f),
-         64.0f, 7.0f, 3.0f, 32.0f, -0.34f, settings.seed + 8111u},
-        {glm::vec2(-760.0f, 1760.0f), glm::vec2(590.0f, 44.0f),
-         96.0f, 7.0f, 3.0f, 30.0f, 0.42f, settings.seed + 9109u}
-    }};
 }
 
 glm::vec2 bezier(const TerrainMesh::Settings& settings, float t)
@@ -333,6 +225,8 @@ TerrainMesh::~TerrainMesh()
 {
     if (terrainDataTexture)
         glDeleteTextures(1, &terrainDataTexture);
+    if (terrainEnvironmentTexture)
+        glDeleteTextures(1, &terrainEnvironmentTexture);
     if (lakeDataTexture)
         glDeleteTextures(1, &lakeDataTexture);
     if (detailNoiseTexture)
@@ -366,18 +260,23 @@ std::uint64_t TerrainMesh::parameterHash() const
     hashBytes(hash, &settings.upliftExponent, sizeof(settings.upliftExponent));
     hashBytes(hash, &settings.edgeFade, sizeof(settings.edgeFade));
     hashBytes(hash, &settings.curvatureRange, sizeof(settings.curvatureRange));
+    hashBytes(hash, &settings.glacialValleyStrength, sizeof(settings.glacialValleyStrength));
+    hashBytes(hash, &settings.riverStartArea, sizeof(settings.riverStartArea));
+    hashBytes(hash, &settings.riverBaseWidth, sizeof(settings.riverBaseWidth));
+    hashBytes(hash, &settings.riverWidthPerSqrtKm2, sizeof(settings.riverWidthPerSqrtKm2));
+    hashBytes(hash, &settings.riverMaximumWidth, sizeof(settings.riverMaximumWidth));
+    hashBytes(hash, &settings.riverBaseDepth, sizeof(settings.riverBaseDepth));
+    hashBytes(hash, &settings.riverDepthPerSqrtKm2, sizeof(settings.riverDepthPerSqrtKm2));
+    hashBytes(hash, &settings.minimumLakeArea, sizeof(settings.minimumLakeArea));
+    hashBytes(hash, &settings.minimumLakeDepth, sizeof(settings.minimumLakeDepth));
     hashBytes(hash, &settings.lakeCenter, sizeof(settings.lakeCenter));
     hashBytes(hash, &settings.lakeRadii, sizeof(settings.lakeRadii));
-    hashBytes(hash, &settings.lakeWaterLevel, sizeof(settings.lakeWaterLevel));
     hashBytes(hash, &settings.lakeBasinDepth, sizeof(settings.lakeBasinDepth));
     hashBytes(hash, &settings.lakeRimHeight, sizeof(settings.lakeRimHeight));
-    hashBytes(hash, &settings.lakeBankWidth, sizeof(settings.lakeBankWidth));
     hashBytes(hash, &settings.meadowLakeCenter, sizeof(settings.meadowLakeCenter));
     hashBytes(hash, &settings.meadowLakeRadii, sizeof(settings.meadowLakeRadii));
-    hashBytes(hash, &settings.meadowLakeWaterLevel, sizeof(settings.meadowLakeWaterLevel));
     hashBytes(hash, &settings.meadowLakeBasinDepth, sizeof(settings.meadowLakeBasinDepth));
     hashBytes(hash, &settings.meadowLakeRimHeight, sizeof(settings.meadowLakeRimHeight));
-    hashBytes(hash, &settings.meadowLakeBankWidth, sizeof(settings.meadowLakeBankWidth));
     return hash;
 }
 
@@ -399,6 +298,7 @@ bool TerrainMesh::loadCache()
                               settings.resolution;
     heightSamples.resize(count);
     terrainDataHalf.resize(count * 4u);
+    terrainEnvironmentHalf.resize(count * 2u);
     const std::size_t lakeCount =
         static_cast<std::size_t>(settings.lakeDataResolution) *
         settings.lakeDataResolution;
@@ -407,11 +307,14 @@ bool TerrainMesh::loadCache()
                      static_cast<std::streamsize>(count * sizeof(float))) ||
         !stream.read(reinterpret_cast<char*>(terrainDataHalf.data()),
                      static_cast<std::streamsize>(count * 4u * sizeof(std::uint16_t))) ||
+        !stream.read(reinterpret_cast<char*>(terrainEnvironmentHalf.data()),
+                     static_cast<std::streamsize>(count * 2u * sizeof(std::uint16_t))) ||
         !stream.read(reinterpret_cast<char*>(lakeDataHalf.data()),
                      static_cast<std::streamsize>(lakeCount * 3u * sizeof(std::uint16_t))))
     {
         heightSamples.clear();
         terrainDataHalf.clear();
+        terrainEnvironmentHalf.clear();
         lakeDataHalf.clear();
         return false;
     }
@@ -421,7 +324,7 @@ bool TerrainMesh::loadCache()
     lakeArea = header.lakeArea;
     maximumWaterDepth = header.maximumWaterDepth;
     lakeRegions.clear();
-    if (header.lakeCount == 0u || header.lakeCount > MaximumWaterRegions)
+    if (header.lakeCount > MaximumWaterRegions)
         return false;
     for (std::uint32_t i = 0; i < header.lakeCount; ++i)
     {
@@ -480,6 +383,8 @@ void TerrainMesh::saveCache() const
                  static_cast<std::streamsize>(heightSamples.size() * sizeof(float)));
     stream.write(reinterpret_cast<const char*>(terrainDataHalf.data()),
                  static_cast<std::streamsize>(terrainDataHalf.size() * sizeof(std::uint16_t)));
+    stream.write(reinterpret_cast<const char*>(terrainEnvironmentHalf.data()),
+                 static_cast<std::streamsize>(terrainEnvironmentHalf.size() * sizeof(std::uint16_t)));
     stream.write(reinterpret_cast<const char*>(lakeDataHalf.data()),
                  static_cast<std::streamsize>(lakeDataHalf.size() * sizeof(std::uint16_t)));
     stream.close();
@@ -497,8 +402,11 @@ void TerrainMesh::generate()
     if (!cacheHit)
     {
         generateHeightField();
-        generateLakeData();
+        sculptGlacialLandforms();
+        generateHydrology();
         computeDerivedFields();
+        computeEnvironmentFields();
+        generateLakeData();
         saveCache();
     }
     uploadTerrainTextures();
@@ -510,7 +418,7 @@ void TerrainMesh::generate()
     for (std::size_t i = 0; i < lakeRegions.size(); ++i)
     {
         const LakeRegion& lake = lakeRegions[i];
-        std::cout << "Lake[" << i << "]: level=" << lake.waterLevel
+        std::cout << "Hydrologic lake[" << i << "]: level=" << lake.waterLevel
                   << " m, area=" << lake.area
                   << " m^2, maxDepth=" << lake.maximumDepth
                   << " m, boundsXZ=(" << lake.boundsXZ.x << ", " << lake.boundsXZ.y
@@ -523,7 +431,6 @@ void TerrainMesh::generateHeightField()
 {
     const unsigned int n = settings.resolution;
     const float spacing = settings.size / static_cast<float>(n - 1u);
-    const auto designedLakes = makeDesignedLakes(settings);
     heightSamples.assign(static_cast<std::size_t>(n) * n, settings.baseHeight);
     const unsigned int workerCount = std::max(1u, std::thread::hardware_concurrency());
     std::vector<std::thread> workers;
@@ -533,7 +440,7 @@ void TerrainMesh::generateHeightField()
     {
         const unsigned int firstRow = n * worker / workerCount;
         const unsigned int lastRow = n * (worker + 1u) / workerCount;
-        workers.emplace_back([this, n, spacing, firstRow, lastRow, designedLakes]()
+        workers.emplace_back([this, n, spacing, firstRow, lastRow]()
         {
             for (unsigned int z = firstRow; z < lastRow; ++z)
             {
@@ -596,20 +503,409 @@ void TerrainMesh::generateHeightField()
                         height01 *= smoothStep(0.0f, settings.size * 0.10f, edge);
                     }
 
-                    // Lake floors and banks are authored in the terrain itself.
-                    // The LDM later evaluates these exact same lake functions.
-                    float finalHeight = settings.baseHeight +
-                                        height01 * settings.mountainHeight;
-                    const glm::vec2 worldXZ(worldX, worldZ);
-                    for (const DesignedLake& lake : designedLakes)
-                        finalHeight = sculptDesignedLake(finalHeight, worldXZ, lake);
-                    heightSamples[static_cast<std::size_t>(z) * n + x] = finalHeight;
+                    heightSamples[static_cast<std::size_t>(z) * n + x] =
+                        settings.baseHeight + height01 * settings.mountainHeight;
                 }
             }
         });
     }
     for (std::thread& worker : workers)
         worker.join();
+}
+
+void TerrainMesh::sculptGlacialLandforms()
+{
+    struct ValleySegment
+    {
+        glm::vec2 a;
+        glm::vec2 b;
+        float floorA;
+        float floorB;
+        float halfWidth;
+        float wallRise;
+    };
+    const std::array<ValleySegment, 4> valleys{{
+        {glm::vec2(0.0f, 0.0f), glm::vec2(-2200.0f, 1300.0f),
+         1080.0f, 86.0f, 430.0f, 620.0f},
+        {glm::vec2(-2200.0f, 1300.0f), glm::vec2(-4100.0f, 2050.0f),
+         86.0f, settings.baseHeight + 4.0f, 520.0f, 420.0f},
+        {glm::vec2(1620.0f, -760.0f), glm::vec2(-360.0f, 280.0f),
+         1260.0f, 760.0f, 250.0f, 430.0f},
+        {glm::vec2(900.0f, 1760.0f), glm::vec2(-1450.0f, 960.0f),
+         1040.0f, 310.0f, 285.0f, 390.0f}
+    }};
+
+    const unsigned int n = settings.resolution;
+    const float spacing = settings.size / static_cast<float>(n - 1u);
+    for (unsigned int z = 0; z < n; ++z)
+    {
+        const float worldZ = -settings.size * 0.5f + z * spacing;
+        for (unsigned int x = 0; x < n; ++x)
+        {
+            const float worldX = -settings.size * 0.5f + x * spacing;
+            const glm::vec2 p(worldX, worldZ);
+            float& height = heightSamples[static_cast<std::size_t>(z) * n + x];
+            for (const ValleySegment& valley : valleys)
+            {
+                const glm::vec2 axis = valley.b - valley.a;
+                const float axisLength2 = std::max(glm::dot(axis, axis), 1.0f);
+                const float t = glm::clamp(glm::dot(p - valley.a, axis) /
+                                           axisLength2, 0.0f, 1.0f);
+                const float distance = glm::length(p - (valley.a + axis * t));
+                const float normalized = distance / valley.halfWidth;
+                if (normalized >= 1.12f)
+                    continue;
+                const float floor = glm::mix(valley.floorA, valley.floorB, t);
+                // A broad floor and rapidly rising walls produce a U-shaped
+                // glacial trough instead of a noise-derived V-shaped cut.
+                const float wall = std::pow(smoothStep(0.28f, 1.0f, normalized),
+                                            1.55f);
+                const float target = floor + valley.wallRise * wall;
+                const float influence = (1.0f - smoothStep(0.88f, 1.12f,
+                                                           normalized)) *
+                                        settings.glacialValleyStrength;
+                height = std::min(height, glm::mix(height, target, influence));
+            }
+        }
+    }
+
+    const auto carveBasin = [this, n, spacing](const glm::vec2& center,
+                                                const glm::vec2& radii,
+                                                float depth, float rimHeight,
+                                                const glm::vec2& outletDirection)
+    {
+        const glm::vec2 outlet = glm::normalize(outletDirection);
+        for (unsigned int z = 0; z < n; ++z)
+        {
+            const float worldZ = -settings.size * 0.5f + z * spacing;
+            for (unsigned int x = 0; x < n; ++x)
+            {
+                const float worldX = -settings.size * 0.5f + x * spacing;
+                const glm::vec2 delta(worldX - center.x, worldZ - center.y);
+                const glm::vec2 q = delta / radii;
+                const float r = glm::length(q);
+                if (r > 1.18f)
+                    continue;
+                float& h = heightSamples[static_cast<std::size_t>(z) * n + x];
+                if (r < 1.0f)
+                {
+                    const float bowl = 1.0f - smoothStep(0.0f, 1.0f, r);
+                    h -= depth * bowl * bowl;
+                }
+                const float ring = smoothStep(0.72f, 0.92f, r) *
+                                   (1.0f - smoothStep(0.98f, 1.16f, r));
+                const glm::vec2 radial = glm::length(delta) > 0.001f
+                    ? glm::normalize(delta) : -outlet;
+                const float breach = smoothStep(0.72f, 0.96f,
+                                                glm::dot(radial, outlet));
+                h += rimHeight * ring * (1.0f - breach);
+            }
+        }
+    };
+    carveBasin(settings.lakeCenter, settings.lakeRadii,
+               settings.lakeBasinDepth * 1.45f, settings.lakeRimHeight,
+               settings.meadowLakeCenter - settings.lakeCenter);
+    carveBasin(settings.meadowLakeCenter, settings.meadowLakeRadii,
+               settings.meadowLakeBasinDepth * 1.35f,
+               settings.meadowLakeRimHeight,
+               glm::vec2(-1.0f, 0.35f));
+}
+
+void TerrainMesh::generateHydrology()
+{
+    struct FloodNode
+    {
+        float elevation;
+        std::size_t index;
+        bool operator>(const FloodNode& other) const
+        {
+            return elevation > other.elevation;
+        }
+    };
+    struct LakeCandidate
+    {
+        std::vector<std::size_t> cells;
+        float maximumDepth = 0.0f;
+        float surface = 0.0f;
+    };
+
+    const unsigned int n = settings.resolution;
+    const std::size_t count = static_cast<std::size_t>(n) * n;
+    const float spacing = settings.size / static_cast<float>(n - 1u);
+    const float cellArea = spacing * spacing;
+    const std::array<int, 8> ox{{-1, 0, 1, -1, 1, -1, 0, 1}};
+    const std::array<int, 8> oz{{-1, -1, -1, 0, 0, 1, 1, 1}};
+
+    std::vector<float> filled = heightSamples;
+    std::vector<int> receiver(count, -1);
+    std::vector<unsigned char> visited(count, 0u);
+    std::vector<std::size_t> discoveryOrder;
+    discoveryOrder.reserve(count);
+    std::priority_queue<FloodNode, std::vector<FloodNode>,
+                        std::greater<FloodNode>> frontier;
+    const auto seed = [&](unsigned int x, unsigned int z)
+    {
+        const std::size_t i = static_cast<std::size_t>(z) * n + x;
+        if (visited[i])
+            return;
+        visited[i] = 1u;
+        frontier.push({filled[i], i});
+        discoveryOrder.push_back(i);
+    };
+    for (unsigned int x = 0; x < n; ++x)
+    {
+        seed(x, 0u);
+        seed(x, n - 1u);
+    }
+    for (unsigned int z = 1; z + 1u < n; ++z)
+    {
+        seed(0u, z);
+        seed(n - 1u, z);
+    }
+
+    while (!frontier.empty())
+    {
+        const FloodNode current = frontier.top();
+        frontier.pop();
+        const int cx = static_cast<int>(current.index % n);
+        const int cz = static_cast<int>(current.index / n);
+        for (std::size_t direction = 0; direction < ox.size(); ++direction)
+        {
+            const int nx = cx + ox[direction];
+            const int nz = cz + oz[direction];
+            if (nx < 0 || nz < 0 || nx >= static_cast<int>(n) ||
+                nz >= static_cast<int>(n))
+                continue;
+            const std::size_t next = static_cast<std::size_t>(nz) * n +
+                                     static_cast<unsigned int>(nx);
+            if (visited[next])
+                continue;
+            visited[next] = 1u;
+            receiver[next] = static_cast<int>(current.index);
+            filled[next] = std::max(heightSamples[next], current.elevation);
+            frontier.push({filled[next], next});
+            discoveryOrder.push_back(next);
+        }
+    }
+
+    flowAccumulation.resize(count);
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        const float normalizedHeight = glm::clamp(
+            (heightSamples[i] - settings.baseHeight) / settings.mountainHeight,
+            0.0f, 1.0f);
+        // Orographic precipitation proxy: high catchments receive more snow
+        // and rain, while deterministic detail remains subordinate.
+        flowAccumulation[i] = cellArea * glm::mix(0.78f, 1.32f,
+                                                  normalizedHeight);
+    }
+    for (auto it = discoveryOrder.rbegin(); it != discoveryOrder.rend(); ++it)
+    {
+        const int downstream = receiver[*it];
+        if (downstream >= 0)
+            flowAccumulation[static_cast<std::size_t>(downstream)] +=
+                flowAccumulation[*it];
+    }
+
+    std::vector<unsigned char> depression(count, 0u);
+    for (std::size_t i = 0; i < count; ++i)
+        depression[i] = filled[i] - heightSamples[i] > 0.05f ? 1u : 0u;
+    std::vector<unsigned char> classified(count, 0u);
+    std::vector<LakeCandidate> candidates;
+    std::vector<std::size_t> queue;
+    for (std::size_t start = 0; start < count; ++start)
+    {
+        if (!depression[start] || classified[start])
+            continue;
+        LakeCandidate candidate;
+        queue.clear();
+        queue.push_back(start);
+        classified[start] = 1u;
+        for (std::size_t head = 0; head < queue.size(); ++head)
+        {
+            const std::size_t i = queue[head];
+            candidate.cells.push_back(i);
+            candidate.maximumDepth = std::max(candidate.maximumDepth,
+                                               filled[i] - heightSamples[i]);
+            candidate.surface = std::max(candidate.surface, filled[i]);
+            const int x = static_cast<int>(i % n);
+            const int z = static_cast<int>(i / n);
+            for (std::size_t d = 0; d < ox.size(); ++d)
+            {
+                const int nx = x + ox[d];
+                const int nz = z + oz[d];
+                if (nx < 0 || nz < 0 || nx >= static_cast<int>(n) ||
+                    nz >= static_cast<int>(n))
+                    continue;
+                const std::size_t next = static_cast<std::size_t>(nz) * n +
+                                         static_cast<unsigned int>(nx);
+                if (depression[next] && !classified[next])
+                {
+                    classified[next] = 1u;
+                    queue.push_back(next);
+                }
+            }
+        }
+        if (candidate.cells.size() * cellArea >= settings.minimumLakeArea &&
+            candidate.maximumDepth >= settings.minimumLakeDepth)
+            candidates.push_back(std::move(candidate));
+    }
+    std::sort(candidates.begin(), candidates.end(),
+              [](const LakeCandidate& a, const LakeCandidate& b)
+              {
+                  return a.cells.size() > b.cells.size();
+              });
+    if (candidates.size() > MaximumWaterRegions)
+        candidates.resize(MaximumWaterRegions);
+
+    hydrologyWaterDepth.assign(count, 0.0f);
+    hydrologyWaterSurface.assign(count, 0.0f);
+    std::vector<unsigned char> lakeMask(count, 0u);
+    lakeRegions.clear();
+    for (const LakeCandidate& candidate : candidates)
+    {
+        glm::vec2 boundsMin(std::numeric_limits<float>::max());
+        glm::vec2 boundsMax(-std::numeric_limits<float>::max());
+        float maximumDepth = 0.0f;
+        std::size_t wetCells = 0u;
+        for (const std::size_t i : candidate.cells)
+        {
+            constexpr float MaximumAlpineLakeDepth = 92.0f;
+            float depth = candidate.surface - heightSamples[i];
+            if (depth <= 0.05f)
+                continue;
+            if (depth > MaximumAlpineLakeDepth)
+            {
+                heightSamples[i] = candidate.surface - MaximumAlpineLakeDepth;
+                depth = MaximumAlpineLakeDepth;
+            }
+            lakeMask[i] = 1u;
+            hydrologyWaterDepth[i] = depth;
+            hydrologyWaterSurface[i] = candidate.surface;
+            maximumDepth = std::max(maximumDepth, depth);
+            const unsigned int x = static_cast<unsigned int>(i % n);
+            const unsigned int z = static_cast<unsigned int>(i / n);
+            const glm::vec2 world(-settings.size * 0.5f + x * spacing,
+                                  -settings.size * 0.5f + z * spacing);
+            boundsMin = glm::min(boundsMin, world);
+            boundsMax = glm::max(boundsMax, world);
+            ++wetCells;
+        }
+        if (wetCells == 0u)
+            continue;
+        LakeRegion region;
+        region.boundsXZ = glm::vec4(boundsMin.x - spacing * 2.0f,
+                                    boundsMin.y - spacing * 2.0f,
+                                    boundsMax.x + spacing * 2.0f,
+                                    boundsMax.y + spacing * 2.0f);
+        region.waterLevel = candidate.surface;
+        region.area = wetCells * cellArea;
+        region.maximumDepth = maximumDepth;
+        lakeRegions.push_back(region);
+    }
+
+    // Carve every sufficiently large D8 catchment into the conditioned
+    // surface. Width and depth scale with sqrt(upstream area), which keeps
+    // headwaters narrow and grows trunk rivers smoothly toward the outlet.
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        if (flowAccumulation[i] < settings.riverStartArea || lakeMask[i])
+            continue;
+        const float sqrtKm2 = std::sqrt(flowAccumulation[i] / 1000000.0f);
+        const float width = glm::clamp(settings.riverBaseWidth +
+                                       settings.riverWidthPerSqrtKm2 * sqrtKm2,
+                                       settings.riverBaseWidth,
+                                       settings.riverMaximumWidth);
+        const float depth = settings.riverBaseDepth +
+                            settings.riverDepthPerSqrtKm2 * sqrtKm2;
+        const float channelRadius = std::max(width * 0.5f, spacing * 0.72f);
+        // The dry bank is wider than the wet channel.  The previous profile
+        // retained 18% of the incision at the last wet sample and then jumped
+        // straight back to the untouched terrain one sample later.  A separate
+        // bank radius lets both bed depth and terrain height meet continuously.
+        const float bankRadius = std::max(channelRadius * 2.35f,
+                                          spacing * 1.65f);
+        const int gridRadius = std::max(1, static_cast<int>(std::ceil(bankRadius /
+                                                                     spacing)));
+        const int cx = static_cast<int>(i % n);
+        const int cz = static_cast<int>(i / n);
+        const float surface = std::max(filled[i] - depth * 0.16f,
+                                       settings.baseHeight + 0.08f);
+        for (int dz = -gridRadius; dz <= gridRadius; ++dz)
+        {
+            for (int dx = -gridRadius; dx <= gridRadius; ++dx)
+            {
+                const int x = cx + dx;
+                const int z = cz + dz;
+                if (x <= 0 || z <= 0 || x + 1 >= static_cast<int>(n) ||
+                    z + 1 >= static_cast<int>(n))
+                    continue;
+                const float distance = std::sqrt(static_cast<float>(dx * dx +
+                                                                     dz * dz)) *
+                                       spacing;
+                if (distance > bankRadius)
+                    continue;
+                const std::size_t j = static_cast<std::size_t>(z) * n +
+                                      static_cast<unsigned int>(x);
+                if (lakeMask[j])
+                    continue;
+                const float originalHeight = heightSamples[j];
+                float targetHeight = originalHeight;
+                if (distance <= channelRadius)
+                {
+                    const float crossSection = 1.0f - smoothStep(
+                        0.0f, channelRadius, distance);
+                    const float localDepth = depth * std::pow(
+                        std::max(crossSection, 0.0f), 0.72f);
+                    targetHeight = surface - localDepth;
+                }
+                else
+                {
+                    // Dry flood-bank: blend from the water surface back to the
+                    // original terrain without extending the water mask.
+                    const float bankWeight = 1.0f - smoothStep(
+                        channelRadius, bankRadius, distance);
+                    targetHeight = glm::mix(originalHeight, surface,
+                                            bankWeight);
+                }
+                heightSamples[j] = std::min(originalHeight, targetHeight);
+                const float actualDepth = surface - heightSamples[j];
+                if (distance <= channelRadius &&
+                    actualDepth > hydrologyWaterDepth[j])
+                {
+                    hydrologyWaterDepth[j] = actualDepth;
+                    hydrologyWaterSurface[j] = surface;
+                }
+            }
+        }
+    }
+
+    waterLevel = lakeRegions.empty() ? settings.baseHeight :
+                 lakeRegions.front().waterLevel;
+    lakeArea = 0.0f;
+    maximumWaterDepth = 0.0f;
+    glm::vec2 allMin(std::numeric_limits<float>::max());
+    glm::vec2 allMax(-std::numeric_limits<float>::max());
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        if (hydrologyWaterSurface[i] > 0.0f)
+            hydrologyWaterDepth[i] = std::max(
+                hydrologyWaterSurface[i] - heightSamples[i], 0.0f);
+        if (hydrologyWaterDepth[i] <= 0.05f)
+            continue;
+        lakeArea += cellArea;
+        maximumWaterDepth = std::max(maximumWaterDepth,
+                                     hydrologyWaterDepth[i]);
+        const unsigned int x = static_cast<unsigned int>(i % n);
+        const unsigned int z = static_cast<unsigned int>(i / n);
+        const glm::vec2 world(-settings.size * 0.5f + x * spacing,
+                              -settings.size * 0.5f + z * spacing);
+        allMin = glm::min(allMin, world);
+        allMax = glm::max(allMax, world);
+    }
+    lakeBoundsXZ = lakeArea > 0.0f
+        ? glm::vec4(allMin.x, allMin.y, allMax.x, allMax.y)
+        : glm::vec4(0.0f);
 }
 
 void TerrainMesh::generateLakeData()
@@ -619,96 +915,163 @@ void TerrainMesh::generateLakeData()
         static_cast<std::size_t>(lakeResolution) * lakeResolution;
     const float lakeSpacing = settings.size /
                               static_cast<float>(lakeResolution - 1u);
-    const float lakeWorldMinimum = -settings.size * 0.5f;
-    const auto designedLakes = makeDesignedLakes(settings);
-    lakeDataHalf.assign(lakeSampleCount * 3u, floatToHalf(0.0f));
-    lakeRegions.clear();
-    lakeArea = 0.0f;
-    maximumWaterDepth = 0.0f;
-    glm::vec2 authoredBoundsMin(std::numeric_limits<float>::max());
-    glm::vec2 authoredBoundsMax(-std::numeric_limits<float>::max());
-
-    for (const DesignedLake& lake : designedLakes)
+    const unsigned int sourceResolution = settings.resolution;
+    std::vector<float> depth(lakeSampleCount, 0.0f);
+    std::vector<float> surface(lakeSampleCount, 0.0f);
+    std::vector<unsigned char> wet(lakeSampleCount, 0u);
+    std::vector<float> sourceWet(hydrologyWaterDepth.size(), 0.0f);
+    std::vector<float> weightedSurface(hydrologyWaterDepth.size(), 0.0f);
+    for (std::size_t i = 0; i < hydrologyWaterDepth.size(); ++i)
     {
-        std::size_t wetCount = 0u;
-        float localMaximumDepth = 0.0f;
-        glm::vec2 boundsMin(std::numeric_limits<float>::max());
-        glm::vec2 boundsMax(-std::numeric_limits<float>::max());
-        for (unsigned int z = 0; z < lakeResolution; ++z)
-        {
-            const float worldZ = lakeWorldMinimum + z * lakeSpacing;
-            for (unsigned int x = 0; x < lakeResolution; ++x)
-            {
-                const glm::vec2 worldXZ(
-                    lakeWorldMinimum + x * lakeSpacing, worldZ);
-                const float signedDistance =
-                    designedLakeSignedDistance(worldXZ, lake);
-                if (signedDistance <= 0.0f)
-                    continue;
-
-                const float depth = designedLakeDepth(signedDistance, lake);
-                const std::size_t channel =
-                    (static_cast<std::size_t>(z) * lakeResolution + x) * 3u;
-                if (halfToFloat(lakeDataHalf[channel + 2u]) != 0.0f)
-                    throw std::runtime_error("Authored lake regions overlap");
-                lakeDataHalf[channel] = floatToHalf(depth);
-                lakeDataHalf[channel + 1u] = floatToHalf(
-                    glm::clamp(signedDistance, 0.0f, 128.0f));
-                lakeDataHalf[channel + 2u] = floatToHalf(lake.waterLevel);
-                boundsMin = glm::min(boundsMin, worldXZ);
-                boundsMax = glm::max(boundsMax, worldXZ);
-                localMaximumDepth = std::max(localMaximumDepth, depth);
-                ++wetCount;
-            }
-        }
-
-        if (wetCount == 0u)
-            throw std::runtime_error("Authored lake contains no samples");
-        const float localArea = static_cast<float>(wetCount) *
-                                lakeSpacing * lakeSpacing;
-        LakeRegion region;
-        region.boundsXZ = glm::vec4(boundsMin.x - lakeSpacing * 2.0f,
-                                    boundsMin.y - lakeSpacing * 2.0f,
-                                    boundsMax.x + lakeSpacing * 2.0f,
-                                    boundsMax.y + lakeSpacing * 2.0f);
-        region.waterLevel = lake.waterLevel;
-        region.area = localArea;
-        region.maximumDepth = localMaximumDepth;
-        lakeRegions.push_back(region);
-        lakeArea += localArea;
-        maximumWaterDepth = std::max(maximumWaterDepth, localMaximumDepth);
-        authoredBoundsMin = glm::min(authoredBoundsMin, boundsMin);
-        authoredBoundsMax = glm::max(authoredBoundsMax, boundsMax);
+        sourceWet[i] = hydrologyWaterDepth[i] > 0.04f ? 1.0f : 0.0f;
+        weightedSurface[i] = hydrologyWaterSurface[i] * sourceWet[i];
     }
-
-    // Outside samples also store the analytic signed distance. This gives the
-    // fragment shader a continuous, linearly filtered edge instead of a
-    // flood-fill/distance-transform staircase.
+    const auto bilinear = [sourceResolution](const std::vector<float>& field,
+                                             float gx, float gz)
+    {
+        const unsigned int x0 = std::min(static_cast<unsigned int>(gx),
+                                         sourceResolution - 2u);
+        const unsigned int z0 = std::min(static_cast<unsigned int>(gz),
+                                         sourceResolution - 2u);
+        const float tx = gx - static_cast<float>(x0);
+        const float tz = gz - static_cast<float>(z0);
+        const float a = glm::mix(field[static_cast<std::size_t>(z0) *
+                                       sourceResolution + x0],
+                                 field[static_cast<std::size_t>(z0) *
+                                       sourceResolution + x0 + 1u], tx);
+        const float b = glm::mix(field[static_cast<std::size_t>(z0 + 1u) *
+                                       sourceResolution + x0],
+                                 field[static_cast<std::size_t>(z0 + 1u) *
+                                       sourceResolution + x0 + 1u], tx);
+        return glm::mix(a, b, tz);
+    };
     for (unsigned int z = 0; z < lakeResolution; ++z)
     {
-        const float worldZ = lakeWorldMinimum + z * lakeSpacing;
+        const float gz = static_cast<float>(z) *
+                         static_cast<float>(sourceResolution - 1u) /
+                         static_cast<float>(lakeResolution - 1u);
         for (unsigned int x = 0; x < lakeResolution; ++x)
         {
-            const std::size_t channel =
-                (static_cast<std::size_t>(z) * lakeResolution + x) * 3u;
-            if (halfToFloat(lakeDataHalf[channel + 2u]) != 0.0f)
-                continue;
-            const glm::vec2 worldXZ(
-                lakeWorldMinimum + x * lakeSpacing, worldZ);
-            float signedDistance = -std::numeric_limits<float>::max();
-            for (const DesignedLake& lake : designedLakes)
-                signedDistance = std::max(
-                    signedDistance, designedLakeSignedDistance(worldXZ, lake));
-            lakeDataHalf[channel + 1u] = floatToHalf(
-                glm::clamp(signedDistance, -128.0f, 0.0f));
+            const float gx = static_cast<float>(x) *
+                             static_cast<float>(sourceResolution - 1u) /
+                             static_cast<float>(lakeResolution - 1u);
+            const std::size_t i = static_cast<std::size_t>(z) * lakeResolution + x;
+            const float wetWeight = bilinear(sourceWet, gx, gz);
+            surface[i] = wetWeight > 0.001f
+                ? bilinear(weightedSurface, gx, gz) / wetWeight : 0.0f;
+            const float terrainHeight = bilinear(heightSamples, gx, gz);
+            // Derive coverage from the continuous water-surface/terrain
+            // intersection. Gating this with the interpolated binary mask made
+            // deep, narrow rivers lose depth at their outer LDM texels and
+            // produced a visible/cpu-contract discontinuity at the bank.
+            depth[i] = wetWeight > 0.001f
+                ? std::max(surface[i] - terrainHeight, 0.0f) : 0.0f;
+            wet[i] = depth[i] > 0.04f ? 1u : 0u;
         }
     }
 
-    waterLevel = lakeRegions.front().waterLevel;
-    lakeBoundsXZ = glm::vec4(authoredBoundsMin.x - lakeSpacing * 2.0f,
-                             authoredBoundsMin.y - lakeSpacing * 2.0f,
-                             authoredBoundsMax.x + lakeSpacing * 2.0f,
-                             authoredBoundsMax.y + lakeSpacing * 2.0f);
+    const float infinity = std::numeric_limits<float>::max() * 0.25f;
+    std::vector<float> insideDistance(lakeSampleCount, infinity);
+    std::vector<float> outsideDistance(lakeSampleCount, infinity);
+    std::vector<float> nearestSurface = surface;
+    for (std::size_t i = 0; i < lakeSampleCount; ++i)
+    {
+        if (wet[i])
+            outsideDistance[i] = 0.0f;
+        else
+        {
+            insideDistance[i] = 0.0f;
+            nearestSurface[i] = 0.0f;
+        }
+    }
+    const auto relax = [&](std::size_t target, std::size_t sourceIndex,
+                           float cost, bool copySurface)
+    {
+        std::vector<float>& distance = copySurface ? outsideDistance
+                                                   : insideDistance;
+        const float candidate = distance[sourceIndex] + cost;
+        if (candidate < distance[target])
+        {
+            distance[target] = candidate;
+            if (copySurface)
+                nearestSurface[target] = nearestSurface[sourceIndex];
+        }
+    };
+    constexpr float Diagonal = 1.41421356f;
+    for (unsigned int z = 0; z < lakeResolution; ++z)
+    {
+        for (unsigned int x = 0; x < lakeResolution; ++x)
+        {
+            const std::size_t i = static_cast<std::size_t>(z) * lakeResolution + x;
+            if (x > 0u)
+            {
+                relax(i, i - 1u, 1.0f, false);
+                relax(i, i - 1u, 1.0f, true);
+            }
+            if (z > 0u)
+            {
+                relax(i, i - lakeResolution, 1.0f, false);
+                relax(i, i - lakeResolution, 1.0f, true);
+                if (x > 0u)
+                {
+                    relax(i, i - lakeResolution - 1u, Diagonal, false);
+                    relax(i, i - lakeResolution - 1u, Diagonal, true);
+                }
+                if (x + 1u < lakeResolution)
+                {
+                    relax(i, i - lakeResolution + 1u, Diagonal, false);
+                    relax(i, i - lakeResolution + 1u, Diagonal, true);
+                }
+            }
+        }
+    }
+    for (int z = static_cast<int>(lakeResolution) - 1; z >= 0; --z)
+    {
+        for (int x = static_cast<int>(lakeResolution) - 1; x >= 0; --x)
+        {
+            const std::size_t i = static_cast<std::size_t>(z) * lakeResolution +
+                                  static_cast<unsigned int>(x);
+            if (x + 1 < static_cast<int>(lakeResolution))
+            {
+                relax(i, i + 1u, 1.0f, false);
+                relax(i, i + 1u, 1.0f, true);
+            }
+            if (z + 1 < static_cast<int>(lakeResolution))
+            {
+                relax(i, i + lakeResolution, 1.0f, false);
+                relax(i, i + lakeResolution, 1.0f, true);
+                if (x > 0)
+                {
+                    relax(i, i + lakeResolution - 1u, Diagonal, false);
+                    relax(i, i + lakeResolution - 1u, Diagonal, true);
+                }
+                if (x + 1 < static_cast<int>(lakeResolution))
+                {
+                    relax(i, i + lakeResolution + 1u, Diagonal, false);
+                    relax(i, i + lakeResolution + 1u, Diagonal, true);
+                }
+            }
+        }
+    }
+
+    lakeDataHalf.resize(lakeSampleCount * 3u);
+    for (std::size_t i = 0; i < lakeSampleCount; ++i)
+    {
+        const float signedDistance = wet[i]
+            ? insideDistance[i] * lakeSpacing
+            : -outsideDistance[i] * lakeSpacing;
+        lakeDataHalf[i * 3u] = floatToHalf(depth[i]);
+        lakeDataHalf[i * 3u + 1u] = floatToHalf(glm::clamp(
+            signedDistance, -128.0f, 128.0f));
+        lakeDataHalf[i * 3u + 2u] = floatToHalf(
+            wet[i] ? surface[i] : nearestSurface[i]);
+    }
+    flowAccumulation.clear();
+    flowAccumulation.shrink_to_fit();
+    hydrologyWaterDepth.clear();
+    hydrologyWaterDepth.shrink_to_fit();
+    hydrologyWaterSurface.clear();
+    hydrologyWaterSurface.shrink_to_fit();
 }
 
 void TerrainMesh::computeDerivedFields()
@@ -800,6 +1163,94 @@ void TerrainMesh::computeDerivedFields()
     terrainData.shrink_to_fit();
 }
 
+void TerrainMesh::computeEnvironmentFields()
+{
+    const unsigned int n = settings.resolution;
+    const std::size_t count = static_cast<std::size_t>(n) * n;
+    const float spacing = settings.size / static_cast<float>(n - 1u);
+    std::vector<float> waterInfluence(count, 0.0f);
+    for (std::size_t i = 0; i < count; ++i)
+        waterInfluence[i] = hydrologyWaterDepth[i] > 0.04f ? 1.0f : 0.0f;
+    const float decay = std::exp(-spacing / 135.0f);
+    // Four directional sweeps approximate distance-to-water at terrain-grid
+    // scale without introducing an unrelated noise field.
+    for (int pass = 0; pass < 3; ++pass)
+    {
+        for (unsigned int z = 0; z < n; ++z)
+            for (unsigned int x = 0; x < n; ++x)
+            {
+                const std::size_t i = static_cast<std::size_t>(z) * n + x;
+                if (x > 0u)
+                    waterInfluence[i] = std::max(waterInfluence[i],
+                                                 waterInfluence[i - 1u] * decay);
+                if (z > 0u)
+                    waterInfluence[i] = std::max(waterInfluence[i],
+                        waterInfluence[i - n] * decay);
+            }
+        for (int z = static_cast<int>(n) - 1; z >= 0; --z)
+            for (int x = static_cast<int>(n) - 1; x >= 0; --x)
+            {
+                const std::size_t i = static_cast<std::size_t>(z) * n +
+                                      static_cast<unsigned int>(x);
+                if (x + 1 < static_cast<int>(n))
+                    waterInfluence[i] = std::max(waterInfluence[i],
+                                                 waterInfluence[i + 1u] * decay);
+                if (z + 1 < static_cast<int>(n))
+                    waterInfluence[i] = std::max(waterInfluence[i],
+                        waterInfluence[i + n] * decay);
+            }
+    }
+
+    terrainEnvironmentHalf.resize(count * 2u);
+    for (unsigned int z = 0; z < n; ++z)
+    {
+        const unsigned int zd = z > 0u ? z - 1u : z;
+        const unsigned int zu = z + 1u < n ? z + 1u : z;
+        for (unsigned int x = 0; x < n; ++x)
+        {
+            const unsigned int xl = x > 0u ? x - 1u : x;
+            const unsigned int xr = x + 1u < n ? x + 1u : x;
+            const std::size_t i = static_cast<std::size_t>(z) * n + x;
+            const float h = halfToFloat(terrainDataHalf[i * 4u]);
+            const float slope = halfToFloat(terrainDataHalf[i * 4u + 1u]);
+            const float curvature = halfToFloat(terrainDataHalf[i * 4u + 3u]);
+            const float dhdz = (heightSamples[static_cast<std::size_t>(zu) * n + x] -
+                                heightSamples[static_cast<std::size_t>(zd) * n + x]) /
+                               std::max(static_cast<float>(zu - zd) * spacing, 0.001f);
+            const float dhdx = (heightSamples[static_cast<std::size_t>(z) * n + xr] -
+                                heightSamples[static_cast<std::size_t>(z) * n + xl]) /
+                               std::max(static_cast<float>(xr - xl) * spacing, 0.001f);
+            const glm::vec3 normal = glm::normalize(glm::vec3(-dhdx, 1.0f, -dhdz));
+            const float northness = normal.z * 0.5f + 0.5f;
+            const float catchment = glm::clamp(
+                std::log1p(flowAccumulation[i] / 5000.0f) /
+                std::log1p(18000000.0f / 5000.0f), 0.0f, 1.0f);
+            const float concavity = smoothStep(0.50f, 0.86f, curvature);
+            const float ridgeDrying = smoothStep(0.18f, 0.52f,
+                                                  1.0f - curvature);
+            float moisture = 0.08f + catchment * 0.43f +
+                             waterInfluence[i] * 0.42f + concavity * 0.17f +
+                             northness * 0.10f - slope * 0.18f -
+                             ridgeDrying * 0.08f;
+            moisture = glm::clamp(moisture, 0.0f, 1.0f);
+
+            const float altitudeSnow = smoothStep(0.50f, 0.72f, h);
+            const float stableSlope = 1.0f - smoothStep(0.42f, 0.78f, slope);
+            const float leeDeposit = glm::mix(0.58f, 1.0f, northness);
+            const float hollowRetention = glm::mix(0.78f, 1.12f, concavity);
+            const float retainedSnow = glm::clamp(
+                altitudeSnow * stableSlope * leeDeposit * hollowRetention *
+                glm::mix(0.82f, 1.0f, moisture), 0.0f, 1.0f);
+            // Above the permanent snow line the PBR snow cover is complete;
+            // slope/aspect only control the lower, seasonal transition band.
+            const float permanentSnow = smoothStep(0.70f, 0.80f, h);
+            const float snow = std::max(retainedSnow, permanentSnow);
+            terrainEnvironmentHalf[i * 2u] = floatToHalf(moisture);
+            terrainEnvironmentHalf[i * 2u + 1u] = floatToHalf(snow);
+        }
+    }
+}
+
 void TerrainMesh::uploadTerrainTextures()
 {
     const GLsizei n = static_cast<GLsizei>(settings.resolution);
@@ -807,6 +1258,15 @@ void TerrainMesh::uploadTerrainTextures()
     glBindTexture(GL_TEXTURE_2D, terrainDataTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, n, n, 0, GL_RGBA,
                  GL_HALF_FLOAT, terrainDataHalf.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glGenTextures(1, &terrainEnvironmentTexture);
+    glBindTexture(GL_TEXTURE_2D, terrainEnvironmentTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, n, n, 0, GL_RG,
+                 GL_HALF_FLOAT, terrainEnvironmentHalf.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -927,6 +1387,10 @@ void TerrainMesh::buildMesh()
     add(rockMaterial.roughnessTex, "texture_roughness", "terrain://rock/roughness");
     add(rockMaterial.heightTex, "texture_terrainRockHeight", "terrain://rock/height");
     textures.push_back({terrainDataTexture, "texture_terrainData", "terrain://tdm"});
+    textures.push_back({terrainEnvironmentTexture, "texture_terrainEnvironment",
+                        "terrain://environment"});
+    textures.push_back({lakeDataTexture, "texture_terrainLakeData",
+                        "terrain://shore-distance"});
     textures.push_back({detailNoiseTexture, "texture_terrainNoise", "terrain://detail-noise"});
     add(grassMaterial.albedoTex, "texture_terrainGrassAlbedo", "terrain://grass/albedo");
     add(grassMaterial.normalTex, "texture_terrainGrassNormal", "terrain://grass/normal");
@@ -1006,6 +1470,31 @@ glm::vec4 TerrainMesh::sampleTerrainData(float worldX, float worldZ) const
     return glm::mix(a, b, tz);
 }
 
+glm::vec2 TerrainMesh::sampleEnvironmentData(float worldX, float worldZ) const
+{
+    const unsigned int n = settings.resolution;
+    if (terrainEnvironmentHalf.empty() || n < 2u)
+        return glm::vec2(0.0f);
+    const float spacing = settings.size / static_cast<float>(n - 1u);
+    const float gridX = (worldX + settings.size * 0.5f) / spacing;
+    const float gridZ = (worldZ + settings.size * 0.5f) / spacing;
+    if (gridX < 0.0f || gridZ < 0.0f || gridX > n - 1.0f || gridZ > n - 1.0f)
+        return glm::vec2(0.0f);
+    const unsigned int x0 = std::min(static_cast<unsigned int>(gridX), n - 2u);
+    const unsigned int z0 = std::min(static_cast<unsigned int>(gridZ), n - 2u);
+    const float tx = gridX - static_cast<float>(x0);
+    const float tz = gridZ - static_cast<float>(z0);
+    const auto read = [this, n](unsigned int x, unsigned int z)
+    {
+        const std::size_t i = (static_cast<std::size_t>(z) * n + x) * 2u;
+        return glm::vec2(halfToFloat(terrainEnvironmentHalf[i]),
+                         halfToFloat(terrainEnvironmentHalf[i + 1u]));
+    };
+    const glm::vec2 a = glm::mix(read(x0, z0), read(x0 + 1u, z0), tx);
+    const glm::vec2 b = glm::mix(read(x0, z0 + 1u), read(x0 + 1u, z0 + 1u), tx);
+    return glm::mix(a, b, tz);
+}
+
 TerrainMesh::SurfaceSample TerrainMesh::sampleSurface(float worldX,
                                                       float worldZ) const
 {
@@ -1051,10 +1540,15 @@ TerrainMesh::SurfaceSample TerrainMesh::sampleSurface(float worldX,
     sample.worldPosition = glm::vec3(worldX, renderedHeight, worldZ);
     sample.normal = glm::normalize(glm::vec3(-dhdx, 1.0f, -dhdz));
     sample.tdm = sampleTerrainData(worldX, worldZ);
+    const glm::vec2 environment = sampleEnvironmentData(worldX, worldZ);
+    sample.moisture = environment.x;
+    sample.snowRetention = environment.y;
     const glm::vec2 lake = sampleLakeData(worldX, worldZ);
-    sample.waterDepth = lake.x;
     sample.signedDistanceToWater = lake.y;
-    sample.underwater = lake.x > 0.01f && lake.y >= 0.0f;
+    sample.waterSurfaceHeight = sampleWaterSurfaceHeight(worldX, worldZ);
+    sample.waterDepth = lake.y >= 0.0f
+        ? std::max(sample.waterSurfaceHeight - renderedHeight, 0.0f) : 0.0f;
+    sample.underwater = sample.waterDepth > 0.01f;
     return sample;
 }
 bool TerrainMesh::isBelowWater(float x, float z) const { return isInsideLake(x, z); }
@@ -1086,12 +1580,40 @@ glm::vec2 TerrainMesh::sampleLakeData(float worldX, float worldZ) const
 
 float TerrainMesh::sampleWaterDepth(float x, float z) const
 {
-    return sampleLakeData(x, z).x;
+    const glm::vec2 lake = sampleLakeData(x, z);
+    if (lake.y < 0.0f)
+        return 0.0f;
+    return std::max(sampleWaterSurfaceHeight(x, z) - sampleHeight(x, z),
+                    0.0f);
 }
 
 float TerrainMesh::sampleSignedDistanceToWater(float x, float z) const
 {
     return sampleLakeData(x, z).y;
+}
+
+float TerrainMesh::sampleWaterSurfaceHeight(float worldX, float worldZ) const
+{
+    const unsigned int n = settings.lakeDataResolution;
+    if (lakeDataHalf.empty() || n < 2u)
+        return 0.0f;
+    const float spacing = settings.size / static_cast<float>(n - 1u);
+    const float gridX = (worldX + settings.size * 0.5f) / spacing;
+    const float gridZ = (worldZ + settings.size * 0.5f) / spacing;
+    if (gridX < 0.0f || gridZ < 0.0f || gridX > n - 1.0f || gridZ > n - 1.0f)
+        return 0.0f;
+    const unsigned int x0 = std::min(static_cast<unsigned int>(gridX), n - 2u);
+    const unsigned int z0 = std::min(static_cast<unsigned int>(gridZ), n - 2u);
+    const float tx = gridX - static_cast<float>(x0);
+    const float tz = gridZ - static_cast<float>(z0);
+    const auto read = [this, n](unsigned int x, unsigned int z)
+    {
+        const std::size_t i = (static_cast<std::size_t>(z) * n + x) * 3u + 2u;
+        return halfToFloat(lakeDataHalf[i]);
+    };
+    const float a = glm::mix(read(x0, z0), read(x0 + 1u, z0), tx);
+    const float b = glm::mix(read(x0, z0 + 1u), read(x0 + 1u, z0 + 1u), tx);
+    return glm::mix(a, b, tz);
 }
 
 bool TerrainMesh::isInsideLake(float x, float z) const

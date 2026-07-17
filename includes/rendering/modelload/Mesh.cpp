@@ -137,6 +137,8 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
     shader.setBool("usePackedMetallicRoughness", false);
     shader.setBool("useTerrainBlend", false);
     shader.setBool("hasTerrainData", false);
+    shader.setBool("hasTerrainEnvironment", false);
+    shader.setBool("hasTerrainLakeData", false);
     shader.setBool("hasTerrainGrassNormal", false);
     shader.setBool("hasTerrainGrassRoughness", false);
     shader.setBool("hasTerrainGrassMetallic", false);
@@ -206,6 +208,16 @@ void Mesh::Draw(Shader& shader, const glm::mat4& parentTransform) const
         else if (type == "texture_terrainNoise")
         {
             shader.setInt("terrainNoiseTexture", i);
+        }
+        else if (type == "texture_terrainEnvironment")
+        {
+            shader.setInt("terrainEnvironmentMap", i);
+            shader.setBool("hasTerrainEnvironment", true);
+        }
+        else if (type == "texture_terrainLakeData")
+        {
+            shader.setInt("terrainLakeDataMap", i);
+            shader.setBool("hasTerrainLakeData", true);
         }
         else if (type == "texture_terrainGrassAlbedo")
         {
