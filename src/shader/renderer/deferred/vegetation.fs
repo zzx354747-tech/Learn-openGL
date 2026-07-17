@@ -153,6 +153,7 @@ void main()
         n = -n;
     vec4 baseSample = vec4(1.0);
     vec4 materialData = vec4(1.0, vColorRoughness.a, 0.0, 1.0);
+    // Point-sprite LODs intentionally keep the original lighting path.
     bool foliage = false;
     if (vPointMode == 0 && u_hasMaterialAtlas && vUVMaterial.z > 0.5)
     {
@@ -193,7 +194,7 @@ void main()
     float roughness = sqrt(clamp(authoredRoughness * authoredRoughness +
                            min(variance,.24), .0016, 1));
     gPosition = vWorldPosition;
-    // A negative roughness marks thin foliage without allocating another
+    // A negative roughness marks vegetation without allocating another
     // G-buffer attachment. Non-vegetation geometry always writes positive
     // roughness, so the encoding is backward compatible.
     gNormalRoughness = vec4(

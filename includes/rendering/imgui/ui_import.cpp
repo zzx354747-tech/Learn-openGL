@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 #include "rendering/resources/environment/EnvironmentOption.h"
+#include "rendering/uniforms/VegetationExposure.h"
 
 void SceneRenderUI::renderUI(
     SceneRenderUIState& uiState,
@@ -364,6 +365,16 @@ void SceneRenderUI::renderUI(
                 "Foliage Transmission",
                 &uiState.sceneConfig.vegetationTransmissionStrength,
                 0.0f, 1.5f, "%.2f");
+            ImGui::SliderFloat(
+                "Vegetation Exposure Coefficient",
+                &uiState.sceneConfig.vegetationExposureCoefficient,
+                0.25f, 2.0f, "%.2f");
+            ImGui::SetItemTooltip(
+                "Scales the smoothed exposure driven by the original light "
+                "energy; 1.00 is neutral for all vegetation");
+            ImGui::Text("Cloud-shadow effective coefficient: %.2f",
+                        calculateVegetationExposureCoefficient(
+                            uiState.sceneConfig));
             ImGui::SliderFloat("Grass Draw Distance",
                                &uiState.sceneConfig.vegetationGrassDistance,
                                40.0f, 220.0f, "%.0f m");

@@ -107,6 +107,9 @@ struct SceneRenderConfig
     float vegetationWindStrength = 0.32f;
     float vegetationMaterialMipBias = 0.35f;
     float vegetationTransmissionStrength = 0.85f;
+    // Multiplies the light-driven, smoothed vegetation exposure target.
+    // 1.0 keeps the automatic response unchanged.
+    float vegetationExposureCoefficient = 1.0f;
     float vegetationGrassDistance = 150.0f;
     float vegetationFlowerDistance = 180.0f;
     float vegetationTreeDistance = 950.0f;
@@ -302,4 +305,6 @@ struct SceneRenderState
     glm::mat4 cloudShadowMatrix = glm::mat4(1.0f);
     float cloudShadowGlobalTransmission = 1.0f;
     glm::mat4 spotLightSpaceMatrix = glm::mat4(1.0f);
+    float vegetationExposure = 0.55f;
+    bool vegetationExposureInitialized = false;
 };

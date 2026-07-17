@@ -53,6 +53,9 @@ void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
         glDepthRange(0.0, 1.0);
         glDepthMask(GL_TRUE);
         glDepthFunc(GL_LESS);
+        resources.shaderLibrary->vegetationUnlit.use();
+        resources.shaderLibrary->vegetationUnlit.setFloat(
+            "u_vegetationExposure", state.vegetationExposure);
         if (showcaseVegetation)
             resources.vegetationSystem->drawShowcase(
                 resources.shaderLibrary->vegetationUnlit, camera, config);

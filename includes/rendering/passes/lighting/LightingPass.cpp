@@ -94,6 +94,7 @@ void LightingPass::setupObjectLighting(Shader& shader)
     shader.setFloat("phongIBLSpecularStrength", config.phongIBLSpecularStrength);
     shader.setFloat("foliageTransmissionStrength",
                     config.vegetationTransmissionStrength);
+    shader.setFloat("vegetationExposure", state.vegetationExposure);
     shader.setMat3("iblSunRotation", calculateIblSunRotation(lightSettings));
     shader.setFloat("bloomThreshold", config.bloomThreshold);
     shader.setFloat("pointShadowStrength", lightSettings.pointShadowStrength);

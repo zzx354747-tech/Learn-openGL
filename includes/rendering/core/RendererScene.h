@@ -106,6 +106,7 @@ struct RendererScene
     int automaticWeatherStage = 0;
     double sunLastUpdateSeconds = 0.0;
     double cloudWeatherLastUpdateSeconds = 0.0;
+    double vegetationExposureLastUpdateSeconds = 0.0;
     bool cloudWeatherTransitionActive = false;
 
     void resize(int width, int height);

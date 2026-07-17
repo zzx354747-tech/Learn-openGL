@@ -86,6 +86,7 @@ uniform float phongSpecularStrength;
 uniform float phongIBLDiffuseStrength;
 uniform float phongIBLSpecularStrength;
 uniform float foliageTransmissionStrength;
+uniform float vegetationExposure;
 uniform float bloomThreshold;
 uniform float pointShadowStrength;
 uniform float sunShadowStrength;
@@ -647,7 +648,11 @@ vec3 calcScreenSpaceGI(vec3 fragPos, vec3 normal, vec3 albedo,
             sampleUv.y <= 0.0 || sampleUv.y >= 1.0)
             continue;
 
-        vec3 sampleNormalRaw = texture(gNormalRoughness, sampleUv).rgb;
+        vec4 sampleNormalPayload = texture(gNormalRoughness, sampleUv);
+        // Unlit vegetation is not an indirect-light emitter either.
+        if (sampleNormalPayload.a < 0.0)
+            continue;
+        vec3 sampleNormalRaw = sampleNormalPayload.rgb;
         if (dot(sampleNormalRaw, sampleNormalRaw) < 0.25)
             continue;
         vec3 sampleNormal = normalize(sampleNormalRaw);
@@ -797,6 +802,21 @@ void main()
     vec3 Normal = normalize(normalRoughness.rgb);
     vec3 albedo = albedoPayload.rgb;
     bool foliage = normalRoughness.a < 0.0;
+
+    if (foliage)
+    {
+        // Vegetation keeps its authored colour and receives no direct light.
+        // It still gets one-bounce screen-space GI from non-vegetation G-buffer
+        // surfaces, so flowers, grass, shrubs and trees respond to nearby
+        // terrain and architecture without becoming direct-light emitters.
+        vec3 vegetationBase = albedo * vegetationExposure;
+        vec3 vegetationGI = calcScreenSpaceGI(
+            FragPos, Normal, albedo, 0.0, 1.0) * vegetationExposure;
+        FragColor = vec4(max(vegetationBase + vegetationGI, vec3(0.0)), 1.0);
+        BrightColor = vec4(0.0);
+        return;
+    }
+
     float transmission = foliage ? albedoPayload.a : 0.0;
     float metallic = foliage ? 0.0 : albedoPayload.a;
     float roughness = clamp(abs(normalRoughness.a), 0.04, 1.0);

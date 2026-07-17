@@ -23,6 +23,7 @@ uniform float u_alphaCutoff;
 uniform int u_pointShape;
 uniform vec3 u_speciesTint;
 uniform float u_speciesSaturation;
+uniform float u_vegetationExposure;
 
 vec4 sampleBaseColor(int index, vec2 uv)
 {
@@ -134,6 +135,9 @@ void main()
     albedo =
         mix(vec3(luminance), albedo, u_speciesSaturation) *
         u_speciesTint;
-    FragColor = vec4(max(albedo, vec3(0.0)), 1.0);
+    // Far point-sprite LODs intentionally keep their original value and do
+    // not participate in the dynamic geometric-vegetation exposure path.
+    float exposure = vPointMode != 0 ? 1.0 : u_vegetationExposure;
+    FragColor = vec4(max(albedo * exposure, vec3(0.0)), 1.0);
     BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }

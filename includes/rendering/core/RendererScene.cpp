@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cmath>
 #include <glm/gtc/matrix_transform.hpp>
+#include "rendering/uniforms/VegetationExposure.h"
 
 namespace
 {
@@ -419,7 +420,14 @@ void RendererScene::resize(int width, int height)
 
 void RendererScene::render(int width, int height)
 {
+    const double now = animationClockSeconds();
+    const float frameDeltaTime = consumeClockDelta(
+        now, vegetationExposureLastUpdateSeconds);
     updateCloudWeatherEvolution();
+    updateVegetationExposure(
+        sceneState,
+        calculateVegetationExposureTarget(sceneConfig, lightSettings),
+        frameDeltaTime);
     if (sceneConfig.sceneSelection != previousSceneSelection)
     {
         if (sceneConfig.sceneSelection == SceneSelection::FujiTerrain)
