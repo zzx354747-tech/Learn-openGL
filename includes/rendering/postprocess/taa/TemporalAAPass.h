@@ -17,7 +17,8 @@ public:
     void beginFrame(int width, int height);
     GLuint resolve(int width, int height, Framebuffer& source, Screenquad& screenQuad,
                    Shader& shader, GLuint currentPositionTexture = 0,
-                   GLuint currentVelocityTexture = 0);
+                   GLuint currentVelocityTexture = 0,
+                   GLuint currentCoverageReactiveTexture = 0);
     void resize(int width, int height);
 
 private:

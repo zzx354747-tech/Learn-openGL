@@ -6,6 +6,8 @@ layout(location=1) out vec4 BrightColor;
 in vec4 vColorRoughness;
 in vec4 vUVMaterial;
 flat in int vPointMode;
+flat in float vInstanceHash;
+flat in float vRepresentationCoverage;
 
 uniform sampler2D u_baseColorTexture0;
 uniform sampler2D u_baseColorTexture1;
@@ -24,6 +26,31 @@ uniform int u_pointShape;
 uniform vec3 u_speciesTint;
 uniform float u_speciesSaturation;
 uniform float u_vegetationExposure;
+uniform sampler2D u_blueNoiseTexture;
+uniform bool u_hasBlueNoiseTexture;
+uniform bool u_taaEnabled;
+uniform int u_frameIndex;
+uniform float u_lodCoverage;
+uniform bool u_lodFadeIn;
+
+float coverageNoise()
+{
+    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    ivec2 offset = u_taaEnabled
+        ? ivec2((u_frameIndex * 23) & 63,
+                (u_frameIndex * 47) & 63) : ivec2(0);
+    if (u_hasBlueNoiseTexture)
+        return texelFetch(u_blueNoiseTexture,
+                          (pixel + offset) & ivec2(63), 0).r;
+    return fract(sin(dot(vec2(pixel + offset), vec2(12.9898,78.233)))
+                 * 43758.5453);
+}
+
+float alphaCoverage(float alpha, float cutoff)
+{
+    float width = max(fwidth(alpha), 1.0 / 255.0);
+    return smoothstep(cutoff - width, cutoff + width, alpha);
+}
 
 vec4 sampleBaseColor(int index, vec2 uv)
 {
@@ -96,6 +123,17 @@ bool outsidePointSilhouette(vec2 q, int shape)
 
 void main()
 {
+    float representationCoverage =
+        clamp(vRepresentationCoverage, 0.0, 1.0);
+    if (vPointMode == 0)
+    {
+        if (vInstanceHash > representationCoverage)
+            discard;
+    }
+    else if (vInstanceHash < 1.0 - representationCoverage)
+        discard;
+    float noise = coverageNoise();
+    float temporalCoverage = clamp(u_lodCoverage, 0.0, 1.0);
     if (vPointMode != 0)
     {
         vec2 q = gl_PointCoord * 2.0 - 1.0;
@@ -112,9 +150,9 @@ void main()
         baseSample =
             sampleAtlasBase(materialIndex, vUVMaterial.xy);
         int flags = u_materialFlags[materialIndex];
-        if ((flags & 1) != 0 &&
-            baseSample.a < u_materialAlphaCutoffs[materialIndex])
-            discard;
+        if ((flags & 1) != 0)
+            temporalCoverage *= alphaCoverage(
+                baseSample.a, u_materialAlphaCutoffs[materialIndex]);
     }
     else
     {
@@ -125,9 +163,25 @@ void main()
                 int(vUVMaterial.z + 0.5), vUVMaterial.xy);
         }
         if (vPointMode == 0 && u_alphaMask &&
-            vUVMaterial.z > 0.5 && baseSample.a < u_alphaCutoff)
+            vUVMaterial.z > 0.5)
+            temporalCoverage *= alphaCoverage(
+                baseSample.a, u_alphaCutoff);
+    }
+    bool proceduralOpaque =
+        vPointMode == 0 && !u_hasMaterialAtlas &&
+        !u_hasBaseColorTexture && !u_alphaMask;
+    if (proceduralOpaque)
+    {
+        if (u_lodFadeIn)
+        {
+            if (vInstanceHash < 1.0 - temporalCoverage)
+                discard;
+        }
+        else if (vInstanceHash > temporalCoverage)
             discard;
     }
+    else if (noise > temporalCoverage)
+        discard;
 
     vec3 albedo = vColorRoughness.rgb * baseSample.rgb;
     float luminance =

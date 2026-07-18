@@ -367,6 +367,9 @@ RendererScene::RendererScene(int width, int height)
     sceneResources.sunTexture = sunTexture->getID();
     blueNoiseTexture = std::make_unique<GLTexture>("../textures/noise/blue_noise_64.png");
     sceneResources.blueNoiseTexture = blueNoiseTexture->getID();
+    if (sceneResources.vegetationSystem)
+        sceneResources.vegetationSystem->setBlueNoiseTexture(
+            sceneResources.blueNoiseTexture);
 
     sphereDrawer.loadMaterials("../textures/PBR/");
 
@@ -448,8 +451,8 @@ void RendererScene::render(int width, int height)
         }
         else if (sceneConfig.sceneSelection == SceneSelection::Default)
         {
-            // The default material lab now includes the high-detail botaniq
-            // showcase, which uses the deferred vegetation material pipeline.
+            // The default material lab includes a procedural vegetation
+            // showcase using the deferred vegetation material pipeline.
             sceneConfig.renderMode = RenderMode::Lighting;
             camera.SetPose(glm::vec3(0.0f, 1.1f, 7.5f), -90.0f, -4.0f);
         }

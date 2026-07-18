@@ -11,6 +11,7 @@ void SceneRenderResources::declareLightingPassResources()
         lightingHandles.gNormalRoughness = registry.declareTexture("gNormalRoughness");
         lightingHandles.gAlbedoMetallic = registry.declareTexture("gAlbedoMetallic");
         lightingHandles.gVelocity = registry.declareTexture("gVelocity");
+        lightingHandles.gCoverageReactive = registry.declareTexture("gCoverageReactive");
         lightingHandles.ao = registry.declareTexture("ao");
         lightingHandles.shadowMap = registry.declareTexture("shadowMap");
         lightingHandles.depthCubeMap = registry.declareTexture("depthCubeMap");

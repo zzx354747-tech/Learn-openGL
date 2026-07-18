@@ -2,720 +2,15 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cmath>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <limits>
-#include <optional>
-#include <sstream>
-#include <string>
 
-#include <assimp/GltfMaterial.h>
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
-#include <stb_image.h>
 
 namespace
 {
 constexpr float Pi = 3.14159265358979323846f;
-
-std::filesystem::path vegetationAssetDirectory()
-{
-#ifdef OPENGL_PROJECT_ROOT
-    return std::filesystem::path(OPENGL_PROJECT_ROOT) /
-           "resources" / "models" / "vegetation";
-#else
-    return std::filesystem::path("../resources/models/vegetation");
-#endif
-}
-
-std::filesystem::path bakedVegetationAssetDirectory()
-{
-#ifdef OPENGL_PROJECT_ROOT
-    return std::filesystem::path(OPENGL_PROJECT_ROOT) /
-           "resources" / "source_models" / "botaniq_baked";
-#else
-    return std::filesystem::path("../resources/source_models/botaniq_baked");
-#endif
-}
-
-std::string lowercase(std::string value)
-{
-    std::transform(value.begin(), value.end(), value.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return value;
-}
-
-std::optional<std::string> readTextFile(const std::filesystem::path& path)
-{
-    std::ifstream stream(path, std::ios::binary);
-    if (!stream)
-        return std::nullopt;
-    std::ostringstream contents;
-    contents << stream.rdbuf();
-    return contents.str();
-}
-
-std::size_t jsonValuePosition(const std::string& text, const char* key,
-                              std::size_t begin, std::size_t end)
-{
-    const std::string token = std::string("\"") + key + "\"";
-    const std::size_t keyPosition = text.find(token, begin);
-    if (keyPosition == std::string::npos || keyPosition >= end)
-        return std::string::npos;
-    const std::size_t colon = text.find(':', keyPosition + token.size());
-    if (colon == std::string::npos || colon >= end)
-        return std::string::npos;
-    return text.find_first_not_of(" \t\r\n", colon + 1);
-}
-
-std::optional<std::string> jsonString(const std::string& text, const char* key,
-                                      std::size_t begin, std::size_t end)
-{
-    std::size_t position = jsonValuePosition(text, key, begin, end);
-    if (position == std::string::npos || position >= end ||
-        text[position] != '"')
-        return std::nullopt;
-    ++position;
-    std::string value;
-    bool escaped = false;
-    for (; position < end; ++position)
-    {
-        const char c = text[position];
-        if (escaped)
-        {
-            value.push_back(c);
-            escaped = false;
-        }
-        else if (c == '\\')
-            escaped = true;
-        else if (c == '"')
-            return value;
-        else
-            value.push_back(c);
-    }
-    return std::nullopt;
-}
-
-std::optional<float> jsonFloat(const std::string& text, const char* key,
-                               std::size_t begin, std::size_t end)
-{
-    const std::size_t position = jsonValuePosition(text, key, begin, end);
-    if (position == std::string::npos || position >= end)
-        return std::nullopt;
-    char* parsedEnd = nullptr;
-    const float value = std::strtof(text.c_str() + position, &parsedEnd);
-    if (parsedEnd == text.c_str() + position)
-        return std::nullopt;
-    return value;
-}
-
-bool jsonBool(const std::string& text, const char* key, std::size_t begin,
-              std::size_t end, bool fallback)
-{
-    const std::size_t position = jsonValuePosition(text, key, begin, end);
-    if (position == std::string::npos || position >= end)
-        return fallback;
-    if (text.compare(position, 4, "true") == 0)
-        return true;
-    if (text.compare(position, 5, "false") == 0)
-        return false;
-    return fallback;
-}
-
-std::optional<glm::vec4> jsonVec4(const std::string& text, const char* key,
-                                  std::size_t begin, std::size_t end)
-{
-    std::size_t position = jsonValuePosition(text, key, begin, end);
-    if (position == std::string::npos || position >= end ||
-        text[position] != '[')
-        return std::nullopt;
-    ++position;
-    glm::vec4 value(0.0f);
-    for (int component = 0; component < 4; ++component)
-    {
-        position = text.find_first_not_of(" \t\r\n,", position);
-        if (position == std::string::npos || position >= end)
-            return std::nullopt;
-        char* parsedEnd = nullptr;
-        value[component] = std::strtof(text.c_str() + position, &parsedEnd);
-        if (parsedEnd == text.c_str() + position)
-            return std::nullopt;
-        position = static_cast<std::size_t>(parsedEnd - text.c_str());
-    }
-    return value;
-}
-
-std::vector<std::pair<std::size_t, std::size_t>> jsonArrayObjects(
-    const std::string& text, const char* key)
-{
-    std::vector<std::pair<std::size_t, std::size_t>> ranges;
-    const std::size_t value = jsonValuePosition(text, key, 0, text.size());
-    if (value == std::string::npos || text[value] != '[')
-        return ranges;
-
-    int braceDepth = 0;
-    bool inString = false;
-    bool escaped = false;
-    std::size_t objectStart = std::string::npos;
-    for (std::size_t i = value + 1; i < text.size(); ++i)
-    {
-        const char c = text[i];
-        if (inString)
-        {
-            if (escaped)
-                escaped = false;
-            else if (c == '\\')
-                escaped = true;
-            else if (c == '"')
-                inString = false;
-            continue;
-        }
-        if (c == '"')
-        {
-            inString = true;
-            continue;
-        }
-        if (c == '{')
-        {
-            if (braceDepth == 0)
-                objectStart = i;
-            ++braceDepth;
-        }
-        else if (c == '}')
-        {
-            --braceDepth;
-            if (braceDepth == 0 && objectStart != std::string::npos)
-            {
-                ranges.emplace_back(objectStart, i + 1);
-                objectStart = std::string::npos;
-            }
-        }
-        else if (c == ']' && braceDepth == 0)
-            break;
-    }
-    return ranges;
-}
-
-bool decodeImageFile(const std::filesystem::path& path,
-                     VegetationImageData& output)
-{
-    int width = 0;
-    int height = 0;
-    int channels = 0;
-    unsigned char* decoded = stbi_load(
-        path.string().c_str(), &width, &height, &channels, 4);
-    if (!decoded || width <= 0 || height <= 0)
-    {
-        if (decoded)
-            stbi_image_free(decoded);
-        return false;
-    }
-    output.width = width;
-    output.height = height;
-    output.rgba.assign(decoded, decoded +
-        static_cast<std::size_t>(width) * height * 4u);
-    stbi_image_free(decoded);
-    // glTF TEXCOORD_0 uses a top-left image origin. Uploading the PNG rows in
-    // their file order already converts that convention to OpenGL's bottom-left
-    // texture storage. Flipping here a second time makes opacity masks sample
-    // upside-down and visually cuts cards into disconnected fragments.
-    return true;
-}
-
-struct RuntimeMaterialDescriptor
-{
-    std::array<std::string, 4> materialNames{};
-    std::array<VegetationMaterialSlot, 4> slots{};
-    int materialCount = 0;
-    std::vector<VegetationImageData> baseColorMips;
-    std::vector<VegetationImageData> normalMips;
-    std::vector<VegetationImageData> foliageDataMips;
-
-    bool valid() const
-    {
-        return materialCount > 0;
-    }
-
-    bool hasImages() const
-    {
-        return !baseColorMips.empty() && !normalMips.empty() &&
-               !foliageDataMips.empty();
-    }
-};
-
-std::vector<VegetationImageData> loadAtlasMipChain(
-    const std::filesystem::path& atlasDirectory, const char* prefix)
-{
-    std::vector<VegetationImageData> mips;
-    for (int level = 0; level < 16; ++level)
-    {
-        const std::filesystem::path path =
-            atlasDirectory / (std::string(prefix) + std::to_string(level) + ".png");
-        if (!std::filesystem::exists(path))
-            break;
-        VegetationImageData image;
-        if (!decodeImageFile(path, image))
-        {
-            std::cerr << "Vegetation atlas mip decode failed: "
-                      << path.string() << std::endl;
-            mips.clear();
-            break;
-        }
-        if (!mips.empty())
-        {
-            const int expectedWidth = std::max(1, mips.back().width / 2);
-            const int expectedHeight = std::max(1, mips.back().height / 2);
-            if (image.width != expectedWidth || image.height != expectedHeight)
-            {
-                std::cerr << "Vegetation atlas mip dimensions are invalid: "
-                          << path.string() << std::endl;
-                mips.clear();
-                break;
-            }
-        }
-        mips.push_back(std::move(image));
-    }
-    return mips;
-}
-
-RuntimeMaterialDescriptor loadRuntimeMaterialDescriptor(
-    const std::string& assetName, bool loadImages)
-{
-    RuntimeMaterialDescriptor descriptor;
-    const std::filesystem::path assetDirectory =
-        bakedVegetationAssetDirectory() / assetName;
-    const std::filesystem::path descriptorPath =
-        assetDirectory / "material.json";
-    const std::optional<std::string> text = readTextFile(descriptorPath);
-    if (!text)
-    {
-        std::cerr << "Vegetation material descriptor missing: "
-                  << descriptorPath.string() << std::endl;
-        return descriptor;
-    }
-    if (text->find("\"schema\": \"openai.botaniq-runtime-material/1\"") ==
-        std::string::npos)
-    {
-        std::cerr << "Vegetation material descriptor schema unsupported: "
-                  << descriptorPath.string() << std::endl;
-        return descriptor;
-    }
-
-    const auto objects = jsonArrayObjects(*text, "materials");
-    descriptor.materialCount = static_cast<int>(
-        std::min<std::size_t>(objects.size(), descriptor.slots.size()));
-    for (int i = 0; i < descriptor.materialCount; ++i)
-    {
-        const auto [begin, end] = objects[static_cast<std::size_t>(i)];
-        descriptor.materialNames[static_cast<std::size_t>(i)] =
-            lowercase(jsonString(*text, "name", begin, end).value_or(""));
-        descriptor.slots[static_cast<std::size_t>(i)].tileRect =
-            jsonVec4(*text, "tile_rect", begin, end).value_or(
-                glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-        // The descriptor was authored for a vertically flipped OpenGL upload.
-        // Atlas PNGs are now uploaded in glTF row order, so mirror only the
-        // tile's atlas row; local TEXCOORD orientation remains untouched.
-        VegetationMaterialSlot& slot =
-            descriptor.slots[static_cast<std::size_t>(i)];
-        slot.tileRect.y = 1.0f - slot.tileRect.y - slot.tileRect.w;
-        const std::string alphaMode =
-            jsonString(*text, "alpha_mode", begin, end).value_or("OPAQUE");
-        slot.alphaMask = alphaMode == "MASK";
-        slot.alphaCutoff =
-            jsonFloat(*text, "alpha_cutoff", begin, end).value_or(0.5f);
-        slot.doubleSided =
-            jsonBool(*text, "flexible", begin, end, false);
-    }
-
-    if (loadImages && descriptor.valid())
-    {
-        const std::filesystem::path atlasDirectory = assetDirectory / "atlas";
-        descriptor.baseColorMips =
-            loadAtlasMipChain(atlasDirectory, "basecolor_mip");
-        descriptor.normalMips =
-            loadAtlasMipChain(atlasDirectory, "normal_mip");
-        descriptor.foliageDataMips =
-            loadAtlasMipChain(atlasDirectory, "foliage_data_mip");
-        if (!descriptor.hasImages() ||
-            descriptor.baseColorMips.size() != descriptor.normalMips.size() ||
-            descriptor.baseColorMips.size() != descriptor.foliageDataMips.size())
-        {
-            std::cerr << "Vegetation atlas mip chains are incomplete: "
-                      << assetDirectory.string() << std::endl;
-            descriptor.baseColorMips.clear();
-            descriptor.normalMips.clear();
-            descriptor.foliageDataMips.clear();
-        }
-        else
-        {
-            std::cout << "Vegetation runtime material loaded: " << assetName
-                      << " (" << descriptor.materialCount << " materials, "
-                      << descriptor.baseColorMips.size()
-                      << " explicit mips)" << std::endl;
-        }
-    }
-    return descriptor;
-}
-
-int materialSlotIndex(const RuntimeMaterialDescriptor& descriptor,
-                      const std::string& materialName)
-{
-    const std::string name = lowercase(materialName);
-    for (int i = 0; i < descriptor.materialCount; ++i)
-    {
-        const std::string& candidate =
-            descriptor.materialNames[static_cast<std::size_t>(i)];
-        if (name == candidate ||
-            (name.size() > candidate.size() &&
-             name.compare(0, candidate.size(), candidate) == 0 &&
-             name[candidate.size()] == '.'))
-            return i;
-    }
-    return -1;
-}
-
-bool decodeTexture(const aiScene* scene, const aiMaterial* material,
-                   aiTextureType type, const std::filesystem::path& directory,
-                   VegetationImageData& output, std::string& key)
-{
-    if (!material || material->GetTextureCount(type) == 0)
-        return false;
-
-    aiString texturePath;
-    if (material->GetTexture(type, 0, &texturePath) != AI_SUCCESS)
-        return false;
-    key = texturePath.C_Str();
-
-    int width = 0;
-    int height = 0;
-    int channels = 0;
-    unsigned char* decoded = nullptr;
-    const aiTexture* embedded = scene->GetEmbeddedTexture(texturePath.C_Str());
-    if (embedded)
-    {
-        if (embedded->mHeight == 0)
-        {
-            decoded = stbi_load_from_memory(
-                reinterpret_cast<const unsigned char*>(embedded->pcData),
-                static_cast<int>(embedded->mWidth), &width, &height, &channels, 4);
-        }
-        else
-        {
-            width = static_cast<int>(embedded->mWidth);
-            height = static_cast<int>(embedded->mHeight);
-            decoded = static_cast<unsigned char*>(std::malloc(
-                static_cast<std::size_t>(width) * height * 4u));
-            if (decoded)
-            {
-                for (int i = 0; i < width * height; ++i)
-                {
-                    decoded[i * 4 + 0] = embedded->pcData[i].r;
-                    decoded[i * 4 + 1] = embedded->pcData[i].g;
-                    decoded[i * 4 + 2] = embedded->pcData[i].b;
-                    decoded[i * 4 + 3] = embedded->pcData[i].a;
-                }
-            }
-        }
-    }
-    else
-    {
-        const std::filesystem::path resolved = directory / texturePath.C_Str();
-        key = resolved.lexically_normal().string();
-        decoded = stbi_load(resolved.string().c_str(), &width, &height, &channels, 4);
-    }
-
-    if (!decoded || width <= 0 || height <= 0)
-    {
-        if (decoded) stbi_image_free(decoded);
-        return false;
-    }
-
-    output.width = width;
-    output.height = height;
-    output.rgba.assign(decoded, decoded +
-        static_cast<std::size_t>(width) * height * 4u);
-    stbi_image_free(decoded);
-    // Keep the embedded glTF image row convention aligned with TEXCOORD_0.
-    return true;
-}
-
-std::optional<VegetationMeshData> loadVegetationAsset(
-    const std::filesystem::path& path, const std::string& assetName,
-    float targetHeight, float windStrength, float shapeVariation,
-    bool loadRuntimeImages)
-{
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(
-        path.string(),
-        aiProcess_Triangulate |
-        aiProcess_GenSmoothNormals |
-        aiProcess_JoinIdenticalVertices |
-        aiProcess_PreTransformVertices |
-        aiProcess_SortByPType);
-    if (!scene || !scene->mRootNode)
-    {
-        std::cerr << "Vegetation asset load failed: " << path.string()
-                  << " (" << importer.GetErrorString() << ")" << std::endl;
-        return std::nullopt;
-    }
-
-    VegetationMeshData result;
-    RuntimeMaterialDescriptor runtimeMaterial =
-        loadRuntimeMaterialDescriptor(assetName, loadRuntimeImages);
-    if (runtimeMaterial.valid())
-    {
-        result.materialCount = runtimeMaterial.materialCount;
-        result.materialSlots = runtimeMaterial.slots;
-        result.baseColorAtlasMips = std::move(runtimeMaterial.baseColorMips);
-        result.normalAtlasMips = std::move(runtimeMaterial.normalMips);
-        result.foliageDataAtlasMips = std::move(runtimeMaterial.foliageDataMips);
-    }
-    std::vector<float> windMultipliers;
-    std::vector<std::string> selectedBaseColorKeys;
-    std::vector<std::string> selectedNormalKeys;
-    std::array<bool, 4> assignedRuntimeSlots{};
-    std::vector<int> runtimeSlotByAssimpMaterial(
-        scene->mNumMaterials, -1);
-    const auto storeTexture = [](const std::string& textureKey,
-                                 VegetationImageData image,
-                                 std::vector<std::string>& keys,
-                                 std::vector<VegetationImageData>& textures)
-    {
-        const auto found = std::find(keys.begin(), keys.end(), textureKey);
-        if (found != keys.end())
-            return static_cast<float>(std::distance(keys.begin(), found) + 1);
-        if (keys.size() >= 4u)
-            return 0.0f;
-        keys.push_back(textureKey);
-        textures.push_back(std::move(image));
-        return static_cast<float>(keys.size());
-    };
-
-    for (unsigned int meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex)
-    {
-        const aiMesh* mesh = scene->mMeshes[meshIndex];
-        if (!mesh || !(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE))
-            continue;
-
-        glm::vec4 baseColor(1.0f);
-        float roughness = 0.88f;
-        float materialWind = 1.0f;
-        bool materialDoubleSided = false;
-        bool materialAlpha = false;
-        float alphaCutoff = 0.5f;
-        float baseTextureWeight = 0.0f;
-        float normalTextureWeight = 0.0f;
-
-        const aiMaterial* material = mesh->mMaterialIndex < scene->mNumMaterials
-            ? scene->mMaterials[mesh->mMaterialIndex] : nullptr;
-        if (material)
-        {
-            aiString materialName;
-            material->Get(AI_MATKEY_NAME, materialName);
-            const std::string name = lowercase(materialName.C_Str());
-            const bool flexible = name.find("leaf") != std::string::npos ||
-                                  name.find("grass") != std::string::npos ||
-                                  name.find("flower") != std::string::npos;
-            // Every vertex at the same height must inherit the same primary
-            // bend. Material-dependent translation detached leaf cards from
-            // their supporting branches. Fine leaf flutter belongs in a
-            // secondary deformation that preserves the attachment point.
-            materialWind = 1.0f;
-
-            aiColor4D color;
-            if (material->Get(AI_MATKEY_BASE_COLOR, color) == AI_SUCCESS)
-                baseColor = glm::vec4(color.r, color.g, color.b, color.a);
-            else
-            {
-                aiColor3D diffuse;
-                if (material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuse) == AI_SUCCESS)
-                    baseColor = glm::vec4(diffuse.r, diffuse.g, diffuse.b, 1.0f);
-            }
-            material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
-            material->Get(AI_MATKEY_TWOSIDED, materialDoubleSided);
-            material->Get(AI_MATKEY_GLTF_ALPHACUTOFF, alphaCutoff);
-            aiString alphaMode;
-            if (material->Get(AI_MATKEY_GLTF_ALPHAMODE, alphaMode) == AI_SUCCESS)
-                materialAlpha = std::string(alphaMode.C_Str()) != "OPAQUE";
-            materialDoubleSided = materialDoubleSided || flexible;
-
-            int runtimeSlot = materialSlotIndex(runtimeMaterial, name);
-            if (runtimeSlot >= 0)
-                assignedRuntimeSlots[static_cast<std::size_t>(runtimeSlot)] = true;
-            else if (runtimeMaterial.valid())
-            {
-                int& fallbackSlot =
-                    runtimeSlotByAssimpMaterial[mesh->mMaterialIndex];
-                if (fallbackSlot < 0)
-                {
-                    for (int candidate = 0;
-                         candidate < runtimeMaterial.materialCount; ++candidate)
-                    {
-                        if (!assignedRuntimeSlots[
-                                static_cast<std::size_t>(candidate)])
-                        {
-                            fallbackSlot = candidate;
-                            assignedRuntimeSlots[
-                                static_cast<std::size_t>(candidate)] = true;
-                            break;
-                        }
-                    }
-                }
-                runtimeSlot = fallbackSlot;
-                std::cerr << "Vegetation material name '" << name
-                          << "' was not present in " << assetName
-                          << "/material.json; using descriptor slot "
-                          << runtimeSlot << std::endl;
-            }
-            if (runtimeSlot >= 0)
-            {
-                const VegetationMaterialSlot& slot =
-                    runtimeMaterial.slots[static_cast<std::size_t>(runtimeSlot)];
-                baseTextureWeight = static_cast<float>(runtimeSlot + 1);
-                normalTextureWeight = baseTextureWeight;
-                baseColor = glm::vec4(1.0f);
-                materialAlpha = slot.alphaMask;
-                materialDoubleSided = materialDoubleSided || slot.doubleSided;
-                alphaCutoff = slot.alphaCutoff;
-            }
-            else
-            {
-                VegetationImageData image;
-                std::string textureKey;
-                bool hasBaseColor = decodeTexture(
-                    scene, material, aiTextureType_BASE_COLOR, path.parent_path(),
-                    image, textureKey);
-                if (!hasBaseColor)
-                    hasBaseColor = decodeTexture(
-                        scene, material, aiTextureType_DIFFUSE, path.parent_path(),
-                        image, textureKey);
-                // Several botaniq GLB exports contain only a neutral 0.8 material
-                // factor because linked-library node groups are not exportable.
-                // Preserve authored textures when present; otherwise recover an
-                // ecologically plausible material colour from the stable botaniq
-                // material name instead of rendering the whole asset grey-white.
-                if (!hasBaseColor)
-                {
-                    glm::vec3 fallbackColor(0.12f, 0.24f, 0.045f);
-                    if (name.find("bark") != std::string::npos)
-                        fallbackColor = glm::vec3(0.105f, 0.052f, 0.020f);
-                    else if (name.find("leaf_picea") != std::string::npos)
-                        fallbackColor = glm::vec3(0.025f, 0.105f, 0.024f);
-                    else if (name.find("leaf_larix") != std::string::npos)
-                        fallbackColor = glm::vec3(0.095f, 0.205f, 0.035f);
-                    else if (name.find("leaf") != std::string::npos)
-                        fallbackColor = glm::vec3(0.075f, 0.185f, 0.035f);
-                    else if (name.find("stem") != std::string::npos)
-                        fallbackColor = glm::vec3(0.095f, 0.175f, 0.030f);
-                    else if (name.find("grass") != std::string::npos)
-                        fallbackColor = glm::vec3(0.085f, 0.220f, 0.035f);
-                    else if (name.find("achillea") != std::string::npos)
-                        fallbackColor = name.find("flower") != std::string::npos
-                            ? glm::vec3(0.78f, 0.74f, 0.58f)
-                            : glm::vec3(0.075f, 0.180f, 0.030f);
-                    else if (name.find("bellflower") != std::string::npos)
-                        fallbackColor = glm::vec3(0.16f, 0.20f, 0.72f);
-                    else if (name.find("dahlia") != std::string::npos)
-                        fallbackColor = name.find("flower") != std::string::npos
-                            ? glm::vec3(0.62f, 0.025f, 0.018f)
-                            : glm::vec3(0.065f, 0.175f, 0.028f);
-                    else if (name.find("flower_summer") != std::string::npos)
-                        fallbackColor = glm::vec3(0.92f, 0.46f, 0.025f);
-                    else if (name.find("snow") != std::string::npos)
-                        fallbackColor = glm::vec3(0.68f, 0.72f, 0.76f);
-                    baseColor = glm::vec4(fallbackColor, baseColor.a);
-                }
-                if (hasBaseColor)
-                {
-                    baseTextureWeight = storeTexture(
-                        textureKey, std::move(image), selectedBaseColorKeys,
-                        result.baseColorTextures);
-                    materialAlpha = true;
-                }
-
-                VegetationImageData normalImage;
-                std::string normalKey;
-                if (decodeTexture(scene, material, aiTextureType_NORMALS,
-                                  path.parent_path(), normalImage, normalKey))
-                {
-                    normalTextureWeight = storeTexture(
-                        normalKey, std::move(normalImage), selectedNormalKeys,
-                        result.normalTextures);
-                }
-            }
-
-            result.alphaMask = result.alphaMask || materialAlpha;
-            result.doubleSided = result.doubleSided || materialDoubleSided;
-            result.alphaCutoff = std::min(result.alphaCutoff, alphaCutoff);
-        }
-
-        const std::uint32_t baseVertex =
-            static_cast<std::uint32_t>(result.vertices.size());
-        result.vertices.reserve(result.vertices.size() + mesh->mNumVertices);
-        windMultipliers.reserve(windMultipliers.size() + mesh->mNumVertices);
-        for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
-        {
-            const aiVector3D& p = mesh->mVertices[i];
-            const aiVector3D n = mesh->HasNormals()
-                ? mesh->mNormals[i] : aiVector3D(0.0f, 1.0f, 0.0f);
-            glm::vec2 uv(0.0f);
-            if (mesh->HasTextureCoords(0))
-                uv = glm::vec2(mesh->mTextureCoords[0][i].x,
-                               mesh->mTextureCoords[0][i].y);
-            result.vertices.push_back({
-                glm::vec3(p.x, p.y, p.z),
-                glm::normalize(glm::vec3(n.x, n.y, n.z)),
-                glm::vec4(glm::vec3(baseColor), glm::clamp(roughness, 0.04f, 1.0f)),
-                glm::vec2(0.0f, shapeVariation),
-                glm::vec4(uv, baseTextureWeight, normalTextureWeight)});
-            windMultipliers.push_back(materialWind);
-        }
-        for (unsigned int faceIndex = 0; faceIndex < mesh->mNumFaces; ++faceIndex)
-        {
-            const aiFace& face = mesh->mFaces[faceIndex];
-            if (face.mNumIndices != 3) continue;
-            result.indices.push_back(baseVertex + face.mIndices[0]);
-            result.indices.push_back(baseVertex + face.mIndices[1]);
-            result.indices.push_back(baseVertex + face.mIndices[2]);
-        }
-    }
-
-    if (result.vertices.empty() || result.indices.empty())
-        return std::nullopt;
-
-    // Blender's glTF exporter and Assimp's glTF importer both use Y-up here.
-    // Guessing the up axis from the largest bounding-box extent rotates wide
-    // crowns and flower clusters sideways, and can invert already-correct
-    // assets. The pre-transformed GLB positions must be used as authored.
-    result.updateBounds();
-    const float sourceHeight = std::max(result.boundsMax.y - result.boundsMin.y, 1e-4f);
-    const float scale = targetHeight / sourceHeight;
-    const glm::vec2 center(
-        (result.boundsMin.x + result.boundsMax.x) * 0.5f,
-        (result.boundsMin.z + result.boundsMax.z) * 0.5f);
-    const float bottom = result.boundsMin.y;
-    for (std::size_t i = 0; i < result.vertices.size(); ++i)
-    {
-        VegetationVertex& vertex = result.vertices[i];
-        vertex.position = glm::vec3(
-            (vertex.position.x - center.x) * scale,
-            (vertex.position.y - bottom) * scale,
-            (vertex.position.z - center.y) * scale);
-        const float heightWeight = glm::clamp(vertex.position.y / targetHeight, 0.0f, 1.0f);
-        vertex.windVariation.x = std::pow(heightWeight, 1.35f) *
-                                 windStrength * windMultipliers[i];
-    }
-    result.updateBounds();
-    result.externalAsset = true;
-    return result;
-}
 
 struct Random
 {
@@ -733,7 +28,8 @@ void vertex(VegetationMeshData& mesh, const glm::vec3& p,
             float wind, float variation)
 {
     mesh.vertices.push_back({p, n, glm::vec4(color, roughness),
-                             glm::vec2(wind, variation)});
+                             glm::vec2(wind, variation),
+                             glm::vec4(0.0f)});
 }
 
 void triangle(VegetationMeshData& mesh, const glm::vec3& a,
@@ -1004,10 +300,14 @@ void appendGrassBlade(VegetationMeshData& mesh, const glm::vec3& base,
     const glm::vec3 middle(0.060f, 0.160f, 0.025f);
     const glm::vec3 top(0.115f, 0.260f, 0.045f);
     const std::uint16_t first = static_cast<std::uint16_t>(mesh.vertices.size());
-    vertex(mesh, base - right * width, normal, root, 0.96f, 0.0f, 0.65f);
-    vertex(mesh, base + right * width, normal, root, 0.96f, 0.0f, 0.65f);
-    vertex(mesh, mid - right * width * 0.72f, normal, middle, 0.94f, 0.48f, 0.72f);
-    vertex(mesh, mid + right * width * 0.72f, normal, middle, 0.94f, 0.48f, 0.72f);
+    vertex(mesh, base - right * width, normal, root,
+           0.96f, 0.0f, 0.65f);
+    vertex(mesh, base + right * width, normal, root,
+           0.96f, 0.0f, 0.65f);
+    vertex(mesh, mid - right * width * 0.72f, normal, middle,
+           0.94f, 0.48f, 0.72f);
+    vertex(mesh, mid + right * width * 0.72f, normal, middle,
+           0.94f, 0.48f, 0.72f);
     vertex(mesh, tip, normal, top, 0.92f, 1.0f, 0.80f);
     mesh.indices.insert(mesh.indices.end(), {first, static_cast<std::uint16_t>(first + 1u),
         static_cast<std::uint16_t>(first + 3u), first,
@@ -1197,51 +497,6 @@ VegetationMeshLODSet cushionSet(bool elongated, std::uint32_t seed)
     return r;
 }
 
-VegetationMeshLODSet externalSet(const std::string& assetName,
-                                 float targetHeight, float windStrength,
-                                 float shapeVariation,
-                                 VegetationMeshLODSet fallback)
-{
-    const std::filesystem::path directory = vegetationAssetDirectory();
-    const auto load = [&](const char* suffix, bool loadRuntimeImages,
-                          VegetationMeshData fallbackMesh)
-    {
-        const std::filesystem::path path =
-            directory / (assetName + "_" + suffix + ".glb");
-        if (const auto loaded = loadVegetationAsset(
-                path, assetName, targetHeight, windStrength, shapeVariation,
-                loadRuntimeImages))
-            return *loaded;
-        std::cerr << "Using procedural vegetation fallback for "
-                  << path.filename().string() << std::endl;
-        return fallbackMesh;
-    };
-
-    VegetationMeshLODSet result;
-    result.lod0 = load("lod0", true, std::move(fallback.lod0));
-    result.lod1 = load("lod1", false, std::move(fallback.lod1));
-    result.lod2 = load("lod2", false, std::move(fallback.lod2));
-    result.shadow = load("shadow", false, std::move(fallback.shadow));
-    // All four LOD exports reference the same material images. Keep one CPU
-    // copy on LOD0; the GPU upload shares those texture objects with the other
-    // LOD VAOs while their per-vertex texture indices remain intact.
-    result.lod1.baseColorTextures.clear();
-    result.lod1.normalTextures.clear();
-    result.lod2.baseColorTextures.clear();
-    result.lod2.normalTextures.clear();
-    result.shadow.baseColorTextures.clear();
-    result.shadow.normalTextures.clear();
-    result.lod1.baseColorAtlasMips.clear();
-    result.lod1.normalAtlasMips.clear();
-    result.lod1.foliageDataAtlasMips.clear();
-    result.lod2.baseColorAtlasMips.clear();
-    result.lod2.normalAtlasMips.clear();
-    result.lod2.foliageDataAtlasMips.clear();
-    result.shadow.baseColorAtlasMips.clear();
-    result.shadow.normalAtlasMips.clear();
-    result.shadow.foliageDataAtlasMips.clear();
-    return result;
-}
 }
 
 void VegetationMeshData::updateBounds()
@@ -1256,70 +511,51 @@ void VegetationMeshData::updateBounds()
     }
 }
 
-VegetationMeshData AlpineVegetationMeshFactory::makeShowcaseAsset(
-    const std::string& assetName, float targetHeight, float windStrength,
-    float shapeVariation)
-{
-    const std::filesystem::path path =
-        bakedVegetationAssetDirectory() / assetName / (assetName + ".glb");
-    if (const auto loaded = loadVegetationAsset(
-            path, assetName, targetHeight, windStrength, shapeVariation,
-            false))
-        return *loaded;
-    std::cerr << "High-detail vegetation showcase asset unavailable: "
-              << path.string() << std::endl;
-    // The material lab intentionally has no low-poly fallback.
-    return VegetationMeshData{};
-}
-
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeTallConifer(std::uint32_t s)
 {
-    return externalSet("picea_tall", 45.0f, 0.34f, 0.82f,
-                       treeSet(45.0f, 11.5f, 7, s));
+    return treeSet(45.0f, 11.5f, 7, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeBroadConifer(std::uint32_t s)
 {
-    return externalSet("larix_broad", 34.0f, 0.42f, 0.88f,
-                       treeSet(34.0f, 13.0f, 6, s));
+    return treeSet(34.0f, 13.0f, 6, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeSapling(std::uint32_t s)
 {
-    return externalSet("larix_sapling", 18.0f, 0.48f, 0.92f,
-                       treeSet(18.0f, 5.2f, 4, s));
+    return treeSet(18.0f, 5.2f, 4, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeRoundShrub(std::uint32_t s) { return shrubSet(false, s); }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeWindSweptShrub(std::uint32_t s) { return shrubSet(true, s); }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeGrassTuftA(std::uint32_t s)
 {
-    return externalSet("grass_meadow", 3.2f, 0.88f, 0.72f, grassSet(0, s));
+    return grassSet(0, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeGrassTuftB(std::uint32_t s)
 {
-    return externalSet("grass_seedhead", 3.2f, 0.94f, 0.82f, grassSet(1, s));
+    return grassSet(1, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeGrassTuftC(std::uint32_t s)
 {
-    return externalSet("grass_meadow", 3.2f, 0.82f, 0.92f, grassSet(2, s));
+    return grassSet(2, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeStarFlower(std::uint32_t s)
 {
-    return externalSet("flower_yellow", 4.2f, 0.72f, 0.58f, flowerSet(0, s));
+    return flowerSet(0, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeBellFlower(std::uint32_t s)
 {
-    return externalSet("flower_bell", 4.2f, 0.78f, 0.62f, flowerSet(1, s));
+    return flowerSet(1, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeSpikeFlower(std::uint32_t s)
 {
-    return externalSet("flower_white", 4.8f, 0.74f, 0.55f, flowerSet(2, s));
+    return flowerSet(2, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makePinkFlower(std::uint32_t s)
 {
-    return externalSet("flower_pink", 3.8f, 0.78f, 0.60f, flowerSet(1, s));
+    return flowerSet(1, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeCrocusFlower(std::uint32_t s)
 {
-    return externalSet("flower_crocus", 3.6f, 0.74f, 0.56f, flowerSet(0, s));
+    return flowerSet(0, s);
 }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeCushionPlantA(std::uint32_t s) { return cushionSet(false, s); }
 VegetationMeshLODSet AlpineVegetationMeshFactory::makeCushionPlantB(std::uint32_t s) { return cushionSet(true, s); }

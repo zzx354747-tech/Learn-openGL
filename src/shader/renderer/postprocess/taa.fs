@@ -8,6 +8,7 @@ uniform sampler2D historyColor;
 uniform sampler2D currentDepth;
 uniform sampler2D currentPosition;
 uniform sampler2D currentVelocity;
+uniform sampler2D currentCoverageReactive;
 uniform vec2 invResolution;
 uniform vec2 currentJitterPixels;
 uniform mat4 inverseCurrentViewProjection;
@@ -19,6 +20,7 @@ uniform float sharpness;
 uniform bool historyValid;
 uniform bool hasCurrentPosition;
 uniform bool hasCurrentVelocity;
+uniform bool hasCoverageReactive;
 
 vec3 sampleCurrent(vec2 uv)
 {
@@ -34,6 +36,9 @@ void main()
     vec2 currentUV = clamp(TexCoords - currentJitterPixels * invResolution,
                            vec2(0.0), vec2(1.0));
     vec3 current = sampleCurrent(currentUV);
+    vec2 coverageReactive = hasCoverageReactive
+        ? texture(currentCoverageReactive, currentUV).rg : vec2(1.0, 0.0);
+    float coverageEdge = coverageReactive.g * (1.0 - coverageReactive.r);
     if (!historyValid)
     {
         FragColor = vec4(current, 1.0);
@@ -104,13 +109,14 @@ void main()
     // samples at silhouettes. It is less destructive than a fixed min/max box.
     vec3 variance = max(neighborhoodMeanSquare - neighborhoodMean * neighborhoodMean,
                         vec3(0.0));
-    vec3 extent = max(sqrt(variance) * 1.25, vec3(0.012));
+    vec3 extent = max(sqrt(variance) * mix(1.25, 1.65, coverageEdge),
+                      vec3(0.012));
     history = clamp(history, neighborhoodMean - extent, neighborhoodMean + extent);
 
     float velocity = length(historyUV - TexCoords);
     float motionConfidence = exp(-velocity * 85.0);
     float luminanceDelta = abs(dot(history - current, vec3(0.2126, 0.7152, 0.0722)));
-    float reactive = exp(-luminanceDelta * 2.5);
+    float reactive = exp(-luminanceDelta * mix(2.5, 0.85, coverageEdge));
     float weight = validUV ? historyWeight * motionConfidence * reactive : 0.0;
     vec3 resolved = mix(current, history, clamp(weight, 0.0, 0.96));
 
@@ -120,7 +126,8 @@ void main()
     float localContrast = dot(neighborhoodMax - neighborhoodMin,
                               vec3(0.2126, 0.7152, 0.0722));
     float antiRinging = 1.0 - smoothstep(0.25, 2.0, localContrast);
-    resolved += detail * clamp(sharpness, 0.0, 1.0) * antiRinging;
+    resolved += detail * clamp(sharpness, 0.0, 1.0) * antiRinging *
+                mix(1.0, 0.20, coverageEdge);
     resolved = clamp(resolved, neighborhoodMin - vec3(0.012),
                       neighborhoodMax + vec3(0.012));
     FragColor = vec4(resolved, 1.0);

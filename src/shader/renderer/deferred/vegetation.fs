@@ -4,6 +4,7 @@ layout(location=0) out vec3 gPosition;
 layout(location=1) out vec4 gNormalRoughness;
 layout(location=2) out vec4 gAlbedoMetallic;
 layout(location=3) out vec2 gVelocity;
+layout(location=4) out vec2 gCoverageReactive;
 
 in vec3 vWorldPosition;
 in vec3 vNormal;
@@ -11,6 +12,8 @@ in vec4 vColorRoughness;
 in vec2 vVelocity;
 in vec4 vUVMaterial;
 flat in int vPointMode;
+flat in float vInstanceHash;
+flat in float vRepresentationCoverage;
 
 uniform sampler2D u_baseColorTexture0;
 uniform sampler2D u_baseColorTexture1;
@@ -35,6 +38,32 @@ uniform float u_alphaCutoff;
 uniform int u_pointShape;
 uniform vec3 u_speciesTint;
 uniform float u_speciesSaturation;
+uniform sampler2D u_blueNoiseTexture;
+uniform bool u_hasBlueNoiseTexture;
+uniform bool u_taaEnabled;
+uniform int u_frameIndex;
+uniform float u_lodCoverage;
+uniform bool u_lodFadeIn;
+uniform vec3 u_cameraPosition;
+
+float blueNoise()
+{
+    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    ivec2 offset = u_taaEnabled
+        ? ivec2((u_frameIndex * 23) & 63,
+                (u_frameIndex * 47) & 63) : ivec2(0);
+    if (u_hasBlueNoiseTexture)
+        return texelFetch(u_blueNoiseTexture,
+                          (pixel + offset) & ivec2(63), 0).r;
+    return fract(sin(dot(vec2(pixel + offset), vec2(12.9898, 78.233)))
+                 * 43758.5453);
+}
+
+float alphaCoverage(float alpha, float cutoff)
+{
+    float width = max(fwidth(alpha), 1.0 / 255.0);
+    return smoothstep(cutoff - width, cutoff + width, alpha);
+}
 
 vec4 sampleBaseColor(int index, vec2 uv)
 {
@@ -141,11 +170,28 @@ bool outsidePointSilhouette(vec2 q, int shape)
 
 void main()
 {
+    float representationCoverage =
+        clamp(vRepresentationCoverage, 0.0, 1.0);
+    if (vPointMode == 0)
+    {
+        if (vInstanceHash > representationCoverage)
+            discard;
+    }
+    else if (vInstanceHash < 1.0 - representationCoverage)
+        discard;
+    float temporalCoverage = clamp(u_lodCoverage, 0.0, 1.0);
+    float analyticCoverage = clamp(vRepresentationCoverage, 0.0, 1.0) *
+                             temporalCoverage;
+    float coverageNoise = blueNoise();
+
     if (vPointMode != 0)
     {
         vec2 q = gl_PointCoord * 2.0 - 1.0;
         if (outsidePointSilhouette(q, u_pointShape))
             discard;
+        // Procedural point silhouettes have no alpha texture gradient. Mark
+        // them mildly reactive so TAA does not sharpen their one-pixel edges.
+        analyticCoverage *= 0.70;
     }
 
     vec3 n = normalize(vNormal);
@@ -153,22 +199,31 @@ void main()
         n = -n;
     vec4 baseSample = vec4(1.0);
     vec4 materialData = vec4(1.0, vColorRoughness.a, 0.0, 1.0);
-    // Point-sprite LODs intentionally keep the original lighting path.
-    bool foliage = false;
+    // Every non-point fragment comes from the procedural vegetation factory.
+    bool foliage = vPointMode == 0;
     if (vPointMode == 0 && u_hasMaterialAtlas && vUVMaterial.z > 0.5)
     {
         int materialIndex = clamp(int(vUVMaterial.z + 0.5) - 1, 0, 3);
         baseSample = sampleAtlasBase(materialIndex, vUVMaterial.xy);
         materialData = sampleAtlasData(materialIndex, vUVMaterial.xy);
         int flags = u_materialFlags[materialIndex];
-        if ((flags & 1) != 0 &&
-            baseSample.a < u_materialAlphaCutoffs[materialIndex])
-            discard;
+        if ((flags & 1) != 0)
+        {
+            float coverage = alphaCoverage(
+                baseSample.a, u_materialAlphaCutoffs[materialIndex]);
+            temporalCoverage *= coverage;
+            analyticCoverage *= coverage;
+        }
         vec3 mapped = sampleAtlasNormal(
             materialIndex, vUVMaterial.xy) * 2.0 - 1.0;
+        float normalStrength = (1.0 - smoothstep(
+            80.0, 300.0, distance(vWorldPosition, u_cameraPosition))) *
+            clamp(materialData.a, 0.0, 1.0);
+        mapped = normalize(mix(vec3(0.0, 0.0, 1.0),
+                               mapped, normalStrength));
         n = normalize(cotangentFrame(
             n, vWorldPosition, vUVMaterial.xy) * mapped);
-        foliage = (flags & 2) != 0;
+        foliage = foliage || (flags & 2) != 0;
     }
     else
     {
@@ -176,18 +231,43 @@ void main()
             vUVMaterial.z > 0.5)
             baseSample = sampleBaseColor(
                 int(vUVMaterial.z + 0.5), vUVMaterial.xy);
-        if (vPointMode == 0 && u_alphaMask && vUVMaterial.z > 0.5 &&
-            baseSample.a < u_alphaCutoff)
-            discard;
+        if (vPointMode == 0 && u_alphaMask && vUVMaterial.z > 0.5)
+        {
+            float coverage = alphaCoverage(baseSample.a, u_alphaCutoff);
+            temporalCoverage *= coverage;
+            analyticCoverage *= coverage;
+        }
         if (vPointMode == 0 && u_hasNormalTexture &&
             vUVMaterial.w > 0.5)
         {
             vec3 mapped = sampleNormalMap(
                 int(vUVMaterial.w + 0.5), vUVMaterial.xy) * 2.0 - 1.0;
+            float normalStrength = 1.0 - smoothstep(
+                80.0, 300.0, distance(vWorldPosition, u_cameraPosition));
+            mapped = normalize(mix(vec3(0.0, 0.0, 1.0),
+                                   mapped, normalStrength));
             n = normalize(cotangentFrame(
                 n, vWorldPosition, vUVMaterial.xy) * mapped);
         }
     }
+    bool proceduralOpaque =
+        vPointMode == 0 && !u_hasMaterialAtlas &&
+        !u_hasBaseColorTexture && !u_alphaMask;
+    if (proceduralOpaque)
+    {
+        // Select one whole-instance LOD with a complementary stable hash.
+        // Pixel-level temporal dithering turns sub-pixel procedural blades
+        // into moving noise even when TAA is enabled.
+        if (u_lodFadeIn)
+        {
+            if (vInstanceHash < 1.0 - temporalCoverage)
+                discard;
+        }
+        else if (vInstanceHash > temporalCoverage)
+            discard;
+    }
+    else if (coverageNoise > temporalCoverage)
+        discard;
     vec3 dx = dFdx(n), dy = dFdy(n);
     float variance = .5 * (dot(dx,dx) + dot(dy,dy));
     float authoredRoughness = clamp(materialData.g, 0.04, 1.0);
@@ -210,4 +290,11 @@ void main()
         max(albedo, vec3(0.0)),
         foliage ? clamp(materialData.b, 0.0, 1.0) : 0.0);
     gVelocity = vVelocity;
+    // A single-sample G-buffer cannot reconstruct the geometric sample
+    // coverage missed outside a thin procedural triangle. Conservatively tag
+    // every surviving procedural-opaque fragment so the existing TAA resolve
+    // retains more history and suppresses sharpening for this material. Alpha
+    // cards keep their analytic alpha/LOD coverage unchanged.
+    float taaCoverage = proceduralOpaque ? 0.0 : analyticCoverage;
+    gCoverageReactive = vec2(clamp(taaCoverage, 0.0, 1.0), 1.0);
 }

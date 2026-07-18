@@ -18,7 +18,7 @@ struct SceneRenderConfig;
 class AlpineVegetationSystem
 {
 public:
-    static constexpr std::size_t ShowcaseModelCount = 10;
+    static constexpr std::size_t ShowcasePlantCount = 10;
 
     struct Settings
     {
@@ -48,6 +48,7 @@ public:
     void drawShowcaseShadow(Shader& shader, const Camera& camera,
                             const SceneRenderConfig& config) const;
     void bindTerrainDensity(Shader& shader, int textureUnit = 20) const;
+    void setBlueNoiseTexture(GLuint texture) { blueNoiseTexture_ = texture; }
 
     // Replace this implementation with a moisture-field texture sampler after
     // the OpenGL 4.3 migration. Distribution call sites intentionally depend
@@ -115,22 +116,31 @@ private:
         std::vector<Instance> instances;
         std::vector<Chunk> chunks;
         GLuint instanceBuffer = 0;
+        // Normal near/mid geometry is compacted by actual per-instance camera
+        // distance every frame. The immutable instance buffer remains owned by
+        // the shadow and far-representation VAOs.
+        GLuint nearInstanceBuffer = 0;
+        mutable std::array<std::vector<Instance>, 3> nearLodInstances;
+        mutable std::vector<std::uint8_t> nearLodState;
     };
 
     const TerrainMesh& terrain_;
     Settings settings_;
     std::array<Bucket, static_cast<std::size_t>(Species::Count)> buckets_;
-    std::array<VegetationMeshData, ShowcaseModelCount> showcaseCpuMeshes_;
-    std::array<GpuMesh, ShowcaseModelCount> showcaseMeshes_;
+    std::array<VegetationMeshData, ShowcasePlantCount> showcaseCpuMeshes_;
+    std::array<GpuMesh, ShowcasePlantCount> showcaseMeshes_;
     std::vector<std::uint8_t> densityPixels_;
     GLuint densityTexture_ = 0;
+    GLuint blueNoiseTexture_ = 0;
     glm::mat4 currentViewProjection_ = glm::mat4(1.0f);
     glm::mat4 previousViewProjection_ = glm::mat4(1.0f);
     glm::vec3 frameCameraPosition_ = glm::vec3(0.0f);
+    int frameViewportWidth_ = 1;
     int frameViewportHeight_ = 1;
     float currentWindTime_ = 0.0f;
     float previousWindTime_ = 0.0f;
     bool frameInitialized_ = false;
+    unsigned int frameIndex_ = 0;
     bool cacheHit_ = false;
 
     void buildMeshSets();

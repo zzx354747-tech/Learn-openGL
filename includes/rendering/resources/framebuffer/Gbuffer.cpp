@@ -21,6 +21,9 @@ void GBuffer::resize(int width, int height)
         glBindTexture(GL_TEXTURE_2D, gVelocity);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, width, height, 0, GL_RG, GL_FLOAT, nullptr);
 
+        glBindTexture(GL_TEXTURE_2D, gCoverageReactive);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, nullptr);
+
         glBindTexture(GL_TEXTURE_2D, 0);
 
         glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
@@ -45,7 +48,7 @@ GLuint GBuffer::getFBO() const
 
 unsigned int GBuffer::getGbufferTextureID(int index) const
 {
-        if (index < 0 || index >= 4)
+        if (index < 0 || index >= 5)
         {
             std::cerr << "ERROR::GBUFFER:: index out of range!" << std::endl;
             return 0;
@@ -65,6 +68,9 @@ unsigned int GBuffer::getAlbedoMetallicTexture() const
 unsigned int GBuffer::getVelocityTexture() const
 { return gVelocity; }
 
+unsigned int GBuffer::getCoverageReactiveTexture() const
+{ return gCoverageReactive; }
+
 void GBuffer::blitDepthTo(Framebuffer& framebuffer, int width, int height)
 {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, getFBO());
@@ -80,6 +86,7 @@ GBuffer::~GBuffer()
         glDeleteTextures(1, &gNormalRoughness);
         glDeleteTextures(1, &gAlbedoMetallic);
         glDeleteTextures(1, &gVelocity);
+        glDeleteTextures(1, &gCoverageReactive);
         glDeleteRenderbuffers(1, &rboDepth);
     }
 
@@ -130,10 +137,20 @@ void GBuffer::initGBuffer(int width, int height)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, gVelocity, 0);
         attachments[3] = gVelocity;
 
+        // Analytic coverage plus a vegetation marker for temporal resolve.
+        glGenTextures(1, &gCoverageReactive);
+        glBindTexture(GL_TEXTURE_2D, gCoverageReactive);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, gCoverageReactive, 0);
+        attachments[4] = gCoverageReactive;
+
         // 设置要渲染的附件
-        GLenum drawBuffers[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
-                                  GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
-        glDrawBuffers(4, drawBuffers);
+        GLenum drawBuffers[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                                  GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
+                                  GL_COLOR_ATTACHMENT4 };
+        glDrawBuffers(5, drawBuffers);
         
         // 深度缓冲区
         glGenRenderbuffers(1, &rboDepth);

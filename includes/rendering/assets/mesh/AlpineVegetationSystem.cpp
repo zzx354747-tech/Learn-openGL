@@ -201,26 +201,13 @@ void AlpineVegetationSystem::buildMeshSets()
     buckets_[13].cpuMeshes = AlpineVegetationMeshFactory::makeCushionPlantA(s + 127u);
     buckets_[14].cpuMeshes = AlpineVegetationMeshFactory::makeCushionPlantB(s + 131u);
 
-    showcaseCpuMeshes_[0] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "picea_tall", 45.0f, 0.34f, 0.82f);
-    showcaseCpuMeshes_[1] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "larix_broad", 34.0f, 0.42f, 0.88f);
-    showcaseCpuMeshes_[2] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "larix_sapling", 18.0f, 0.48f, 0.92f);
-    showcaseCpuMeshes_[3] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "grass_meadow", 3.2f, 0.88f, 0.72f);
-    showcaseCpuMeshes_[4] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "grass_seedhead", 3.2f, 0.94f, 0.82f);
-    showcaseCpuMeshes_[5] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "flower_yellow", 4.2f, 0.72f, 0.58f);
-    showcaseCpuMeshes_[6] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "flower_bell", 4.2f, 0.78f, 0.62f);
-    showcaseCpuMeshes_[7] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "flower_white", 4.8f, 0.74f, 0.55f);
-    showcaseCpuMeshes_[8] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "flower_pink", 3.8f, 0.78f, 0.60f);
-    showcaseCpuMeshes_[9] = AlpineVegetationMeshFactory::makeShowcaseAsset(
-        "flower_crocus", 3.6f, 0.74f, 0.56f);
+    // The inspection scene uses the same seed-driven geometry as the terrain.
+    // No GLB/source-model path participates in vegetation construction.
+    static constexpr std::array<std::size_t, ShowcasePlantCount>
+        ShowcaseBuckets = {{0u, 1u, 2u, 5u, 6u, 8u, 9u, 10u, 11u, 12u}};
+    for (std::size_t i = 0; i < ShowcasePlantCount; ++i)
+        showcaseCpuMeshes_[i] =
+            buckets_[ShowcaseBuckets[i]].cpuMeshes.lod0;
 }
 
 float AlpineVegetationSystem::sampleDensityField(const glm::vec2& worldXZ) const
@@ -789,6 +776,11 @@ void AlpineVegetationSystem::upload()
         glGenBuffers(1, &bucket.instanceBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, bucket.instanceBuffer);
         glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(bucket.instances.size() * sizeof(Instance)), bucket.instances.data(), GL_STATIC_DRAW);
+        glGenBuffers(1, &bucket.nearInstanceBuffer);
+        bucket.nearLodState.assign(bucket.instances.size(), std::uint8_t{0xffu});
+        for (std::vector<Instance>& instances : bucket.nearLodInstances)
+            instances.reserve(std::min<std::size_t>(
+                bucket.instances.size(), 4096u));
         uploadMesh(bucket.meshes[0], bucket.cpuMeshes.lod0, bucket.instanceBuffer);
         uploadMesh(bucket.meshes[1], bucket.cpuMeshes.lod1, bucket.instanceBuffer,
                    &bucket.meshes[0]);
@@ -832,22 +824,15 @@ void AlpineVegetationSystem::upload()
         bucket.cpuMeshes.lod0.foliageDataAtlasMips.shrink_to_fit();
     }
 
-    // The default material-sphere scene is an inspection scene, so it uses the
-    // complete baked source geometry instead of any of the runtime LOD meshes.
-    // Textures are shared with the corresponding runtime bucket to avoid
-    // uploading the same atlas twice.
-    static constexpr std::array<std::size_t, ShowcaseModelCount>
-        ShowcaseTextureBuckets = {{
-            0u, 1u, 2u, 5u, 6u, 8u, 9u, 10u, 11u, 12u
-        }};
+    // The default material-sphere scene displays the same procedural LOD0
+    // plants used by the terrain system.
     std::uint64_t showcaseTriangleCount = 0;
     std::size_t uploadedShowcaseCount = 0;
-    for (std::size_t i = 0; i < ShowcaseModelCount; ++i)
+    for (std::size_t i = 0; i < ShowcasePlantCount; ++i)
     {
         VegetationMeshData& cpu = showcaseCpuMeshes_[i];
         showcaseTriangleCount += cpu.indices.size() / 3u;
-        uploadMesh(showcaseMeshes_[i], cpu, 0,
-                   &buckets_[ShowcaseTextureBuckets[i]].meshes[0]);
+        uploadMesh(showcaseMeshes_[i], cpu, 0);
         if (showcaseMeshes_[i].vao != 0)
             ++uploadedShowcaseCount;
         cpu.vertices.clear();
@@ -856,7 +841,7 @@ void AlpineVegetationSystem::upload()
         cpu.indices.shrink_to_fit();
     }
     std::cout << "Vegetation showcase: " << uploadedShowcaseCount
-              << " high-detail source models, " << showcaseTriangleCount
+              << " procedural plants, " << showcaseTriangleCount
               << " triangles" << std::endl;
 
     glGenTextures(1, &densityTexture_);
@@ -894,6 +879,8 @@ void AlpineVegetationSystem::destroyGpuResources()
             }
         }
         if (bucket.instanceBuffer) glDeleteBuffers(1, &bucket.instanceBuffer);
+        if (bucket.nearInstanceBuffer)
+            glDeleteBuffers(1, &bucket.nearInstanceBuffer);
     }
     for (GpuMesh& mesh : showcaseMeshes_)
     {
@@ -915,8 +902,10 @@ void AlpineVegetationSystem::beginFrame(const Camera& camera, int width, int hei
     currentViewProjection_ = projection * camera.GetViewMatrix();
     if (!frameInitialized_) previousViewProjection_ = currentViewProjection_;
     frameCameraPosition_ = camera.Getposition();
+    frameViewportWidth_ = std::max(width, 1);
     frameViewportHeight_ = std::max(height, 1);
     frameInitialized_ = true;
+    ++frameIndex_;
 }
 
 void AlpineVegetationSystem::drawGeometry(Shader& shader, const Camera& camera,
@@ -956,8 +945,7 @@ void AlpineVegetationSystem::drawShowcaseMeshes(
         float scale;
         float yaw;
     };
-    // One instance for every unique imported botaniq asset. These are the
-    // complete source GLBs, not the decimated runtime LODs.
+    // One representative instance for each major procedural plant family.
     static constexpr std::array<ShowcaseItem, 10> Items = {{
         {0u, {-5.7f, -1.65f, -10.5f}, 0.075f,  0.18f}, // Picea
         {1u, {-4.1f, -1.65f, -10.5f}, 0.090f, -0.28f}, // Larix
@@ -993,14 +981,16 @@ void AlpineVegetationSystem::drawShowcaseMeshes(
     {
         shader.setMat4("u_viewProjection", currentViewProjection_);
         shader.setMat4("u_previousViewProjection", previousViewProjection_);
-        shader.setVec3("u_cameraPosition", camera.Getposition());
         shader.setBool("u_pointMode", false);
     }
+    shader.setVec3("u_cameraPosition", camera.Getposition());
+    shader.setFloat("u_shadowFadeStart", 100000.0f);
+    shader.setFloat("u_shadowFadeEnd", 100001.0f);
     shader.setFloat("u_time", currentWindTime_);
     shader.setFloat("u_previousTime", previousWindTime_);
     shader.setFloat("u_windSpeed", config.vegetationWindSpeed);
-    // The material lab is a source-asset inspection scene. Keep it static so
-    // alpha, normals and attachment points can be judged without animation.
+    // Keep the procedural shape lab static so silhouette, normals and
+    // attachment points can be judged without animation.
     shader.setFloat("u_windStrength", 0.0f);
     const float windLength = glm::length(config.vegetationWindDirection);
     shader.setVec2("u_windDir", windLength > 0.0001f
@@ -1018,6 +1008,16 @@ void AlpineVegetationSystem::drawShowcaseMeshes(
     shader.setInt("u_normalTexture1", 8);
     shader.setInt("u_normalTexture2", 9);
     shader.setInt("u_normalTexture3", 10);
+    shader.setInt("u_blueNoiseTexture", 11);
+    shader.setBool("u_hasBlueNoiseTexture", blueNoiseTexture_ != 0);
+    shader.setBool("u_taaEnabled", config.enableTAA);
+    shader.setInt("u_frameIndex", static_cast<int>(frameIndex_ & 1023u));
+    shader.setFloat("u_lodCoverage", 1.0f);
+    shader.setBool("u_lodFadeIn", false);
+    shader.setFloat("u_representationFadeStart", 100000.0f);
+    shader.setFloat("u_representationFadeEnd", 100001.0f);
+    glActiveTexture(GL_TEXTURE11);
+    glBindTexture(GL_TEXTURE_2D, blueNoiseTexture_);
 
     constexpr std::uint32_t ShowcasePackedColour =
         128u | (153u << 8u);
@@ -1115,6 +1115,8 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
     shader.setVec2("u_windDir", windLength > 0.0001f
         ? config.vegetationWindDirection / windLength : glm::vec2(1.0f, 0.0f));
     shader.setVec3("u_cameraPosition", camera.Getposition());
+    shader.setFloat("u_shadowFadeStart", 180.0f);
+    shader.setFloat("u_shadowFadeEnd", 300.0f);
     shader.setInt("u_baseColorAtlas", 0);
     shader.setInt("u_normalAtlas", 1);
     shader.setInt("u_foliageDataAtlas", 2);
@@ -1126,6 +1128,14 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
     shader.setInt("u_normalTexture1", 8);
     shader.setInt("u_normalTexture2", 9);
     shader.setInt("u_normalTexture3", 10);
+    shader.setInt("u_blueNoiseTexture", 11);
+    shader.setBool("u_hasBlueNoiseTexture", blueNoiseTexture_ != 0);
+    shader.setBool("u_taaEnabled", config.enableTAA);
+    shader.setInt("u_frameIndex", static_cast<int>(frameIndex_ & 1023u));
+    shader.setFloat("u_lodCoverage", 1.0f);
+    shader.setBool("u_lodFadeIn", false);
+    glActiveTexture(GL_TEXTURE11);
+    glBindTexture(GL_TEXTURE_2D, blueNoiseTexture_);
     static constexpr std::array<glm::vec3, 15> SpeciesTints = {{
         {0.78f, 0.92f, 0.78f}, {0.86f, 0.96f, 0.78f},
         {0.88f, 0.98f, 0.80f}, {0.88f, 0.96f, 0.82f},
@@ -1146,87 +1156,15 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
     };
     if (!shadow)
         shader.setBool("u_pointMode", false);
-    struct DrawCommand
+    const auto drawInstanceRange = [&](std::size_t b, const GpuMesh& mesh,
+                                       GLuint instanceBuffer,
+                                       std::size_t firstInstance,
+                                       std::size_t instanceCount,
+                                       float maximumDistance,
+                                       bool shadowDraw)
     {
-        std::size_t bucket;
-        std::size_t chunk;
-        int lod;
-        float distance;
-        float maximumDistance;
-    };
-    std::array<std::vector<DrawCommand>, static_cast<std::size_t>(Species::Count)> visible;
-    for (std::size_t b = 0; b < buckets_.size(); ++b)
-    {
-        const Bucket& bucket = buckets_[b];
-        float maximumDistance = isTree(b) ? (shadow ? 300.0f : config.vegetationTreeDistance) :
-            isShrub(b) ? 320.0f :
-            isGrass(b) ? config.vegetationGrassDistance :
-            isFlower(b) ? config.vegetationFlowerDistance :
-            240.0f;
-        if (shadow && !isTree(b)) continue;
-        for (std::size_t c = 0; c < bucket.chunks.size(); ++c)
-        {
-            const Chunk& chunk = bucket.chunks[c];
-            const float distance = glm::distance(glm::vec2(frameCameraPosition_.x, frameCameraPosition_.z), chunk.center) -
-                                   settings_.chunkSize * 0.70710678f;
-            if (distance > maximumDistance) continue;
-            int lod = shadow ? 3 : 0;
-            if (!shadow)
-            {
-                if (isTree(b)) lod = distance > 380.0f ? 2 : (distance > 140.0f ? 1 : 0);
-                else if (isShrub(b)) lod = distance > 140.0f ? 2 : (distance > 50.0f ? 1 : 0);
-                else if (isGrass(b)) lod = distance > 70.0f ? 2 : (distance > 25.0f ? 1 : 0);
-                else if (isFlower(b)) lod = distance > 85.0f ? 1 : 0;
-                else lod = distance > 100.0f ? 2 : (distance > 40.0f ? 1 : 0);
-            }
-            if (bucket.meshes[static_cast<std::size_t>(lod)].indexCount > 0)
-                visible[b].push_back({b, c, lod, distance, maximumDistance});
-        }
-        std::sort(visible[b].begin(), visible[b].end(),
-                  [](const DrawCommand& a, const DrawCommand& c)
-                  { return a.distance < c.distance; });
-    }
-
-    std::vector<DrawCommand> selected;
-    constexpr std::size_t NearGeometryDrawBudget = 47u;
-    selected.reserve(NearGeometryDrawBudget);
-    std::vector<DrawCommand> remainder;
-    for (std::size_t b = 0; b < visible.size(); ++b)
-    {
-        // Fair per-species reservation prevents the first tree bucket from
-        // starving all grass, flower and variant buckets under the 60-call cap.
-        const std::size_t quota = shadow ? 20u :
-            (isTree(b) ? 3u : isShrub(b) ? 2u : isGrass(b) ? 5u :
-             isFlower(b) ? 4u : 1u);
-        const std::size_t guaranteed = std::min(quota, visible[b].size());
-        selected.insert(selected.end(), visible[b].begin(),
-                        visible[b].begin() + guaranteed);
-        remainder.insert(remainder.end(), visible[b].begin() + guaranteed,
-                         visible[b].end());
-    }
-    std::sort(remainder.begin(), remainder.end(), [](const DrawCommand& a,
-                                                      const DrawCommand& b)
-    {
-        const float aScore = a.distance / std::max(a.maximumDistance, 1.0f);
-        const float bScore = b.distance / std::max(b.maximumDistance, 1.0f);
-        return aScore < bScore;
-    });
-    const std::size_t drawBudget = shadow ? 60u : NearGeometryDrawBudget;
-    if (selected.size() < drawBudget)
-    {
-        const std::size_t extra = std::min<std::size_t>(drawBudget - selected.size(),
-                                                         remainder.size());
-        selected.insert(selected.end(), remainder.begin(), remainder.begin() + extra);
-    }
-    if (selected.size() > drawBudget)
-        selected.resize(drawBudget);
-
-    for (const DrawCommand& command : selected)
-    {
-        const std::size_t b = command.bucket;
-        const Bucket& bucket = buckets_[b];
-        const Chunk& chunk = bucket.chunks[command.chunk];
-        const GpuMesh& mesh = bucket.meshes[static_cast<std::size_t>(command.lod)];
+        if (!mesh.vao || mesh.indexCount <= 0 || instanceCount == 0)
+            return;
         setSpeciesGrade(b);
         if (mesh.doubleSided || isGrass(b) || isFlower(b)) glDisable(GL_CULL_FACE);
         else glEnable(GL_CULL_FACE);
@@ -1235,6 +1173,24 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
         shader.setBool("u_hasNormalTexture", mesh.normalTextureCount > 0);
         shader.setBool("u_alphaMask", mesh.alphaMask);
         shader.setFloat("u_alphaCutoff", mesh.alphaCutoff);
+        shader.setFloat("u_lodCoverage", 1.0f);
+        shader.setBool("u_lodFadeIn", false);
+        if (shadowDraw)
+        {
+            shader.setFloat("u_representationFadeStart", 100000.0f);
+            shader.setFloat("u_representationFadeEnd", 100001.0f);
+            shader.setFloat("u_shadowFadeStart",
+                            maximumDistance * 0.65f);
+            shader.setFloat("u_shadowFadeEnd",
+                            maximumDistance);
+        }
+        else
+        {
+            shader.setFloat("u_representationFadeStart",
+                            maximumDistance * 0.72f);
+            shader.setFloat("u_representationFadeEnd",
+                            maximumDistance);
+        }
         for (int i = 0; i < 4; ++i)
         {
             const VegetationMaterialSlot& slot =
@@ -1262,17 +1218,242 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
             glBindTexture(GL_TEXTURE_2D,
                 mesh.normalTextures[static_cast<std::size_t>(i)]);
         }
-        std::uint32_t count = chunk.count;
-        if (!shadow && command.distance > command.maximumDistance * 0.72f &&
-            (isGrass(b) || isFlower(b)))
-            count = std::max(1u, count / 2u);
         glBindVertexArray(mesh.vao);
-        glBindBuffer(GL_ARRAY_BUFFER, bucket.instanceBuffer);
-        const std::size_t byteOffset = static_cast<std::size_t>(chunk.first) * sizeof(Instance);
+        glBindBuffer(GL_ARRAY_BUFFER, instanceBuffer);
+        const std::size_t byteOffset = firstInstance * sizeof(Instance);
         glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), reinterpret_cast<void*>(byteOffset));
         glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Instance), reinterpret_cast<void*>(byteOffset + sizeof(glm::vec4)));
         glDrawElementsInstanced(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT,
-                                nullptr, static_cast<GLsizei>(count));
+                                nullptr, static_cast<GLsizei>(instanceCount));
+    };
+
+    if (shadow)
+    {
+        // This is one global 9.4 km shadow projection. Only full-sized trees
+        // have a stable footprint at that texel density; micro vegetation must
+        // not turn the terrain shadow map into sub-texel stipple.
+        struct ShadowCommand
+        {
+            std::size_t bucket;
+            std::size_t chunk;
+            float distance;
+        };
+        std::array<std::vector<ShadowCommand>, 3> visibleTrees;
+        for (std::size_t b = 0; b < visibleTrees.size(); ++b)
+        {
+            const Bucket& bucket = buckets_[b];
+            for (std::size_t c = 0; c < bucket.chunks.size(); ++c)
+            {
+                const Chunk& chunk = bucket.chunks[c];
+                const float distance = glm::distance(
+                    glm::vec2(frameCameraPosition_.x, frameCameraPosition_.z),
+                    chunk.center) - settings_.chunkSize * 0.70710678f;
+                if (distance <= 300.0f)
+                    visibleTrees[b].push_back({b, c, distance});
+            }
+            std::sort(visibleTrees[b].begin(), visibleTrees[b].end(),
+                      [](const ShadowCommand& a, const ShadowCommand& c)
+                      { return a.distance < c.distance; });
+        }
+
+        constexpr std::size_t ShadowDrawBudget = 60u;
+        std::vector<ShadowCommand> selected;
+        std::vector<ShadowCommand> remainder;
+        selected.reserve(ShadowDrawBudget);
+        for (const std::vector<ShadowCommand>& commands : visibleTrees)
+        {
+            const std::size_t guaranteed =
+                std::min<std::size_t>(5u, commands.size());
+            selected.insert(selected.end(), commands.begin(),
+                            commands.begin() + guaranteed);
+            remainder.insert(remainder.end(),
+                             commands.begin() + guaranteed, commands.end());
+        }
+        std::sort(remainder.begin(), remainder.end(),
+                  [](const ShadowCommand& a, const ShadowCommand& b)
+                  { return a.distance < b.distance; });
+        const std::size_t extra = std::min(
+            ShadowDrawBudget - std::min(ShadowDrawBudget, selected.size()),
+            remainder.size());
+        selected.insert(selected.end(), remainder.begin(),
+                        remainder.begin() + extra);
+        if (selected.size() > ShadowDrawBudget)
+            selected.resize(ShadowDrawBudget);
+
+        for (const ShadowCommand& command : selected)
+        {
+            const Bucket& bucket = buckets_[command.bucket];
+            const Chunk& chunk = bucket.chunks[command.chunk];
+            drawInstanceRange(
+                command.bucket, bucket.meshes[3], bucket.instanceBuffer,
+                chunk.first, chunk.count, 300.0f, true);
+        }
+    }
+    else
+    {
+        struct LodParameters
+        {
+            float firstDistance;
+            float firstSpread;
+            float secondDistance;
+            float secondSpread;
+        };
+        const auto lodParameters = [](std::size_t b)
+        {
+            if (isTree(b))
+                return LodParameters{140.0f, 18.0f, 380.0f, 38.0f};
+            if (isShrub(b))
+                return LodParameters{50.0f, 8.0f, 140.0f, 18.0f};
+            if (isGrass(b))
+                return LodParameters{25.0f, 5.0f, 70.0f, 10.0f};
+            if (isFlower(b))
+                return LodParameters{85.0f, 14.0f, 100000.0f, 1.0f};
+            return LodParameters{40.0f, 7.0f, 100.0f, 14.0f};
+        };
+
+        for (std::size_t b = 0; b < buckets_.size(); ++b)
+        {
+            const Bucket& bucket = buckets_[b];
+            for (std::vector<Instance>& instances : bucket.nearLodInstances)
+                instances.clear();
+            if (bucket.nearLodState.size() != bucket.instances.size())
+                bucket.nearLodState.assign(
+                    bucket.instances.size(), std::uint8_t{0xffu});
+
+            const float maximumDistance =
+                isTree(b) ? config.vegetationTreeDistance :
+                isShrub(b) ? 320.0f :
+                isGrass(b) ? config.vegetationGrassDistance :
+                isFlower(b) ? config.vegetationFlowerDistance : 240.0f;
+            const float maximumDistanceSquared =
+                maximumDistance * maximumDistance;
+            const LodParameters parameters = lodParameters(b);
+            int maximumLod = 2;
+            while (maximumLod > 0 &&
+                   bucket.meshes[static_cast<std::size_t>(maximumLod)]
+                           .indexCount <= 0)
+                --maximumLod;
+
+            for (const Chunk& chunk : bucket.chunks)
+            {
+                // Chunks remain only a broad-phase rejection structure. Every
+                // surviving instance below is classified with its own distance.
+                const float chunkNearestDistance = glm::distance(
+                    glm::vec2(frameCameraPosition_.x, frameCameraPosition_.z),
+                    chunk.center) - settings_.chunkSize * 0.70710678f;
+                if (chunkNearestDistance > maximumDistance)
+                    continue;
+
+                const std::size_t first = chunk.first;
+                const std::size_t end = std::min<std::size_t>(
+                    first + chunk.count, bucket.instances.size());
+                for (std::size_t instanceIndex = first;
+                     instanceIndex < end; ++instanceIndex)
+                {
+                    const Instance& instance =
+                        bucket.instances[instanceIndex];
+                    const glm::vec3 delta =
+                        glm::vec3(instance.posScale) -
+                        frameCameraPosition_;
+                    const float distanceSquared = glm::dot(delta, delta);
+                    if (distanceSquared > maximumDistanceSquared)
+                        continue;
+                    const float distance = std::sqrt(distanceSquared);
+
+                    const std::uint32_t stableKey =
+                        static_cast<std::uint32_t>(instanceIndex) ^
+                        static_cast<std::uint32_t>(
+                            b * 0x9e3779b9u);
+                    const float firstThreshold =
+                        parameters.firstDistance +
+                        (random01(stableKey ^ 0x68bc21ebu) * 2.0f - 1.0f) *
+                            parameters.firstSpread;
+                    const float secondThreshold =
+                        parameters.secondDistance +
+                        (random01(stableKey ^ 0x02e5be93u) * 2.0f - 1.0f) *
+                            parameters.secondSpread;
+
+                    int lod = distance > firstThreshold ? 1 : 0;
+                    if (maximumLod >= 2 && distance > secondThreshold)
+                        lod = 2;
+                    lod = std::min(lod, maximumLod);
+
+                    // A small persistent hysteresis prevents an instance from
+                    // toggling when the camera rests on its stable threshold.
+                    const int previous =
+                        bucket.nearLodState[instanceIndex] <= 2u
+                        ? static_cast<int>(
+                              bucket.nearLodState[instanceIndex])
+                        : -1;
+                    const float firstHysteresis =
+                        std::max(0.75f, parameters.firstSpread * 0.15f);
+                    const float secondHysteresis =
+                        std::max(1.0f, parameters.secondSpread * 0.15f);
+                    if (previous == 0 && lod > 0 &&
+                        distance <= firstThreshold + firstHysteresis)
+                        lod = 0;
+                    else if (previous == 1)
+                    {
+                        if (lod == 0 &&
+                            distance >= firstThreshold - firstHysteresis)
+                            lod = 1;
+                        else if (lod == 2 &&
+                                 distance <=
+                                     secondThreshold + secondHysteresis)
+                            lod = 1;
+                    }
+                    else if (previous == 2 && lod < 2 &&
+                             distance >= secondThreshold - secondHysteresis)
+                        lod = 2;
+                    lod = std::min(lod, maximumLod);
+                    bucket.nearLodState[instanceIndex] =
+                        static_cast<std::uint8_t>(lod);
+                    bucket.nearLodInstances[
+                        static_cast<std::size_t>(lod)].push_back(instance);
+                }
+            }
+
+            std::array<std::size_t, 3> firstInstances{};
+            std::size_t totalInstanceCount = 0;
+            for (std::size_t lod = 0; lod < firstInstances.size(); ++lod)
+            {
+                firstInstances[lod] = totalInstanceCount;
+                totalInstanceCount += bucket.nearLodInstances[lod].size();
+            }
+            if (totalInstanceCount == 0 || bucket.nearInstanceBuffer == 0)
+                continue;
+
+            glBindBuffer(GL_ARRAY_BUFFER, bucket.nearInstanceBuffer);
+            glBufferData(
+                GL_ARRAY_BUFFER,
+                static_cast<GLsizeiptr>(
+                    totalInstanceCount * sizeof(Instance)),
+                nullptr, GL_STREAM_DRAW);
+            for (std::size_t lod = 0; lod < firstInstances.size(); ++lod)
+            {
+                const std::vector<Instance>& instances =
+                    bucket.nearLodInstances[lod];
+                if (instances.empty())
+                    continue;
+                glBufferSubData(
+                    GL_ARRAY_BUFFER,
+                    static_cast<GLintptr>(
+                        firstInstances[lod] * sizeof(Instance)),
+                    static_cast<GLsizeiptr>(
+                        instances.size() * sizeof(Instance)),
+                    instances.data());
+            }
+
+            for (std::size_t lod = 0; lod < firstInstances.size(); ++lod)
+            {
+                const std::vector<Instance>& instances =
+                    bucket.nearLodInstances[lod];
+                drawInstanceRange(
+                    b, bucket.meshes[lod], bucket.nearInstanceBuffer,
+                    firstInstances[lod], instances.size(),
+                    maximumDistance, false);
+            }
+        }
     }
 
     if (!shadow)
@@ -1293,6 +1474,8 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
         shader.setBool("u_hasBaseColorTexture", false);
         shader.setBool("u_hasNormalTexture", false);
         shader.setBool("u_alphaMask", false);
+        shader.setFloat("u_lodCoverage", 1.0f);
+        shader.setBool("u_lodFadeIn", false);
         shader.setFloat("u_pointPixelScale",
                         static_cast<float>(frameViewportHeight_) * 1.20710678f);
         glEnable(GL_PROGRAM_POINT_SIZE);
@@ -1312,7 +1495,11 @@ void AlpineVegetationSystem::drawBuckets(Shader& shader, const Camera& camera,
                 isShrub(b) ? 1200.0f : isGrass(b) ? 700.0f :
                 isFlower(b) ? 1400.0f : 800.0f;
             setSpeciesGrade(b);
-            shader.setFloat("u_pointMinDistance", nearDistance);
+            const float fadeStart = nearDistance * 0.72f;
+            shader.setFloat("u_representationFadeStart", fadeStart);
+            shader.setFloat("u_representationFadeEnd", nearDistance);
+            shader.setFloat("u_lodCoverage", 1.0f);
+            shader.setFloat("u_pointMinDistance", fadeStart);
             shader.setFloat("u_pointMaxDistance", farDistance);
             shader.setFloat("u_pointWorldHeight", PointWorldHeights[b]);
             shader.setFloat("u_pointMaxPixels", PointMaximumPixels[b]);

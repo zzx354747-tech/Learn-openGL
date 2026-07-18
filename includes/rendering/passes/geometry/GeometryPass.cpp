@@ -53,6 +53,10 @@ void GeometryPass::render(int bfwidth, int bfheight)
         resources.lightingHandles.gVelocity,
         gBuffer.getVelocityTexture()
     );
+    resources.registry.setTexture(
+        resources.lightingHandles.gCoverageReactive,
+        gBuffer.getCoverageReactiveTexture()
+    );
 }
 
 void GeometryPass::renderSpheres(int bfwidth, int bfheight)

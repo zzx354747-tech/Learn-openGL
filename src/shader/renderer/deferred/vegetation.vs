@@ -14,6 +14,8 @@ out vec4 vColorRoughness;
 out vec2 vVelocity;
 out vec4 vUVMaterial;
 flat out int vPointMode;
+flat out float vInstanceHash;
+flat out float vRepresentationCoverage;
 
 uniform mat4 u_viewProjection;
 uniform mat4 u_previousViewProjection;
@@ -29,6 +31,8 @@ uniform float u_pointPixelScale;
 uniform float u_pointMaxPixels;
 uniform float u_pointMinDistance;
 uniform float u_pointMaxDistance;
+uniform float u_representationFadeStart;
+uniform float u_representationFadeEnd;
 
 float hash12(vec2 p)
 {
@@ -94,6 +98,11 @@ void main()
         color = mix(color, vec3(.220,.145,.040), .58 * aWindVariation.y);
     vColorRoughness = vec4(color, aColorRoughness.a);
     vUVMaterial = aUVMaterial;
+    vInstanceHash = hash12(iPosScale.xz * 0.173 + iPosScale.yy);
+    float distanceXZ = length(iPosScale.xz - u_cameraPosition.xz);
+    float transition = smoothstep(u_representationFadeStart,
+                                  u_representationFadeEnd, distanceXZ);
+    vRepresentationCoverage = u_pointMode ? transition : 1.0 - transition;
 
     if (u_pointMode)
     {
@@ -107,7 +116,6 @@ void main()
         vWorldPosition = iPosScale.xyz +
             vec3(0, u_pointWorldHeight * iPosScale.w * .48, 0);
         vec4 clip = u_viewProjection * vec4(vWorldPosition, 1);
-        float distanceXZ = length(iPosScale.xz - u_cameraPosition.xz);
         if (distanceXZ < u_pointMinDistance ||
             distanceXZ > u_pointMaxDistance || clip.w <= 0.0)
         {
@@ -132,5 +140,8 @@ void main()
     vec4 animatedPreviousClip = u_previousViewProjection * vec4(previousWorld, 1);
     vVelocity = (animatedPreviousClip.xy / max(animatedPreviousClip.w, 1e-5) -
                  staticPreviousClip.xy / max(staticPreviousClip.w, 1e-5)) * .5;
+    // Keep rasterization on the same geometric surface represented by
+    // vWorldPosition and vVelocity. A screen-space-only position dilation
+    // cannot be reprojected correctly by the current G-buffer motion contract.
     gl_Position = currentClip;
 }

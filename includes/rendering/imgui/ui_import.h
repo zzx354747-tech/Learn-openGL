@@ -5,6 +5,7 @@
 #include "rendering/uniforms/RenderParams.h"
 #include "rendering/assets/light/LightSettings.h"
 #include "rendering/debug/GpuProfiler.h"
+#include <array>
 #include <functional>
 
 struct SceneRenderUIState
@@ -28,4 +29,7 @@ class SceneRenderUI
 {
 public:
     void renderUI(SceneRenderUIState& uiState, float FPS, float swapWaitMs);
+
+private:
+    std::array<char, 128> settingsSearch_{};
 };

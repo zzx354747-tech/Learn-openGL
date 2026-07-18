@@ -23,6 +23,7 @@ public:
     unsigned int getNormalRoughnessTexture() const;
     unsigned int getAlbedoMetallicTexture() const;
     unsigned int getVelocityTexture() const;
+    unsigned int getCoverageReactiveTexture() const;
 
     void blitDepthTo(Framebuffer& framebuffer, int width, int height);
 
@@ -33,11 +34,12 @@ public:
 
 private:
     GLuint gBuffer = 0;
-    GLuint attachments[4] = {0, 0, 0, 0};
+    GLuint attachments[5] = {0, 0, 0, 0, 0};
     GLuint gPosition = 0;
     GLuint gNormalRoughness = 0;
     GLuint gAlbedoMetallic = 0;
     GLuint gVelocity = 0;
+    GLuint gCoverageReactive = 0;
     GLuint rboDepth = 0;
 
     void initGBuffer(int width, int height);

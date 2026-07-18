@@ -11,6 +11,7 @@ from collections import Counter
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 
 def component_triangle_counts(mesh):
@@ -50,9 +51,27 @@ def main():
             if obj.type != "MESH":
                 continue
             counts = component_triangle_counts(obj.data)
+            corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+            minimum = Vector((
+                min(point.x for point in corners),
+                min(point.y for point in corners),
+                min(point.z for point in corners),
+            ))
+            maximum = Vector((
+                max(point.x for point in corners),
+                max(point.y for point in corners),
+                max(point.z for point in corners),
+            ))
+            dimensions = maximum - minimum
+            materials = [
+                slot.material.name if slot.material else "<empty>"
+                for slot in obj.material_slots
+            ]
             print(
                 f"  {obj.name}: triangles={sum(counts)} parts={len(counts)} "
-                f"largest={counts[:8]}"
+                f"largest={counts[:8]} "
+                f"bounds=({dimensions.x:.4f},{dimensions.y:.4f},{dimensions.z:.4f}) "
+                f"materials={materials}"
             )
 
 

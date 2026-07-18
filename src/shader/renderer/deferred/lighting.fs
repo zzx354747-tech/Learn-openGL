@@ -332,7 +332,8 @@ float V_SmithGGXCorrelated(float NdotV, float NdotL, float roughness)
 }
 
 vec3 calcPointLightPhong(PointLight light, vec3 normal, vec3 fragPos, 
-                          vec3 viewDir, vec3 albedo, float roughness, float metallic)
+                          vec3 viewDir, vec3 albedo, float roughness,
+                          float metallic, bool receiveShadow)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 H = normalize(lightDir + viewDir);
@@ -344,12 +345,14 @@ vec3 calcPointLightPhong(PointLight light, vec3 normal, vec3 fragPos,
     vec3 specularColor = mix(vec3(0.04), albedo, metallic);
     vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
     vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
-    float shadow = PointShadowCalculation(fragPos) * pointShadowStrength;
+    float shadow = receiveShadow
+        ? PointShadowCalculation(fragPos) * pointShadowStrength : 0.0;
     return (diffuse + specular) * attenuation * (1.0 - shadow);
 }
 
 vec3 calcSunPhong(Sun light, vec3 normal, vec3 viewDir, 
-                   vec3 albedo, vec4 FragPosLightSpace, float roughness, float metallic)
+                   vec3 albedo, vec4 FragPosLightSpace, float roughness,
+                   float metallic, bool receiveShadow)
 {
     vec3 lightDir = normalize(-light.direction);
     vec3 H = normalize(lightDir + viewDir);
@@ -359,13 +362,15 @@ vec3 calcSunPhong(Sun light, vec3 normal, vec3 viewDir,
     vec3 specularColor = mix(vec3(0.04), albedo, metallic);
     vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
     vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
-    float shadow = ShadowCalculation(FragPosLightSpace, normal, lightDir) * sunShadowStrength;
+    float shadow = receiveShadow
+        ? ShadowCalculation(FragPosLightSpace, normal, lightDir) *
+          sunShadowStrength : 0.0;
     return (diffuse + specular) * (1.0 - shadow);
 }
 
 vec3 calcFlashLightPhong(FlashLight light, vec3 normal, vec3 fragPos, 
                           vec3 viewDir, vec3 albedo, vec4 FragPosSpotLightSpace,
-                          float roughness, float metallic)
+                          float roughness, float metallic, bool receiveShadow)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     vec3 H = normalize(lightDir + viewDir);
@@ -380,7 +385,9 @@ vec3 calcFlashLightPhong(FlashLight light, vec3 normal, vec3 fragPos,
     vec3 specularColor = mix(vec3(0.04), albedo, metallic);
     vec3 diffuse  = light.diffuse * diff * albedo * (phongDiffuseStrength / PI);
     vec3 specular = light.diffuse * spec * specularColor * phongSpecularStrength;
-    float shadow = SpotShadowCalculation(FragPosSpotLightSpace) * flashShadowStrength;
+    float shadow = receiveShadow
+        ? SpotShadowCalculation(FragPosSpotLightSpace) *
+          flashShadowStrength : 0.0;
     return (diffuse + specular) * attenuation * intensity * (1.0 - shadow);
 }
 
@@ -391,7 +398,8 @@ vec3 calcPointLight(PointLight light,
         vec3 albedo,
         vec3 F0,
         float roughness,
-        float metallic)
+        float metallic,
+        bool receiveShadow)
 {
     vec3 lightDir = normalize(light.position - fragPos);
 
@@ -425,7 +433,7 @@ vec3 calcPointLight(PointLight light,
     // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
     vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
-    float shadow = PointShadowCalculation(fragPos);
+    float shadow = receiveShadow ? PointShadowCalculation(fragPos) : 0.0;
     shadow *= pointShadowStrength;
 
     return Lo * (1.0 - shadow);
@@ -438,7 +446,8 @@ vec3 albedo,
 vec4 FragPosLightSpace,
 vec3 F0,
 float roughness,
-float metallic)
+float metallic,
+bool receiveShadow)
 {
     vec3 lightDir = normalize(-light.direction);
 
@@ -465,7 +474,8 @@ float metallic)
     // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
     vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
-    float shadow = ShadowCalculation(FragPosLightSpace, normal, lightDir);
+    float shadow = receiveShadow
+        ? ShadowCalculation(FragPosLightSpace, normal, lightDir) : 0.0;
 
     shadow *= sunShadowStrength; // 将阴影强度应用到阴影值上
 
@@ -480,7 +490,8 @@ vec3 albedo,
 vec4 FragPosSpotLightSpace,
 vec3 F0,
 float roughness,
-float metallic)
+float metallic,
+bool receiveShadow)
 {
     vec3 lightDir = normalize(light.position - fragPos);
 
@@ -513,10 +524,8 @@ float metallic)
      // 渲染方程：(漫反射 + 镜面反射) × 辐射亮度 × NdotL
     vec3 Lo = (KD * albedo / PI + specular) * radiance * NdotL;
 
-    float shadow =
-        SpotShadowCalculation(
-            FragPosSpotLightSpace
-        );
+    float shadow = receiveShadow
+        ? SpotShadowCalculation(FragPosSpotLightSpace) : 0.0;
 
     shadow *= flashShadowStrength;
 
@@ -805,14 +814,9 @@ void main()
 
     if (foliage)
     {
-        // Vegetation keeps its authored colour and receives no direct light.
-        // It still gets one-bounce screen-space GI from non-vegetation G-buffer
-        // surfaces, so flowers, grass, shrubs and trees respond to nearby
-        // terrain and architecture without becoming direct-light emitters.
-        vec3 vegetationBase = albedo * vegetationExposure;
-        vec3 vegetationGI = calcScreenSpaceGI(
-            FragPos, Normal, albedo, 0.0, 1.0) * vegetationExposure;
-        FragColor = vec4(max(vegetationBase + vegetationGI, vec3(0.0)), 1.0);
+        FragColor = vec4(
+            albedo * max(vegetationExposure, 0.0),
+            1.0);
         BrightColor = vec4(0.0);
         return;
     }
@@ -820,8 +824,11 @@ void main()
     float transmission = foliage ? albedoPayload.a : 0.0;
     float metallic = foliage ? 0.0 : albedoPayload.a;
     float roughness = clamp(abs(normalRoughness.a), 0.04, 1.0);
+    if (foliage)
+        roughness = max(roughness, 0.62);
     // 现实中几乎非金属材料反射率都在2%-5%,金属材质反射率为它本身的颜色
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F0 = foliage ? vec3(0.025) :
+              mix(vec3(0.04), albedo, metallic);
 
     float aoSample = clamp(texture(AO, TexCoords).r, 0.0, 1.0);
     float ao = enableSSAO ? pow(aoSample, ssaoStrength) : 1.0;
@@ -832,19 +839,20 @@ void main()
     vec3 viewDir = normalize(viewPos - FragPos);
 
     vec3 result = vec3(0.0);
+    float ambientTransmission = foliage ? 1.0 : cloudAmbientTransmission;
 
     if (enableIBL)
     {
         if (enablePBR)
             result += calcIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao) *
-                      cloudAmbientTransmission;
+                      ambientTransmission;
         else
             result += calcPhongIBLAmbient(Normal, FragPos, viewPos, albedo, metallic, roughness, ao) *
-                      cloudAmbientTransmission;
+                      ambientTransmission;
     }
     else
     {
-        result += calcFixedAmbient(albedo, ao) * cloudAmbientTransmission;
+        result += calcFixedAmbient(albedo, ao) * ambientTransmission;
     }
 
     result += calcScreenSpaceGI(FragPos, Normal, albedo, metallic, ao);
@@ -854,12 +862,12 @@ void main()
         result += calcPointLight(pointLight, Normal, 
                     FragPos, viewDir, 
                     albedo, F0, 
-                    roughness, metallic);
+                    roughness, metallic, !foliage);
     else
         result += calcPointLightPhong(pointLight, Normal, 
                     FragPos, viewDir, 
                     albedo, roughness, 
-                    metallic);
+                    metallic, !foliage);
     if (foliage && transmission > 0.001)
     {
         vec3 lightDir = normalize(pointLight.position - FragPos);
@@ -867,34 +875,31 @@ void main()
         float attenuation = 1.0 / (
             pointLight.constant + pointLight.linear * distanceToLight +
             pointLight.quadratic * distanceToLight * distanceToLight);
-        float shadow = PointShadowCalculation(FragPos) * pointShadowStrength;
         result += calcFoliageTransmission(
             Normal, lightDir, pointLight.diffuse * attenuation,
-            albedo, transmission) * (1.0 - shadow);
+            albedo, transmission);
     }
 }
 
 if (enableDirectionalLight)
 {
-    float cloudVisibility = cloudShadowVisibility(FragPos);
+    float cloudVisibility = foliage ? 1.0 : cloudShadowVisibility(FragPos);
     if (enablePBR)
         result += calcSun(sun, Normal, 
                     viewDir, albedo, 
                     FragPosLightSpace, F0,
-                    roughness, metallic) * cloudVisibility;
+                    roughness, metallic, !foliage) * cloudVisibility;
     else
         result += calcSunPhong(sun, Normal,
                     viewDir, albedo,
                     FragPosLightSpace,
-                    roughness, metallic) * cloudVisibility;
+                    roughness, metallic, !foliage) * cloudVisibility;
     if (foliage && transmission > 0.001)
     {
         vec3 lightDir = normalize(-sun.direction);
-        float transmissionShadow = ShadowCalculation(
-            FragPosLightSpace, -Normal, lightDir) * sunShadowStrength;
         result += calcFoliageTransmission(
             Normal, lightDir, sun.diffuse, albedo, transmission) *
-            cloudVisibility * (1.0 - transmissionShadow * 0.72);
+            cloudVisibility;
     }
 }
 
@@ -910,12 +915,12 @@ if (enableFlashlight)
                     FragPos, viewDir, 
                     albedo, FragPosSpotLightSpace,
                     F0, roughness,
-                    metallic);
+                    metallic, !foliage);
     else
         result += calcFlashLightPhong(flashLight, Normal, 
                     FragPos, viewDir, 
                     albedo, FragPosSpotLightSpace,
-                    roughness, metallic);
+                    roughness, metallic, !foliage);
     if (foliage && transmission > 0.001)
     {
         vec3 lightDir = normalize(flashLight.position - FragPos);
@@ -928,12 +933,10 @@ if (enableFlashlight)
             flashLight.cutOff - flashLight.outerCutOff, 0.0001);
         float intensity = clamp(
             (theta - flashLight.outerCutOff) / epsilon, 0.0, 1.0);
-        float shadow = SpotShadowCalculation(
-            FragPosSpotLightSpace) * flashShadowStrength;
         result += calcFoliageTransmission(
             Normal, lightDir,
             flashLight.diffuse * attenuation * intensity,
-            albedo, transmission) * (1.0 - shadow);
+            albedo, transmission);
     }
 }
     FragColor = vec4(result, 1.0);

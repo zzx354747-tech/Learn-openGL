@@ -10,15 +10,10 @@
 inline float calculateVegetationExposureCoefficient(
     const SceneRenderConfig& config)
 {
-    const float userCoefficient = glm::clamp(
-        config.vegetationExposureCoefficient, 0.25f, 2.0f);
-    // This is the same global cloud-shadow transmission used by the sun and
-    // directional shadow setup. Weather transitions therefore drive the
-    // vegetation coefficient continuously instead of switching at a preset
-    // boundary.
-    const float cloudShadowTransmission = calculateCloudSunTransmission(config);
+    // Vegetation keeps a stable artistic exposure control and no longer
+    // inherits either local shadow maps or the global cloud-shadow term.
     return glm::clamp(
-        userCoefficient * cloudShadowTransmission, 0.04f, 2.0f);
+        config.vegetationExposureCoefficient, 0.25f, 2.0f);
 }
 
 // Vegetation does not receive direct lighting. The target is a compressed
@@ -43,8 +38,7 @@ inline float calculateVegetationExposureTarget(
             glm::clamp(config.daylightFactor, 0.0f, 1.0f);
         sourceBrightness += luminance(sunRadiance) * 0.5f / Pi *
             (config.enablePBR ? 1.0f :
-             glm::max(config.phongDiffuseStrength, 0.0f)) *
-            calculateCloudSunTransmission(config);
+             glm::max(config.phongDiffuseStrength, 0.0f));
     }
 
     if (config.enablePointLight)
@@ -72,14 +66,12 @@ inline float calculateVegetationExposureTarget(
         sourceBrightness += luminance(config.iblAmbientTint) *
             config.iblAmbientStrength *
             (config.enablePBR ? 1.0f :
-             glm::max(config.phongIBLDiffuseStrength, 0.0f)) *
-            calculateCloudAmbientTransmission(config);
+             glm::max(config.phongIBLDiffuseStrength, 0.0f));
     }
     else
     {
         sourceBrightness += luminance(config.fixedAmbientColor) *
-            config.fixedAmbientStrength *
-            calculateCloudAmbientTransmission(config);
+            config.fixedAmbientStrength;
     }
 
     // Map source energy into a bounded exposure range. This remains monotonic

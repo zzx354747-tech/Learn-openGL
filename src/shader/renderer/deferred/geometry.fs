@@ -4,6 +4,7 @@ layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormalRoughness;
 layout (location = 2) out vec4 gAlbedoMetallic;
 layout (location = 3) out vec2 gVelocity;
+layout (location = 4) out vec2 gCoverageReactive;
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -326,4 +327,5 @@ void main()
     gNormalRoughness = vec4(normal, clamp(roughness, 0.04, 1.0));
     gAlbedoMetallic = vec4(albedo, clamp(metallic, 0.0, 1.0));
     gVelocity = vec2(0.0);
+    gCoverageReactive = vec2(0.0);
 }

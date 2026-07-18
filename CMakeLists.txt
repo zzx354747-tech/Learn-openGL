@@ -253,4 +253,9 @@ add_executable(fbo_demo
 )
 target_link_libraries(fbo_demo imgui glfw ${ASSIMP_LINK_TARGET} ${ZLIB_LINK_TARGET} ${PLATFORM_LIBS})
 target_compile_definitions(fbo_demo PRIVATE OPENGL_PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
+if(MSVC)
+    # Source files and searchable UI aliases are UTF-8. Explicitly select the
+    # matching execution/source character set instead of the system code page.
+    target_compile_options(fbo_demo PRIVATE /utf-8)
+endif()
 set_output_dir(fbo_demo)

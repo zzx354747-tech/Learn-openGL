@@ -1,6 +1,10 @@
 #include "ui_import.h"
+#include <algorithm>
+#include <cctype>
 #include <imgui.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <sstream>
+#include <string>
 #include "rendering/resources/environment/EnvironmentOption.h"
 #include "rendering/uniforms/VegetationExposure.h"
 
@@ -35,6 +39,202 @@ void SceneRenderUI::renderUI(
             ImGui::TextColored(
                 ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
                 "Environment load failed! Check console.");
+        }
+
+        ImGui::SetNextItemWidth(-72.0f);
+        ImGui::InputTextWithHint(
+            "##SettingsSearch",
+            "Search settings... (e.g. wind, vegetation, TAA)",
+            settingsSearch_.data(),
+            settingsSearch_.size());
+        ImGui::SameLine();
+        if (ImGui::Button("Clear"))
+            settingsSearch_.fill('\0');
+
+        if (settingsSearch_[0] != '\0')
+        {
+            const auto foldAscii = [](std::string value)
+            {
+                std::transform(
+                    value.begin(), value.end(), value.begin(),
+                    [](unsigned char c)
+                    {
+                        return c < 128
+                            ? static_cast<char>(std::tolower(c))
+                            : static_cast<char>(c);
+                    });
+                return value;
+            };
+            const std::string foldedQuery =
+                foldAscii(std::string(settingsSearch_.data()));
+            const auto matches = [&](const char* searchableText)
+            {
+                const std::string haystack =
+                    foldAscii(std::string(searchableText));
+                std::istringstream tokens(foldedQuery);
+                std::string token;
+                bool hadToken = false;
+                while (tokens >> token)
+                {
+                    hadToken = true;
+                    if (haystack.find(token) == std::string::npos)
+                        return false;
+                }
+                return hadToken;
+            };
+
+            ImGui::SeparatorText("Search Results");
+            int resultCount = 0;
+            if (matches(
+                    "Foliage Mip Bias vegetation alpha texture mip shimmer "
+                    "植被 纹理 透明度 闪烁"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Foliage Mip Bias##Search",
+                    &uiState.sceneConfig.vegetationMaterialMipBias,
+                    -0.5f, 1.5f, "%.2f");
+            }
+            if (matches(
+                    "Foliage Transmission vegetation lighting leaf light "
+                    "植被 透射 光照 叶片"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Foliage Transmission##Search",
+                    &uiState.sceneConfig.vegetationTransmissionStrength,
+                    0.0f, 1.5f, "%.2f");
+            }
+            if (matches(
+                    "Vegetation Exposure Coefficient foliage lighting "
+                    "植被 曝光 光照"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Vegetation Exposure Coefficient##Search",
+                    &uiState.sceneConfig.vegetationExposureCoefficient,
+                    0.25f, 2.0f, "%.2f");
+            }
+            if (matches(
+                    "Vegetation Wind Direction wind foliage grass "
+                    "植被 风向 风 草"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat2(
+                    "Vegetation Wind Direction##Search",
+                    glm::value_ptr(
+                        uiState.sceneConfig.vegetationWindDirection),
+                    -1.0f, 1.0f, "%.2f");
+            }
+            if (matches(
+                    "Vegetation Wind Speed wind animation foliage "
+                    "植被 风速 风 动画"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Vegetation Wind Speed##Search",
+                    &uiState.sceneConfig.vegetationWindSpeed,
+                    0.0f, 4.0f, "%.2f");
+            }
+            if (matches(
+                    "Vegetation Wind Strength wind animation foliage "
+                    "植被 风力 强度 风 动画"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Vegetation Wind Strength##Search",
+                    &uiState.sceneConfig.vegetationWindStrength,
+                    0.0f, 1.2f, "%.2f m");
+            }
+            if (matches(
+                    "Grass Draw Distance vegetation range LOD grass "
+                    "植被 草 距离 范围"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Grass Draw Distance##Search",
+                    &uiState.sceneConfig.vegetationGrassDistance,
+                    40.0f, 220.0f, "%.0f m");
+            }
+            if (matches(
+                    "Flower Draw Distance vegetation range LOD flower "
+                    "植被 花 距离 范围"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Flower Draw Distance##Search",
+                    &uiState.sceneConfig.vegetationFlowerDistance,
+                    30.0f, 240.0f, "%.0f m");
+            }
+            if (matches(
+                    "Tree Draw Distance vegetation range LOD tree "
+                    "植被 树 距离 范围"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "Tree Draw Distance##Search",
+                    &uiState.sceneConfig.vegetationTreeDistance,
+                    300.0f, 2400.0f, "%.0f m");
+            }
+            if (matches(
+                    "Temporal AA TAA antialiasing post process "
+                    "时域抗锯齿 抗锯齿"))
+            {
+                ++resultCount;
+                ImGui::Checkbox(
+                    "Temporal AA##Search",
+                    &uiState.sceneConfig.enableTAA);
+            }
+            if (matches(
+                    "TAA History Weight temporal history accumulation "
+                    "时域 历史 权重"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "TAA History Weight##Search",
+                    &uiState.sceneConfig.taaHistoryWeight,
+                    0.0f, 0.96f, "%.2f");
+            }
+            if (matches(
+                    "TAA Sharpness temporal sharpen post process "
+                    "时域 锐化 清晰度"))
+            {
+                ++resultCount;
+                ImGui::SliderFloat(
+                    "TAA Sharpness##Search",
+                    &uiState.sceneConfig.taaSharpness,
+                    0.0f, 0.75f, "%.2f");
+            }
+            if (matches(
+                    "Directional Light sunlight sun lighting shadow "
+                    "方向光 太阳 光照 阴影"))
+            {
+                ++resultCount;
+                ImGui::Checkbox(
+                    "Directional Light##Search",
+                    &uiState.sceneConfig.enableDirectionalLight);
+            }
+            if (matches(
+                    "PBR physically based rendering material lighting "
+                    "物理渲染 材质 光照"))
+            {
+                ++resultCount;
+                ImGui::Checkbox("PBR##Search", &uiState.sceneConfig.enablePBR);
+            }
+            if (matches(
+                    "IBL image based lighting environment reflection "
+                    "环境光 图像照明 反射"))
+            {
+                ++resultCount;
+                ImGui::Checkbox("IBL##Search", &uiState.sceneConfig.enableIBL);
+            }
+            if (resultCount == 0)
+                ImGui::TextDisabled("No matching setting.");
+            else
+                ImGui::TextDisabled("%d matching setting(s)", resultCount);
+
+            ImGui::End();
+            return;
         }
 
         ImGui::SeparatorText("Render");
@@ -372,7 +572,7 @@ void SceneRenderUI::renderUI(
             ImGui::SetItemTooltip(
                 "Scales the smoothed exposure driven by the original light "
                 "energy; 1.00 is neutral for all vegetation");
-            ImGui::Text("Cloud-shadow effective coefficient: %.2f",
+            ImGui::Text("Effective coefficient: %.2f",
                         calculateVegetationExposureCoefficient(
                             uiState.sceneConfig));
             ImGui::SliderFloat("Grass Draw Distance",

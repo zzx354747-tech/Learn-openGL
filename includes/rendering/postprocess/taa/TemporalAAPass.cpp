@@ -57,7 +57,8 @@ void TemporalAAPass::beginFrame(int width, int height)
 GLuint TemporalAAPass::resolve(int width, int height, Framebuffer& source,
                                Screenquad& screenQuad, Shader& shader,
                                GLuint currentPositionTexture,
-                               GLuint currentVelocityTexture)
+                               GLuint currentVelocityTexture,
+                               GLuint currentCoverageReactiveTexture)
 {
     history_.bindWrite(writeIndex_);
     glViewport(0, 0, width, height);
@@ -70,8 +71,10 @@ GLuint TemporalAAPass::resolve(int width, int height, Framebuffer& source,
     shader.setInt("currentDepth", 2);
     shader.setInt("currentPosition", 3);
     shader.setInt("currentVelocity", 4);
+    shader.setInt("currentCoverageReactive", 5);
     shader.setBool("hasCurrentPosition", currentPositionTexture != 0);
     shader.setBool("hasCurrentVelocity", currentVelocityTexture != 0);
+    shader.setBool("hasCoverageReactive", currentCoverageReactiveTexture != 0);
     shader.setBool("historyValid", historyValid_);
     shader.setFloat("historyWeight", config_.taaHistoryWeight);
     shader.setFloat("sharpness", config_.taaSharpness);
@@ -93,6 +96,8 @@ GLuint TemporalAAPass::resolve(int width, int height, Framebuffer& source,
     glBindTexture(GL_TEXTURE_2D, currentPositionTexture);
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, currentVelocityTexture);
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, currentCoverageReactiveTexture);
     screenQuad.draw();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

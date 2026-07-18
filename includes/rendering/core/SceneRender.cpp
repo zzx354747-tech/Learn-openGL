@@ -92,6 +92,11 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
                     ? resources.registry.resolveTexture(
                           resources.lightingHandles.gVelocity)
                     : 0;
+            const GLuint currentCoverageReactiveTexture =
+                config.renderMode == RenderMode::Lighting
+                    ? resources.registry.resolveTexture(
+                          resources.lightingHandles.gCoverageReactive)
+                    : 0;
             sceneTexture = temporalAAPass.resolve(
                 bfwidth,
                 bfheight,
@@ -99,7 +104,8 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
                 screenQuad,
                 resources.shaderLibrary->taa,
                 currentPositionTexture,
-                currentVelocityTexture);
+                currentVelocityTexture,
+                currentCoverageReactiveTexture);
         }
 
         {
