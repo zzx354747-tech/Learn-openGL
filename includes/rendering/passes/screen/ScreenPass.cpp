@@ -1,4 +1,4 @@
-#include "rendering/postprocess/screen/ScreenPass.h"
+#include "rendering/passes/screen/ScreenPass.h"
 
 void ScreenPass::render(
     int bfwidth,

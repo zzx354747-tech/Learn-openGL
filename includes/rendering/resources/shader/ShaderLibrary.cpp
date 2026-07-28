@@ -32,6 +32,9 @@ ShaderLibrary::ShaderLibrary()
     , brdf(
         "../src/shader/renderer/ibl/brdf.vs",
         "../src/shader/renderer/ibl/brdf.fs")
+    , brightPrefilter(
+        "../src/shader/renderer/postprocess/brightPrefilter.vs",
+        "../src/shader/renderer/postprocess/brightPrefilter.fs")
     , blur(
         "../src/shader/renderer/postprocess/blur.vs",
         "../src/shader/renderer/postprocess/blur.fs")

@@ -1,7 +1,27 @@
 #include "rendering/core/SceneRender.h"
 
-SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources, SceneRenderResources& resources, SceneRenderConfig& config, SceneRenderState& state, LightSettings& lightSettings, DirectionalShadowPass& directionalShadowPass, PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass, GeometryPass& geometryPass, LightingPass& lightingPass, GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass, SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer) : config(config), resources(resources), state(state), directionalShadowPass(directionalShadowPass), pointShadowPass(pointShadowPass), spotShadowPass(spotShadowPass), shadowDebugPass(resources, shadowResources), deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass), forwardHDRPass(camera, resources, config, state, sphereDrawer, modelDrawer), forwardOverlayPass(camera, resources, state, config), screenPass(config, resources)
-{
+SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
+    SceneRenderResources& resources, SceneRenderConfig& config,
+    SceneRenderState& state, LightSettings& lightSettings,
+    DirectionalShadowPass& directionalShadowPass, BrightPrefilterPass& brightPrefilterPass,
+    PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass,
+    GeometryPass& geometryPass, LightingPass& lightingPass,
+    GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
+    SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer)
+    : config(config)
+    , resources(resources)
+    , state(state)
+    , brightPrefilterPass(brightPrefilterPass)
+    , directionalShadowPass(directionalShadowPass)
+    , pointShadowPass(pointShadowPass)
+    , spotShadowPass(spotShadowPass)
+    , shadowDebugPass(resources, shadowResources)
+    , deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass)
+    , forwardHDRPass(camera, resources, config, state, sphereDrawer, modelDrawer)
+    , forwardOverlayPass(camera, resources, state, config)
+    , blurPass()
+    , screenPass(config, resources)
+    {
         (void)lightSettings;
     }
 
@@ -29,8 +49,11 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
 
         if (config.enableBloom && resources.pingpongFBO && resources.shaderLibrary)
         {
+            brightPrefilterPass.setThreshold(config.bloomThreshold);
+            brightPrefilterPass.render(framebuffer.getTextureID(0));
+
             blurPass.render(
-                framebuffer,
+                brightPrefilterPass.GetBrightPrefilterTextureID(),
                 *resources.pingpongFBO,
                 resources.shaderLibrary->blur,
                 screenQuad,

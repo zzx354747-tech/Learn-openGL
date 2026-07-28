@@ -5,7 +5,6 @@ in vec3 FragPos;
 in vec3 Normal;
 
 layout (location = 0) out vec4 FragColor;
-layout (location = 1) out vec4 BrightColor;
 
 uniform samplerCube skybox;
 uniform vec3 cameraPos;
@@ -18,7 +17,6 @@ void main()
         vec3 color = texture(skybox, TexCoords).rgb;
         color = pow(color, vec3(2.2));
         FragColor = vec4(color, 1.0);
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
     }
     else
     {
@@ -27,6 +25,5 @@ void main()
         vec3 color = texture(skybox, reflected).rgb;
         color = pow(color, vec3(2.2));
         FragColor = vec4(color, 1.0);
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
     }
 }

@@ -1,7 +1,7 @@
-#include "rendering/postprocess/blur/BlurPass.h"
+#include "rendering/passes/blur/BlurPass.h"
 
 void BlurPass::render(
-    Framebuffer& framebuffer,
+    GLuint inputTexture,
     PingPongFramebuffer& pingpong,
     Shader& blurShader,
     Screenquad& screenQuad,
@@ -28,8 +28,7 @@ void BlurPass::render(
 
         glBindTexture(
             GL_TEXTURE_2D,
-            firstIteration
-                ? framebuffer.getTextureID(1)
+            firstIteration ? inputTexture
                 : pingpong.getTextureID(horizontal ? 1 : 0)
         );
 

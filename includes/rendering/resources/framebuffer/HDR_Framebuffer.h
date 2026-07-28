@@ -24,7 +24,7 @@ public:
 
 
     private:
-        GLuint colorBuffers[2] = { 0, 0 };
+        GLuint colorBuffer = 0;
         GLuint rboDepth = 0;
         GLuint hdrFBO = 0;
 

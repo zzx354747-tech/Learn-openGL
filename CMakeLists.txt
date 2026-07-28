@@ -201,8 +201,8 @@ add_executable(fbo_demo
     includes/rendering/passes/shadow/DirectionalShadowPass.cpp
     includes/rendering/passes/shadow/PointShadowPass.cpp
     includes/rendering/passes/shadow/SpotShadowPass.cpp
-    includes/rendering/postprocess/blur/BlurPass.cpp
-    includes/rendering/postprocess/screen/ScreenPass.cpp
+    includes/rendering/passes/blur/BlurPass.cpp
+    includes/rendering/passes/screen/ScreenPass.cpp
     includes/rendering/resources/framebuffer/Gbuffer.cpp
     includes/rendering/resources/framebuffer/HDR_Framebuffer.cpp
     includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
@@ -226,6 +226,7 @@ add_executable(fbo_demo
     includes/rendering/assets/ibl/PrefilterMap.cpp
     includes/rendering/assets/ibl/BrdfLUT.cpp
     includes/rendering/core/RendererScene.cpp
+    includes/rendering/passes/blur/BrightPrefilterPass.cpp
 )
 target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(fbo_demo)

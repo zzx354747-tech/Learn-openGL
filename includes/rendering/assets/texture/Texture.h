@@ -7,6 +7,13 @@ class GLTexture
 public:
     explicit GLTexture(const std::string& path);
 
+    GLTexture(int width, int height,
+          GLenum internalFormat,
+          GLenum format,
+          GLenum type,
+          GLenum wrapMode,
+          GLenum filterMode);
+
     ~GLTexture();
 
     // 禁止拷贝
@@ -19,7 +26,11 @@ public:
 
     void bind(unsigned int unit) const;
     GLuint getID() const { return id; }
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
 
 private:
     GLuint id = 0;
+    int width = 0;
+    int height = 0;
 };

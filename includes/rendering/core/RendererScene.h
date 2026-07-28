@@ -32,6 +32,7 @@
 #include "rendering/resources/scene/ScenePresets.h"
 #include "rendering/resources/environment/EnvironmentOption.h"
 #include "rendering/core/SceneRender.h"
+#include "rendering/passes/blur/BrightPrefilterPass.h"
 
 // 第一轮:仅第 0 层(无依赖对象)。
 // 顺序为main栈上对象的构造顺序
@@ -70,6 +71,8 @@ struct RendererScene
     ModelDrawer livingRoomDrawer;
 
     // 第三轮新增:第 2 层
+    BrightPrefilterPass brightPrefilterPass;
+
     PointShadowPass pointShadowPass;
     DirectionalShadowPass directionalShadowPass;
     SpotShadowPass spotShadowPass;

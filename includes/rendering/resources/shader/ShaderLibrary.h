@@ -13,6 +13,7 @@ struct ShaderLibrary
     Shader irradiance;
     Shader prefilter;
     Shader brdf;
+    Shader brightPrefilter;
     Shader blur;
     Shader geometryPBR;
     Shader basicForward;

@@ -7,18 +7,13 @@ Framebuffer::Framebuffer(int width, int height)
 
 void Framebuffer::resize(int width, int height)
 {
-        for (int i = 0; i < 2; ++i)
-        {
-            glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
-            // 创建一个这帧所包含的所有画面的纹理
-            glTexImage2D(GL_TEXTURE_2D, 0,
-            GL_RGBA16F,
-            width, height, 0,
-            GL_RGBA, GL_FLOAT,  // 匹配内部格式
-            nullptr);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
+        glBindTexture(GL_TEXTURE_2D, colorBuffer);
+        glTexImage2D(GL_TEXTURE_2D, 0,
+        GL_RGBA16F,
+        width, height, 0,
+        GL_RGBA, GL_FLOAT,
+        nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
         glRenderbufferStorage(GL_RENDERBUFFER, 
@@ -41,12 +36,12 @@ void Framebuffer::unbind()
 
 unsigned int Framebuffer::getTextureID(int index) const
 {
-        if (index < 0 || index >= 2)
+        if (index != 0)
         {
             std::cerr << "ERROR::FRAMEBUFFER:: index out of range!" << std::endl;
             return 0;
         }
-        return colorBuffers[index];
+        return colorBuffer;
     }
 
 unsigned int Framebuffer::getFBO() const
@@ -57,11 +52,8 @@ unsigned int Framebuffer::getFBO() const
 Framebuffer::~Framebuffer()
 {
         glDeleteFramebuffers(1, &hdrFBO);
-        for (int i = 0; i < 2; ++i)
-        {
-            if (colorBuffers[i] != 0)
-                glDeleteTextures(1, &colorBuffers[i]);
-        }
+        if (colorBuffer != 0)
+            glDeleteTextures(1, &colorBuffer);
         glDeleteRenderbuffers(1, &rboDepth);
     }
 
@@ -71,27 +63,22 @@ void Framebuffer::initFramebuffer(int bfwidth, int bfheight)
             glGenFramebuffers(1, &hdrFBO);
             glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 
-            // 生成纹理
-            for (int i = 0; i < 2; ++i)
-            {
-                glGenTextures(1, &colorBuffers[i]);
-                glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
-                // 创建一个这帧所包含的所有画面的纹理
-                glTexImage2D(GL_TEXTURE_2D, 0,
-                GL_RGBA16F,
-                bfwidth, bfheight, 0,
-                GL_RGBA, GL_FLOAT,  // 匹配内部格式
-                nullptr);
+            // 生成场景颜色纹理
+            glGenTextures(1, &colorBuffer);
+            glBindTexture(GL_TEXTURE_2D, colorBuffer);
+            glTexImage2D(GL_TEXTURE_2D, 0,
+            GL_RGBA16F,
+            bfwidth, bfheight, 0,
+            GL_RGBA, GL_FLOAT,
+            nullptr);
 
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                // 把纹理附加到帧缓冲对象上
-                glFramebufferTexture2D(GL_FRAMEBUFFER, 
-                    GL_COLOR_ATTACHMENT0 + i,
-                    GL_TEXTURE_2D, 
-                    colorBuffers[i], 
-                    0);
-            }
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glFramebufferTexture2D(GL_FRAMEBUFFER,
+                GL_COLOR_ATTACHMENT0,
+                GL_TEXTURE_2D,
+                colorBuffer,
+                0);
 
             // 开启深度测试后，openGL会自动把每个片段的深度值写入
             // 生成渲染缓冲对象
@@ -108,9 +95,7 @@ void Framebuffer::initFramebuffer(int bfwidth, int bfheight)
                 GL_RENDERBUFFER, 
                 rboDepth);
 
-            // 显示声明调用drawbuffers,以及声明drawbuffer列表
-            GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-            glDrawBuffers(2, attachments);
+            glDrawBuffer(GL_COLOR_ATTACHMENT0);
 
             // 检验帧缓冲对象是否完整
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)

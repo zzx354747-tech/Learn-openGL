@@ -13,6 +13,7 @@ RendererScene::RendererScene(int width, int height)
     , sceneConfig(makeLivingRoomPreset())
     , sphereDrawer(&sphereMesh, &sceneState, &sceneConfig)
     , livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig)
+    , brightPrefilterPass(width, height, shaderLibrary.brightPrefilter, screenQuad)
     , pointShadowPass(pointShadowMap,
                       shaderLibrary.pointShadowMap,
                       sphereDrawer,
@@ -68,6 +69,7 @@ RendererScene::RendererScene(int width, int height)
                   sceneState,
                   lightSettings,
                   directionalShadowPass,
+                  brightPrefilterPass,
                   pointShadowPass,
                   spotShadowPass,
                   geometryPass,
@@ -123,6 +125,7 @@ void RendererScene::resize(int width, int height)
     pingpongFBO.resize(width, height);
     sceneGBuffer.resize(width, height);
     sceneSSAO.resize(width, height);
+    brightPrefilterPass.resize(width, height);
 }
 
 void RendererScene::render(int width, int height)

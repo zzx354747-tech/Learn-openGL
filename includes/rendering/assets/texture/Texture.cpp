@@ -35,6 +35,31 @@ GLTexture::GLTexture(const std::string& path)
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(data);
+
+    this->width = width;
+    this->height = height;
+}
+
+GLTexture::GLTexture(int width, int height,
+                    GLenum internalFormat,
+                    GLenum format,
+                    GLenum type,
+                    GLenum wrapMode,
+                    GLenum filterMode)
+    : width(width), height(height)
+{
+    glGenTextures(1, &id);
+    glBindTexture(GL_TEXTURE_2D, id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filterMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filterMode);
+
+    // 创建空白纹理
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat,
+                 width, height, 0,
+                 format, type, nullptr);
 }
 
 GLTexture::~GLTexture()
@@ -44,9 +69,11 @@ GLTexture::~GLTexture()
 }
 
 GLTexture::GLTexture(GLTexture&& other) noexcept
-    : id(other.id)
+    : id(other.id), width(other.width), height(other.height)
 {
     other.id = 0;   // 转移所有权:other 不再负责释放
+    other.width = 0;
+    other.height = 0;
 }
 
 GLTexture& GLTexture::operator=(GLTexture&& other) noexcept
@@ -56,7 +83,12 @@ GLTexture& GLTexture::operator=(GLTexture&& other) noexcept
         if (id != 0)
             glDeleteTextures(1, &id);   // 释放自己原来持有的
         id       = other.id;
+        width    = other.width;
+        height   = other.height;
+
         other.id = 0;                   // 转移所有权
+        other.width = 0;
+        other.height = 0;
     }
     return *this;
 }
