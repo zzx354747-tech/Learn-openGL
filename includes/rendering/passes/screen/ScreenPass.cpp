@@ -1,4 +1,5 @@
 #include "rendering/passes/screen/ScreenPass.h"
+#include "rendering/passes/blur/DownSamplePass.h"
 
 void ScreenPass::render(
     int bfwidth,
@@ -28,11 +29,11 @@ void ScreenPass::render(
     glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID(0));
 
     glActiveTexture(GL_TEXTURE1);
-    if (config.enableBloom && resources.pingpongFBO)
+    if (config.enableBloom && resources.downSamplePassL1)
     {
         glBindTexture(
             GL_TEXTURE_2D,
-            resources.pingpongFBO->getTextureID(1)
+            resources.downSamplePassL1->GetDownSampleTextureID()
         );
     }
     else

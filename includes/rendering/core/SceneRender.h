@@ -5,6 +5,7 @@
 #include "rendering/assets/light/LightSettings.h"
 #include "rendering/assets/mesh/Screenquad.h"
 #include "rendering/passes/blur/BrightPrefilterPass.h"
+#include "rendering/passes/blur/DownSamplePass.h"
 #include "rendering/passes/debug/ShadowDebugPass.h"
 #include "rendering/passes/deferred/DeferredRenderPass.h"
 #include "rendering/passes/forward/ForwardHDRPass.h"
@@ -15,7 +16,6 @@
 #include "rendering/passes/shadow/DirectionalShadowPass.h"
 #include "rendering/passes/shadow/PointShadowPass.h"
 #include "rendering/passes/shadow/SpotShadowPass.h"
-#include "rendering/passes/blur/BlurPass.h"
 #include "rendering/passes/screen/ScreenPass.h"
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
@@ -29,6 +29,7 @@ public:
         SceneRenderResources& resources, SceneRenderConfig& config,
         SceneRenderState& state, LightSettings& lightSettings,
         DirectionalShadowPass& directionalShadowPass, BrightPrefilterPass& brightPrefilterPass,
+        DownSamplePass& downSamplePassL1,
         PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass,
         GeometryPass& geometryPass, LightingPass& lightingPass,
         GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
@@ -43,6 +44,7 @@ private:
     SceneRenderResources& resources;
     SceneRenderState& state;
     BrightPrefilterPass& brightPrefilterPass;
+    DownSamplePass& downSamplePassL1;
     DirectionalShadowPass& directionalShadowPass;
     PointShadowPass& pointShadowPass;
     SpotShadowPass& spotShadowPass;
@@ -50,6 +52,5 @@ private:
     DeferredRenderPass deferredRenderPass;
     ForwardHDRPass forwardHDRPass;
     ForwardOverlayPass forwardOverlayPass;
-    BlurPass blurPass;
     ScreenPass screenPass;
 };

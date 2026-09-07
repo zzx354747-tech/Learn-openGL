@@ -24,5 +24,5 @@ private:
     float threshold = 1.0f;
     float knee = 0.5f;
 
-    void initResources(int width, int height);  // 只负责 FBO 创建+附加,不再创建纹理
+    void initResources();  // 只负责 FBO 创建+附加,不再创建纹理
 };

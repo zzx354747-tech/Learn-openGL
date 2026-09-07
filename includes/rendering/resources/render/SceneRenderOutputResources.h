@@ -6,6 +6,8 @@
 #include "rendering/assets/ibl/PrefilterMap.h"
 #include "rendering/resources/framebuffer/PingPong_Framebuffer.h"
 
+class DownSamplePass;
+
 struct SceneRenderOutputResources
 {
     EnvCubemap* skybox = nullptr;
@@ -13,4 +15,5 @@ struct SceneRenderOutputResources
     PrefilterMap* prefilterMap = nullptr;
     BrdfLUT* brdfLUT = nullptr;
     PingPongFramebuffer* pingpongFBO = nullptr;
+    DownSamplePass* downSamplePassL1 = nullptr;
 };

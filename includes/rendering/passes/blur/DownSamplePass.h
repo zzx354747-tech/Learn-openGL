@@ -1,0 +1,25 @@
+#pragma once
+
+#include <glad/gl.h>
+#include "rendering/assets/mesh/Screenquad.h"
+#include "rendering/assets/texture/Texture.h"
+#include "core/Shader.h"
+
+class DownSamplePass
+{
+public:
+    DownSamplePass(int width, int height, Shader& shader, Screenquad& quad);
+    ~DownSamplePass();
+
+    void render(GLuint inputTexture);
+    void resize(int width, int height);
+    GLuint GetDownSampleTextureID() const { return downSampleTexture.getID(); }
+
+private:
+    Shader& downSampleShader;
+    Screenquad& screenQuad;
+    GLuint downSampleFBO;
+    GLTexture downSampleTexture;
+
+    void initResources();  // 只负责 FBO 创建+附加,不再创建纹理
+};

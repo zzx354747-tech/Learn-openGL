@@ -20,6 +20,7 @@ struct ShaderLibrary
     Shader lightingPass;
     Shader ssao;
     Shader ssaoBlur;
+    Shader downSample;
 
     ShaderLibrary();
 };

@@ -4,6 +4,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     SceneRenderResources& resources, SceneRenderConfig& config,
     SceneRenderState& state, LightSettings& lightSettings,
     DirectionalShadowPass& directionalShadowPass, BrightPrefilterPass& brightPrefilterPass,
+    DownSamplePass& downSamplePassL1,
     PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass,
     GeometryPass& geometryPass, LightingPass& lightingPass,
     GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
@@ -12,6 +13,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     , resources(resources)
     , state(state)
     , brightPrefilterPass(brightPrefilterPass)
+    , downSamplePassL1(downSamplePassL1)
     , directionalShadowPass(directionalShadowPass)
     , pointShadowPass(pointShadowPass)
     , spotShadowPass(spotShadowPass)
@@ -19,7 +21,6 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     , deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass)
     , forwardHDRPass(camera, resources, config, state, sphereDrawer, modelDrawer)
     , forwardOverlayPass(camera, resources, state, config)
-    , blurPass()
     , screenPass(config, resources)
     {
         (void)lightSettings;
@@ -47,17 +48,13 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
             forwardHDRPass.render(bfwidth, bfheight, framebuffer);
         }
 
-        if (config.enableBloom && resources.pingpongFBO && resources.shaderLibrary)
+        if (config.enableBloom && resources.shaderLibrary)
         {
             brightPrefilterPass.setThreshold(config.bloomThreshold);
             brightPrefilterPass.render(framebuffer.getTextureID(0));
 
-            blurPass.render(
-                brightPrefilterPass.GetBrightPrefilterTextureID(),
-                *resources.pingpongFBO,
-                resources.shaderLibrary->blur,
-                screenQuad,
-                config.numBlurPasses);
+            downSamplePassL1.render(
+                brightPrefilterPass.GetBrightPrefilterTextureID());
         }
 
         screenPass.render(bfwidth, bfheight, screenShader, screenQuad, framebuffer);

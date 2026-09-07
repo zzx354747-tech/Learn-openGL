@@ -11,10 +11,10 @@ BrightPrefilterPass::BrightPrefilterPass(int width, int height,
                             GL_CLAMP_TO_EDGE, // wrapMode
                             GL_LINEAR)        // filterMode
 {
-    initResources(width, height);
+    initResources();
 }
 
-void BrightPrefilterPass::initResources(int width, int height)
+void BrightPrefilterPass::initResources()
 {
     // 只创建/绑定/附加 FBO,纹理已经在初始化列表(或 resize 的移动赋值)里就绪
     glGenFramebuffers(1, &BrightPrefilterFBO);

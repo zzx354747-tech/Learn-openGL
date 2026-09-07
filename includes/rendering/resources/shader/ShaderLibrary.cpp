@@ -53,4 +53,7 @@ ShaderLibrary::ShaderLibrary()
     , ssaoBlur(
         "../src/shader/renderer/ssao/common.vs",
         "../src/shader/renderer/ssao/ssao_bilateral_blur.fs")
+    , downSample(
+        "../src/shader/renderer/postprocess/downSample.vs",
+        "../src/shader/renderer/postprocess/downSample.fs")
 {}

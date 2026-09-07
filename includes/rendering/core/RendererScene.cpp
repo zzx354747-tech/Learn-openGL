@@ -1,5 +1,6 @@
 // rendering/core/RendererScene.cpp
 #include "rendering/core/RendererScene.h"
+#include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
 RendererScene::RendererScene(int width, int height)
@@ -57,11 +58,15 @@ RendererScene::RendererScene(int width, int height)
                    sceneState,
                    lightSettings,
                    camera)
+    , downSamplePassL1(std::max(1, width / 2),
+                       std::max(1, height / 2),
+                       shaderLibrary.downSample,
+                       screenQuad)
     , ssaoCommonPass(sceneResources,
-                      sceneSSAO,
-                      screenQuad,
-                      camera,
-                      sceneGBuffer)
+                     sceneSSAO,
+                     screenQuad,
+                     camera,
+                     sceneGBuffer)
     , sceneRender(camera,
                   shadowResources,
                   sceneResources,
@@ -70,6 +75,7 @@ RendererScene::RendererScene(int width, int height)
                   lightSettings,
                   directionalShadowPass,
                   brightPrefilterPass,
+                  downSamplePassL1,
                   pointShadowPass,
                   spotShadowPass,
                   geometryPass,
@@ -114,6 +120,7 @@ RendererScene::RendererScene(int width, int height)
 
     sceneResources.brdfLUT = &brdfLUT;
     sceneResources.pingpongFBO = &pingpongFBO;
+    sceneResources.downSamplePassL1 = &downSamplePassL1;
 
     environmentController.load();
     environmentController.applyPreset();
@@ -126,6 +133,9 @@ void RendererScene::resize(int width, int height)
     sceneGBuffer.resize(width, height);
     sceneSSAO.resize(width, height);
     brightPrefilterPass.resize(width, height);
+    downSamplePassL1.resize(
+        std::max(1, width / 2),
+        std::max(1, height / 2));
 }
 
 void RendererScene::render(int width, int height)
