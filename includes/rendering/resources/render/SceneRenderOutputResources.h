@@ -15,5 +15,4 @@ struct SceneRenderOutputResources
     PrefilterMap* prefilterMap = nullptr;
     BrdfLUT* brdfLUT = nullptr;
     PingPongFramebuffer* pingpongFBO = nullptr;
-    DownSamplePass* downSamplePassL1 = nullptr;
 };

@@ -14,6 +14,9 @@ public:
     void render(GLuint inputTexture);
     void resize(int width, int height);
     GLuint GetDownSampleTextureID() const { return downSampleTexture.getID(); }
+    GLuint GetDownSampleFBO() const { return downSampleFBO; }
+    int GetDownSampleWidth() const { return downSampleTexture.getWidth(); }
+    int GetDownSampleHeight() const { return downSampleTexture.getHeight(); }
 
 private:
     Shader& downSampleShader;

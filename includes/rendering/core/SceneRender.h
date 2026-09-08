@@ -29,7 +29,9 @@ public:
         SceneRenderResources& resources, SceneRenderConfig& config,
         SceneRenderState& state, LightSettings& lightSettings,
         DirectionalShadowPass& directionalShadowPass, BrightPrefilterPass& brightPrefilterPass,
-        DownSamplePass& downSamplePassL1,
+        DownSamplePass& downSamplePassL1, DownSamplePass& downSamplePassL2,
+        DownSamplePass& downSamplePassL3, DownSamplePass& downSamplePassL4,
+        DownSamplePass& downSamplePassL5,
         PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass,
         GeometryPass& geometryPass, LightingPass& lightingPass,
         GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
@@ -45,6 +47,10 @@ private:
     SceneRenderState& state;
     BrightPrefilterPass& brightPrefilterPass;
     DownSamplePass& downSamplePassL1;
+    DownSamplePass& downSamplePassL2;
+    DownSamplePass& downSamplePassL3;
+    DownSamplePass& downSamplePassL4;
+    DownSamplePass& downSamplePassL5;
     DirectionalShadowPass& directionalShadowPass;
     PointShadowPass& pointShadowPass;
     SpotShadowPass& spotShadowPass;

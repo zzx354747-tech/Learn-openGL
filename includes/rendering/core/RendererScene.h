@@ -84,6 +84,10 @@ struct RendererScene
     GeometryPass geometryPass;
     LightingPass lightingPass;
     DownSamplePass downSamplePassL1;
+    DownSamplePass downSamplePassL2;
+    DownSamplePass downSamplePassL3;
+    DownSamplePass downSamplePassL4;
+    DownSamplePass downSamplePassL5;
     SSAOCommonPass ssaoCommonPass;
     SceneRender sceneRender;
 
