@@ -1,5 +1,4 @@
 #include "rendering/passes/screen/ScreenPass.h"
-#include "rendering/passes/blur/DownSamplePass.h"
 
 void ScreenPass::render(
     int bfwidth,
@@ -29,11 +28,11 @@ void ScreenPass::render(
     glBindTexture(GL_TEXTURE_2D, framebuffer.getTextureID(0));
 
     glActiveTexture(GL_TEXTURE1);
-    if (config.enableBloom && resources.downSamplePassL1)
+    if (config.enableBloom)
     {
         glBindTexture(
             GL_TEXTURE_2D,
-            resources.downSamplePassL1->GetDownSampleTextureID()
+            bloomPass.GetBloomTextureID()
         );
     }
     else
@@ -44,6 +43,7 @@ void ScreenPass::render(
     screenQuad.draw();
 }
 
-ScreenPass::ScreenPass( SceneRenderConfig& config, SceneRenderResources& resources ) : config(config), resources(resources)
+ScreenPass::ScreenPass(SceneRenderConfig& config, BloomPass& bloomPass)
+    : config(config), bloomPass(bloomPass)
 {
-    }
+}

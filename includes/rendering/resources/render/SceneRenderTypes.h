@@ -52,7 +52,6 @@ struct SceneRenderConfig
     float phongIBLDiffuseStrength = 1.25f;
     float phongIBLSpecularStrength = 0.35f;
 
-    int numBlurPasses = 10;
     float exposure = 1.0f;
     float bloomStrength = 0.6f;
     float bloomThreshold = 0.7f;

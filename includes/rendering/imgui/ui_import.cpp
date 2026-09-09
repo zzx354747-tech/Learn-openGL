@@ -112,7 +112,6 @@ void SceneRenderUI::renderUI(
         ImGui::SliderFloat("Exposure", &uiState.sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
         ImGui::SliderFloat("Bloom Strength", &uiState.sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
         ImGui::SliderFloat("Bloom Threshold", &uiState.sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
-        ImGui::SliderInt("Number of Blur Passes", &uiState.sceneConfig.numBlurPasses, 1, 20);
 
         ImGui::SeparatorText("Lights");
         ImGui::Checkbox("Point Light", &uiState.sceneConfig.enablePointLight);

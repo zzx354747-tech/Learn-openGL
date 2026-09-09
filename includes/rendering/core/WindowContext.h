@@ -1,7 +1,6 @@
 #pragma once
 
 class Framebuffer;
-class PingPongFramebuffer;
 class GBuffer;
 class SSAO;
 class Camera;

@@ -35,9 +35,6 @@ ShaderLibrary::ShaderLibrary()
     , brightPrefilter(
         "../src/shader/renderer/postprocess/brightPrefilter.vs",
         "../src/shader/renderer/postprocess/brightPrefilter.fs")
-    , blur(
-        "../src/shader/renderer/postprocess/blur.vs",
-        "../src/shader/renderer/postprocess/blur.fs")
     , geometryPBR(
         "../src/shader/renderer/deferred/geometry.vs",
         "../src/shader/renderer/deferred/geometry.fs")
@@ -56,4 +53,7 @@ ShaderLibrary::ShaderLibrary()
     , downSample(
         "../src/shader/renderer/postprocess/downSample.vs",
         "../src/shader/renderer/postprocess/downSample.fs")
+    , upSample(
+        "../src/shader/renderer/postprocess/upSample.vs",
+        "../src/shader/renderer/postprocess/upSample.fs")
 {}

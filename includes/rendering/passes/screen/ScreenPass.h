@@ -4,14 +4,14 @@
 
 #include "core/Shader.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
-#include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/assets/mesh/Screenquad.h"
+#include "rendering/passes/blur/BloomPass.h"
 
 class ScreenPass
 {
 public:
-    ScreenPass( SceneRenderConfig& config, SceneRenderResources& resources );
+    ScreenPass(SceneRenderConfig& config, BloomPass& bloomPass);
 
     void render(
         int bfwidth,
@@ -23,5 +23,5 @@ public:
 
 private:
     SceneRenderConfig& config;
-    SceneRenderResources& resources;
+    BloomPass& bloomPass;
 };

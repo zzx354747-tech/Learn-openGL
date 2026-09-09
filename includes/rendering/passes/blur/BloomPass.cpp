@@ -1,12 +1,13 @@
-#include "BlurPass.h"
+#include "BloomPass.h"
+#include <algorithm>
 
 BloomPass::BloomPass(int width, int height,
     Shader& downSampleShader, Shader& upSampleShader, Screenquad& quad)
-    :   downSamplePassL1(width / 2, height / 2, downSampleShader, quad),
-        downSamplePassL2(width / 4, height / 4, downSampleShader, quad),
-        downSamplePassL3(width / 8, height / 8, downSampleShader, quad),
-        downSamplePassL4(width / 16, height / 16, downSampleShader, quad),
-        downSamplePassL5(width / 32, height / 32, downSampleShader, quad),
+    :   downSamplePassL1(std::max(1, width / 2), std::max(1, height / 2), downSampleShader, quad),
+        downSamplePassL2(std::max(1, width / 4), std::max(1, height / 4), downSampleShader, quad),
+        downSamplePassL3(std::max(1, width / 8), std::max(1, height / 8), downSampleShader, quad),
+        downSamplePassL4(std::max(1, width / 16), std::max(1, height / 16), downSampleShader, quad),
+        downSamplePassL5(std::max(1, width / 32), std::max(1, height / 32), downSampleShader, quad),
         upsamplePass(upSampleShader, quad)
 {
 
@@ -57,9 +58,9 @@ void BloomPass::render(GLuint inputTexture)
 
 void BloomPass::resize(int width, int height)
 {
-    downSamplePassL1.resize(width / 2, height / 2);
-    downSamplePassL2.resize(width / 4, height / 4);
-    downSamplePassL3.resize(width / 8, height / 8);
-    downSamplePassL4.resize(width / 16, height / 16);
-    downSamplePassL5.resize(width / 32, height / 32);
+    downSamplePassL1.resize(std::max(1, width / 2), std::max(1, height / 2));
+    downSamplePassL2.resize(std::max(1, width / 4), std::max(1, height / 4));
+    downSamplePassL3.resize(std::max(1, width / 8), std::max(1, height / 8));
+    downSamplePassL4.resize(std::max(1, width / 16), std::max(1, height / 16));
+    downSamplePassL5.resize(std::max(1, width / 32), std::max(1, height / 32));
 }

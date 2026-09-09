@@ -201,12 +201,12 @@ add_executable(fbo_demo
     includes/rendering/passes/shadow/DirectionalShadowPass.cpp
     includes/rendering/passes/shadow/PointShadowPass.cpp
     includes/rendering/passes/shadow/SpotShadowPass.cpp
-    includes/rendering/passes/blur/BlurPass.cpp
+    includes/rendering/passes/blur/BloomPass.cpp
     includes/rendering/passes/blur/DownSamplePass.cpp
+    includes/rendering/passes/blur/UpSamplePass.cpp
     includes/rendering/passes/screen/ScreenPass.cpp
     includes/rendering/resources/framebuffer/Gbuffer.cpp
     includes/rendering/resources/framebuffer/HDR_Framebuffer.cpp
-    includes/rendering/resources/framebuffer/PingPong_Framebuffer.cpp
     includes/rendering/resources/framebuffer/SSAOPingPongFramebuffer.cpp
     includes/rendering/resources/render/SceneRenderResources.cpp
     includes/rendering/resources/ssao/SSAO.cpp

@@ -3,7 +3,6 @@
 
 #include "rendering/assets/mesh/Screenquad.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
-#include "rendering/resources/framebuffer/PingPong_Framebuffer.h"
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/resources/ssao/SSAO.h"
 #include "scene/Camera.h"
@@ -33,7 +32,7 @@
 #include "rendering/resources/environment/EnvironmentOption.h"
 #include "rendering/core/SceneRender.h"
 #include "rendering/passes/blur/BrightPrefilterPass.h"
-#include "rendering/passes/blur/DownSamplePass.h"
+#include "rendering/passes/blur/BloomPass.h"
 
 // 第一轮:仅第 0 层(无依赖对象)。
 // 顺序为main栈上对象的构造顺序
@@ -42,7 +41,6 @@ struct RendererScene
     Screenquad screenQuad;
 
     Framebuffer fb;
-    PingPongFramebuffer pingpongFBO;
     GBuffer sceneGBuffer;
     SSAO sceneSSAO;
 
@@ -83,11 +81,7 @@ struct RendererScene
     // 第四轮新增:第 3 层
     GeometryPass geometryPass;
     LightingPass lightingPass;
-    DownSamplePass downSamplePassL1;
-    DownSamplePass downSamplePassL2;
-    DownSamplePass downSamplePassL3;
-    DownSamplePass downSamplePassL4;
-    DownSamplePass downSamplePassL5;
+    BloomPass bloomPass;
     SSAOCommonPass ssaoCommonPass;
     SceneRender sceneRender;
 

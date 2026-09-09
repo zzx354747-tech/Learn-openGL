@@ -14,13 +14,13 @@ struct ShaderLibrary
     Shader prefilter;
     Shader brdf;
     Shader brightPrefilter;
-    Shader blur;
     Shader geometryPBR;
     Shader basicForward;
     Shader lightingPass;
     Shader ssao;
     Shader ssaoBlur;
     Shader downSample;
+    Shader upSample;
 
     ShaderLibrary();
 };

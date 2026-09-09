@@ -5,7 +5,6 @@
 #include "rendering/assets/light/LightSettings.h"
 #include "rendering/assets/mesh/Screenquad.h"
 #include "rendering/passes/blur/BrightPrefilterPass.h"
-#include "rendering/passes/blur/DownSamplePass.h"
 #include "rendering/passes/debug/ShadowDebugPass.h"
 #include "rendering/passes/deferred/DeferredRenderPass.h"
 #include "rendering/passes/forward/ForwardHDRPass.h"
@@ -21,6 +20,7 @@
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/core/ModelDrawer.h"
+#include "rendering/passes/blur/BloomPass.h"
 
 class SceneRender
 {
@@ -29,9 +29,7 @@ public:
         SceneRenderResources& resources, SceneRenderConfig& config,
         SceneRenderState& state, LightSettings& lightSettings,
         DirectionalShadowPass& directionalShadowPass, BrightPrefilterPass& brightPrefilterPass,
-        DownSamplePass& downSamplePassL1, DownSamplePass& downSamplePassL2,
-        DownSamplePass& downSamplePassL3, DownSamplePass& downSamplePassL4,
-        DownSamplePass& downSamplePassL5,
+        BloomPass& bloomPass,
         PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass,
         GeometryPass& geometryPass, LightingPass& lightingPass,
         GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
@@ -46,11 +44,7 @@ private:
     SceneRenderResources& resources;
     SceneRenderState& state;
     BrightPrefilterPass& brightPrefilterPass;
-    DownSamplePass& downSamplePassL1;
-    DownSamplePass& downSamplePassL2;
-    DownSamplePass& downSamplePassL3;
-    DownSamplePass& downSamplePassL4;
-    DownSamplePass& downSamplePassL5;
+    BloomPass& bloomPass;
     DirectionalShadowPass& directionalShadowPass;
     PointShadowPass& pointShadowPass;
     SpotShadowPass& spotShadowPass;

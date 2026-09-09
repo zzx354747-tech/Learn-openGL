@@ -5,7 +5,6 @@
 
 RendererScene::RendererScene(int width, int height)
     : fb(width, height)
-    , pingpongFBO(width, height)
     , sceneGBuffer(width, height)
     , sceneSSAO(width, height)
     , shadowMap(4096, 4096)
@@ -59,25 +58,9 @@ RendererScene::RendererScene(int width, int height)
                     lightSettings,
                     camera)
 
-    , downSamplePassL1(std::max(1, width / 2),
-                    std::max(1, height / 2),
+    , bloomPass(width, height,
                     shaderLibrary.downSample,
-                    screenQuad)
-    , downSamplePassL2(std::max(1, width / 4),
-                    std::max(1, height / 4),
-                    shaderLibrary.downSample,
-                    screenQuad)
-    , downSamplePassL3(std::max(1, width / 8),
-                    std::max(1, height / 8),
-                    shaderLibrary.downSample,
-                    screenQuad)
-    , downSamplePassL4(std::max(1, width / 16),
-                    std::max(1, height / 16),
-                    shaderLibrary.downSample,
-                    screenQuad)
-    , downSamplePassL5(std::max(1, width / 32),
-                    std::max(1, height / 32),
-                    shaderLibrary.downSample,
+                    shaderLibrary.upSample,
                     screenQuad)
 
     , ssaoCommonPass(sceneResources,
@@ -93,11 +76,7 @@ RendererScene::RendererScene(int width, int height)
                     lightSettings,
                     directionalShadowPass,
                     brightPrefilterPass,
-                    downSamplePassL1,
-                    downSamplePassL2,
-                    downSamplePassL3,
-                    downSamplePassL4,
-                    downSamplePassL5,
+                    bloomPass,
                     pointShadowPass,
                     spotShadowPass,
                     geometryPass,
@@ -142,13 +121,6 @@ RendererScene::RendererScene(int width, int height)
         brdfLUT.GetID());
 
     sceneResources.brdfLUT = &brdfLUT;
-    sceneResources.pingpongFBO = &pingpongFBO;
-    sceneResources.downSamplePassL1 = &downSamplePassL1;
-    sceneResources.downSamplePassL2 = &downSamplePassL2;
-    sceneResources.downSamplePassL3 = &downSamplePassL3;
-    sceneResources.downSamplePassL4 = &downSamplePassL4;
-    sceneResources.downSamplePassL5 = &downSamplePassL5;
-
     environmentController.load();
     environmentController.applyPreset();
 }
@@ -156,25 +128,10 @@ RendererScene::RendererScene(int width, int height)
 void RendererScene::resize(int width, int height)
 {
     fb.resize(width, height);
-    pingpongFBO.resize(width, height);
     sceneGBuffer.resize(width, height);
     sceneSSAO.resize(width, height);
     brightPrefilterPass.resize(width, height);
-    downSamplePassL1.resize(
-        std::max(1, width / 2),
-        std::max(1, height / 2));
-    downSamplePassL2.resize(
-        std::max(1, width / 4),
-        std::max(1, height / 4));
-    downSamplePassL3.resize(
-        std::max(1, width / 8),
-        std::max(1, height / 8));
-    downSamplePassL4.resize(
-        std::max(1, width / 16),
-        std::max(1, height / 16));
-    downSamplePassL5.resize(
-        std::max(1, width / 32),
-        std::max(1, height / 32));
+    bloomPass.resize(width, height);
 }
 
 void RendererScene::render(int width, int height)
