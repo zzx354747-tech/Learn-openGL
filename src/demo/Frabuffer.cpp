@@ -57,6 +57,16 @@ void processInput(GLFWwindow* window, WindowContext& ctx, float deltaTime)
         }
     }
     ctx.gravePressLastFrame = gravePressed;
+
+    bool editPressed = glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS;
+    if (editPressed && !ctx.editKeyPressLastFrame)
+    {
+        if (ctx.rendererScene)
+        {
+            ctx.rendererScene->toggleEditMode();
+        }
+    }
+    ctx.editKeyPressLastFrame = editPressed;
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)

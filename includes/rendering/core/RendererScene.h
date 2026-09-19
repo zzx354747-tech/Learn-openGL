@@ -96,6 +96,8 @@ struct RendererScene
 
     void renderUI(float FPS, float swapWaitMs);
 
+    void toggleEditMode();
+
     Camera& getCamera();
 
     RendererScene(int width, int height);

@@ -42,6 +42,7 @@ struct SceneRenderConfig
     bool enableSSAO = false;
     bool enablePBR = false;
     bool enableIBL = false;
+    bool enableEdit = false;
     float ssaoStrength = 1.0f;
     glm::vec3 fixedAmbientColor = glm::vec3(0.08f);
     float fixedAmbientStrength = 1.0f;
@@ -53,8 +54,8 @@ struct SceneRenderConfig
     float phongIBLSpecularStrength = 0.35f;
 
     float exposure = 1.0f;
-    float bloomStrength = 0.6f;
-    float bloomThreshold = 0.7f;
+    float bloomStrength = 0.4f;
+    float bloomThreshold = 1.1f;
     float sunThreshold = 100.0f;
     float directionalShadowLightSize = 0.006f;
     float directionalShadowBlockerSearchRadius = 0.006f;

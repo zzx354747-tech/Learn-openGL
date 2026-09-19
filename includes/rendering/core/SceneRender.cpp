@@ -8,7 +8,8 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     PointShadowPass& pointShadowPass, SpotShadowPass& spotShadowPass,
     GeometryPass& geometryPass, LightingPass& lightingPass,
     GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
-    SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer)
+    SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
+    Screenquad& screenQuad, Shader& editShader)
     : config(config)
     , resources(resources)
     , state(state)
@@ -22,6 +23,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     , forwardHDRPass(camera, resources, config, state, sphereDrawer, modelDrawer)
     , forwardOverlayPass(camera, resources, state, config)
     , screenPass(config, bloomPass)
+    , editScreenPass(screenQuad, editShader, camera)
     {
         (void)lightSettings;
     }
@@ -54,6 +56,11 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
             brightPrefilterPass.render(framebuffer.getTextureID(0));
 
             bloomPass.render(brightPrefilterPass.GetBrightPrefilterTextureID());
+        }
+
+        if (config.enableEdit)
+        {
+            editScreenPass.render(bfwidth, bfheight, framebuffer);
         }
 
         screenPass.render(bfwidth, bfheight, screenShader, screenQuad, framebuffer);

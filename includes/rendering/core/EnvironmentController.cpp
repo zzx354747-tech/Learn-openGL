@@ -177,8 +177,8 @@ void EnvironmentController::applyPreset()
         sceneConfig_.phongIBLSpecularStrength = 0.42f;
         sceneConfig_.ssaoStrength = 2.5f;
         sceneConfig_.exposure = 1.4f;
-        sceneConfig_.bloomStrength = 1.8f;
-        sceneConfig_.bloomThreshold = 0.7f;
+        sceneConfig_.bloomStrength = 0.8f;
+        sceneConfig_.bloomThreshold = 1.1f;
         lightSettings_.pointDiffuse = glm::vec3(1.0f, 0.5f, 0.1f);
         lightSettings_.pointSpecular = glm::vec3(1.0f, 0.6f, 0.25f);
         lightSettings_.pointIntensity = 15.0f;

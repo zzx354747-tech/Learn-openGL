@@ -56,4 +56,7 @@ ShaderLibrary::ShaderLibrary()
     , upSample(
         "../src/shader/renderer/postprocess/upSample.vs",
         "../src/shader/renderer/postprocess/upSample.fs")
+    , editLine(
+        "../src/shader/renderer/edit/editLine.vs",
+        "../src/shader/renderer/edit/editLine.fs")
 {}

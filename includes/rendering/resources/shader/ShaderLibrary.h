@@ -21,6 +21,7 @@ struct ShaderLibrary
     Shader ssaoBlur;
     Shader downSample;
     Shader upSample;
+    Shader editLine;
 
     ShaderLibrary();
 };

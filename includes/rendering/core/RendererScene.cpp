@@ -84,7 +84,9 @@ RendererScene::RendererScene(int width, int height)
                     sceneGBuffer,
                     ssaoCommonPass,
                     sphereDrawer,
-                    livingRoomDrawer)
+                    livingRoomDrawer,
+                    screenQuad,
+                    shaderLibrary.editLine)
 
     , renderModeIndex(0)
     , environmentIndex(getEnvironmentIndex(sceneConfig.environmentSelection))
@@ -148,6 +150,11 @@ void RendererScene::render(int width, int height)
 void RendererScene::renderUI(float fps, float swapWaitMs)
 {
     sceneRenderUI.renderUI(uiState, fps, swapWaitMs);
+}
+
+void RendererScene::toggleEditMode()
+{
+    sceneConfig.enableEdit = !sceneConfig.enableEdit;
 }
 
 Camera& RendererScene::getCamera()
