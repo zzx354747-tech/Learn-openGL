@@ -63,10 +63,43 @@ void main()
         pixelDistance.y
     );
 
-    // 生成平滑透明度
-    float lineAlpha = 1.0 - clamp(nearestLine, 0.0, 1.0);
+    // 线宽参数
+    float lineWidthPixels = 2.0;
 
-    if (lineAlpha < 0.1)
+    // 生成平滑透明度
+    float lineAlpha = 1.0 - clamp(
+        nearestLine / lineWidthPixels,
+        0.0,
+        1.0
+    );
+
+    // 网格过密时逐渐隐藏，避免摩尔纹
+    float gridFrequency =
+        max(
+            coordinateDerivative.x,
+            coordinateDerivative.y
+        );
+
+    float frequencyFade =
+        1.0 - smoothstep(
+            0.25,
+            0.75,
+            gridFrequency
+        );
+
+    // 接近远裁剪面时逐渐隐藏
+    float farFade =
+        1.0 - smoothstep(
+            0.65,
+            0.95,
+            t
+        );
+
+    lineAlpha *=
+        frequencyFade *
+        farFade;
+
+    if (lineAlpha <= 0.001)
     {
         discard;
     }
