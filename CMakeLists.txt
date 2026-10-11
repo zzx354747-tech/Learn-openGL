@@ -229,6 +229,7 @@ add_executable(fbo_demo
     includes/rendering/assets/ibl/BrdfLUT.cpp
     includes/rendering/core/RendererScene.cpp
     includes/rendering/passes/blur/BrightPrefilterPass.cpp
+    includes/scene/sceneObjectManager.cpp
 )
 target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
 set_output_dir(fbo_demo)

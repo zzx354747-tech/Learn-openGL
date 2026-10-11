@@ -21,6 +21,7 @@ enum class SceneSelection
 {
     Default,
     LivingRoom,
+    AnotherScene,    
 };
 
 enum class EnvironmentSelection
