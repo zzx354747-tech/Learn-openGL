@@ -17,6 +17,10 @@ public:
     void draw(Shader& shader);
     void drawBasic(Shader& shader);
     void drawReflect(Shader& shader);
+    void drawInstance(
+    Shader& shader,
+    const glm::mat4& matrix,
+    unsigned int materialIndex);
 
 private:
     void drawOne(Shader& shader, unsigned int index);

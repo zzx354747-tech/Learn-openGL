@@ -34,6 +34,8 @@
 #include "rendering/passes/blur/BrightPrefilterPass.h"
 #include "rendering/passes/blur/BloomPass.h"
 
+#include "scene/sceneObjectManager.h"
+
 // 第一轮:仅第 0 层(无依赖对象)。
 // 顺序为main栈上对象的构造顺序
 struct RendererScene
@@ -70,8 +72,8 @@ struct RendererScene
     ModelDrawer livingRoomDrawer;
 
     // 第三轮新增:第 2 层
+    SceneObjectManager sceneObjectManager;
     BrightPrefilterPass brightPrefilterPass;
-
     PointShadowPass pointShadowPass;
     DirectionalShadowPass directionalShadowPass;
     SpotShadowPass spotShadowPass;

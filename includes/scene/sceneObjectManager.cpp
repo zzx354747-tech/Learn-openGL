@@ -43,3 +43,15 @@ void SceneObjectManager::addSceneObject()
     model_livingroom.isVisible = true;
     m_sceneObjects.push_back(model_livingroom);
 }
+
+SceneObject* SceneObjectManager::getSceneObject(SceneObjectID id)
+{
+    for (auto& obj: m_sceneObjects)
+    {
+        if (obj.id == id)
+        {
+            return &obj;
+        }
+    }
+    return nullptr;
+}

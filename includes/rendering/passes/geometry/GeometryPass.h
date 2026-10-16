@@ -8,6 +8,7 @@
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
 #include "rendering/uniforms/RenderParams.h"
+#include "scene/sceneObjectManager.h"
 
 class GeometryPass
 {
@@ -19,7 +20,8 @@ public:
         SphereDrawer&         sphereDrawer,
         ModelDrawer&          modelDrawer,
         GBuffer&              gBuffer,
-        RenderParams&         renderParams);
+        RenderParams&         renderParams,
+        SceneObjectManager&   sceneObjectManager);
 
     void render(int bfwidth, int bfheight);
 
@@ -31,6 +33,7 @@ private:
     ModelDrawer&          modelDrawer;
     GBuffer&              gBuffer;
     RenderParams&         renderParams;
+    SceneObjectManager&   sceneObjectManager;
 
     void renderSpheres(int bfwidth, int bfheight);
     void renderModels(int bfwidth, int bfheight);

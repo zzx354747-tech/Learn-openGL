@@ -15,6 +15,8 @@ public:
 
     void addSceneObject();
 
+    SceneObject* getSceneObject(SceneObjectID id);
+        
 private:
     std::vector<SceneObject> m_sceneObjects;
     ModelDrawer* m_livingRoomDrawer;

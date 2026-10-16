@@ -4,6 +4,7 @@
 #include "rendering/assets/texture/HDRTexture.h"
 #include "rendering/uniforms/RenderParams.h"
 #include "rendering/assets/light/LightSettings.h"
+#include "scene/sceneObjectManager.h"
 #include <functional>
 
 struct SceneRenderUIState
@@ -24,5 +25,7 @@ struct SceneRenderUIState
 class SceneRenderUI
 {
 public:
-    void renderUI(SceneRenderUIState& uiState, float FPS, float swapWaitMs);
+    void renderUI(SceneRenderUIState& uiState, SceneObjectManager& manager,
+        float FPS, 
+        float swapWaitMs);
 };

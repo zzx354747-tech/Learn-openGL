@@ -13,6 +13,7 @@ RendererScene::RendererScene(int width, int height)
     , sceneConfig(makeLivingRoomPreset())
     , sphereDrawer(&sphereMesh, &sceneState, &sceneConfig)
     , livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig)
+    , sceneObjectManager(&livingRoomDrawer, &sphereDrawer)
     , brightPrefilterPass(width, height, shaderLibrary.brightPrefilter, screenQuad)
     , pointShadowPass(pointShadowMap,
                     shaderLibrary.pointShadowMap,
@@ -50,7 +51,8 @@ RendererScene::RendererScene(int width, int height)
                     sphereDrawer,
                     livingRoomDrawer,
                     sceneGBuffer,
-                    renderParams)
+                    renderParams,
+                    sceneObjectManager)
     , lightingPass(sceneResources,
                     shadowResources,
                     sceneConfig,
@@ -109,6 +111,7 @@ RendererScene::RendererScene(int width, int height)
     sphereDrawer.loadMaterials("../textures/PBR/");
 
     livingRoomDrawer.setVisibleInScene(SceneSelection::LivingRoom);
+    sceneObjectManager.addSceneObject();
     glm::mat4 livingRoomTransform(1.0f);
     livingRoomTransform = glm::translate(livingRoomTransform, glm::vec3(0.0f, 0.0f, -3.0f));
     livingRoomTransform = glm::scale(livingRoomTransform, glm::vec3(0.2f));
@@ -149,7 +152,7 @@ void RendererScene::render(int width, int height)
 
 void RendererScene::renderUI(float fps, float swapWaitMs)
 {
-    sceneRenderUI.renderUI(uiState, fps, swapWaitMs);
+    sceneRenderUI.renderUI(uiState, sceneObjectManager, fps, swapWaitMs);
 }
 
 void RendererScene::toggleEditMode()

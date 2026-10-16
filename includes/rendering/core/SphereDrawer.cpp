@@ -84,6 +84,23 @@ void SphereDrawer::drawReflect(Shader& shader)
     }
 }
 
+
+void SphereDrawer::drawInstance(Shader& shader, const glm::mat4& matrix, 
+                                unsigned int materialIndex)
+{
+    if (!isDefaultScene() || !sphereMesh)
+        return;
+
+    if (materialIndex >= MaterialSphereCount)
+        return;
+
+    materials[materialIndex].bind(shader);
+
+    shader.setMat4("model", matrix);
+
+    sphereMesh->draw();
+}
+
 bool SphereDrawer::isDefaultScene() const
 {
     return !config || config->sceneSelection == SceneSelection::Default;
