@@ -92,9 +92,19 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     shader->use();
 
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
-    renderParams.apply(*shader);                                     // Owner B
+    renderParams.apply(*shader);                 // Owner B
 
-    modelDrawer.draw(*shader);   // Owner C：model 矩阵在这里面设置
+    SceneObject* object =
+    sceneObjectManager.getSceneObject(MaterialSphereCount + 1);
+
+    if (!object ||
+        !object->isVisible ||
+        object->scene != config.sceneSelection)
+    {
+        return;
+    }
+
+    modelDrawer.draw(*shader, object->transform.matrix());
 }
 
 Shader* GeometryPass::getPBRShader()

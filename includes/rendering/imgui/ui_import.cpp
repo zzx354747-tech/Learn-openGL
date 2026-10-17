@@ -7,13 +7,14 @@
 void SceneRenderUI::renderUI(
     SceneRenderUIState& uiState,
     SceneObjectManager& manager,
+    SceneObjectID selectedObjectID,
     float FPS,
     float swapWaitMs)
 {
     ImGui::Begin("Deferred PBR Renderer");
 
-    SceneObjectID selectedObjectID = 1;
     SceneObject* object = manager.getSceneObject(selectedObjectID);
+
     if (object)
     {
         ImGui::Text("Selected Object: %s", object->name.c_str());

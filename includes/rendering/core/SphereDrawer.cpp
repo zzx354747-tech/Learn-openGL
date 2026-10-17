@@ -101,6 +101,16 @@ void SphereDrawer::drawInstance(Shader& shader, const glm::mat4& matrix,
     sphereMesh->draw();
 }
 
+void SphereDrawer::drawPick(Shader& shader, const glm::mat4& matrix) const
+{
+    if (!isDefaultScene() || !sphereMesh)
+        return;
+
+    shader.setMat4("model", matrix);
+
+    sphereMesh->draw();
+}
+
 bool SphereDrawer::isDefaultScene() const
 {
     return !config || config->sceneSelection == SceneSelection::Default;

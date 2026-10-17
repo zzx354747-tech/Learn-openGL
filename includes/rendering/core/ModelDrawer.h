@@ -18,6 +18,7 @@ public:
     void setSceneConfig(SceneRenderConfig* config);
     void setVisibleInScene(SceneSelection scene);
 
+    void draw(Shader& shader, const glm::mat4& transform) const;
     void draw(Shader& shader) const;
 
 private:

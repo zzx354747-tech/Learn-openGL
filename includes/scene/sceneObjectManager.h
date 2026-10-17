@@ -16,6 +16,11 @@ public:
     void addSceneObject();
 
     SceneObject* getSceneObject(SceneObjectID id);
+
+    // 第一个const,既不复制容器，也不能通过这个引用修改容器和容器里的元素
+    // 第二个const,函数既不能修改类的成员变量，也不能调用非const成员函数
+    const std::vector<SceneObject>& getSceneObjects() const 
+    { return m_sceneObjects; }
         
 private:
     std::vector<SceneObject> m_sceneObjects;

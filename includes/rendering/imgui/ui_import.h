@@ -25,7 +25,10 @@ struct SceneRenderUIState
 class SceneRenderUI
 {
 public:
-    void renderUI(SceneRenderUIState& uiState, SceneObjectManager& manager,
+    void renderUI(SceneRenderUIState& uiState, 
+        SceneObjectManager& manager,
+        SceneObjectID selectedObjectID,
         float FPS, 
-        float swapWaitMs);
+        float swapWaitMs
+        );
 };

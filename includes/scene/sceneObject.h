@@ -12,7 +12,7 @@
 class ModelDrawer;
 class SphereDrawer;
 
-using SceneObjectID = uint64_t;
+using SceneObjectID = std::uint32_t;
 // 编译器常量，表示无效的场景对象ID
 constexpr SceneObjectID InvalidSceneObjectID = 0;
 

@@ -41,32 +41,95 @@ void processInput(GLFWwindow* window, WindowContext& ctx, float deltaTime)
         );
     }
 
-    bool gravePressed = glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT) == GLFW_PRESS;
+    bool gravePressed =
+        glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT) == GLFW_PRESS;
+
     if (gravePressed && !ctx.gravePressLastFrame)
     {
         ctx.cursorLocked = !ctx.cursorLocked;
+
         if (ctx.cursorLocked)
         {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            glfwSetInputMode(
+                window, GLFW_CURSOR, GLFW_CURSOR_DISABLED
+            );
+
             if (ctx.rendererScene)
                 ctx.rendererScene->getCamera().Resetmouse();
         }
         else
         {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            glfwSetInputMode(
+                window, GLFW_CURSOR, GLFW_CURSOR_NORMAL
+            );
         }
     }
+
     ctx.gravePressLastFrame = gravePressed;
 
-    bool editPressed = glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS;
+    bool editPressed =
+        glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS;
+
     if (editPressed && !ctx.editKeyPressLastFrame)
     {
         if (ctx.rendererScene)
-        {
             ctx.rendererScene->toggleEditMode();
+    }
+
+    ctx.editKeyPressLastFrame = editPressed;
+
+    bool mousePressed =
+        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
+    if (mousePressed && !ctx.mousePressedLastFrame)
+    {
+        if (ctx.rendererScene)
+        {
+            bool editMode = ctx.rendererScene->getEditMode();
+
+            if (editMode &&
+                !ctx.cursorLocked &&
+                !ImGui::GetIO().WantCaptureMouse)
+            {
+                double mouseX, mouseY;
+                glfwGetCursorPos(window, &mouseX, &mouseY);
+
+                int windowWidth, windowHeight;
+                glfwGetWindowSize(
+                    window, &windowWidth, &windowHeight
+                );
+
+                int framebufferWidth, framebufferHeight;
+                glfwGetFramebufferSize(
+                    window, &framebufferWidth, &framebufferHeight
+                );
+
+                if (windowWidth > 0 && windowHeight > 0 &&
+                    framebufferWidth > 0 && framebufferHeight > 0 &&
+                    mouseX >= 0.0 && mouseX < windowWidth &&
+                    mouseY >= 0.0 && mouseY < windowHeight)
+                {
+                    int pixelX = static_cast<int>(
+                        mouseX * framebufferWidth / windowWidth
+                    );
+
+                    int pixelY = framebufferHeight - 1
+                        - static_cast<int>(
+                            mouseY * framebufferHeight / windowHeight
+                        );
+
+                    ctx.rendererScene->selectObjectAtPixel(
+                        pixelX,
+                        pixelY,
+                        framebufferWidth,
+                        framebufferHeight
+                    );
+                }
+            }
         }
     }
-    ctx.editKeyPressLastFrame = editPressed;
+
+    ctx.mousePressedLastFrame = mousePressed;
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)

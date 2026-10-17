@@ -13,6 +13,6 @@ struct WindowContext
     // 输入状态
     bool cursorLocked        = true;
     bool gravePressLastFrame = false;
-
     bool editKeyPressLastFrame = false;
+    bool mousePressedLastFrame = false;
 };

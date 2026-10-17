@@ -14,6 +14,7 @@ RendererScene::RendererScene(int width, int height)
     , sphereDrawer(&sphereMesh, &sceneState, &sceneConfig)
     , livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig)
     , sceneObjectManager(&livingRoomDrawer, &sphereDrawer)
+    , objectPickPass(width, height)
     , brightPrefilterPass(width, height, shaderLibrary.brightPrefilter, screenQuad)
     , pointShadowPass(pointShadowMap,
                     shaderLibrary.pointShadowMap,
@@ -134,6 +135,7 @@ void RendererScene::resize(int width, int height)
 {
     fb.resize(width, height);
     sceneGBuffer.resize(width, height);
+    objectPickPass.resize(width, height);
     sceneSSAO.resize(width, height);
     brightPrefilterPass.resize(width, height);
     bloomPass.resize(width, height);
@@ -152,7 +154,13 @@ void RendererScene::render(int width, int height)
 
 void RendererScene::renderUI(float fps, float swapWaitMs)
 {
-    sceneRenderUI.renderUI(uiState, sceneObjectManager, fps, swapWaitMs);
+   sceneRenderUI.renderUI(
+        uiState,
+        sceneObjectManager,
+        selectedObjectID,
+        fps,
+        swapWaitMs
+    );
 }
 
 void RendererScene::toggleEditMode()
@@ -160,7 +168,103 @@ void RendererScene::toggleEditMode()
     sceneConfig.enableEdit = !sceneConfig.enableEdit;
 }
 
+bool RendererScene::getEditMode() const
+{
+    return sceneConfig.enableEdit;
+}
+
 Camera& RendererScene::getCamera()
 {
     return camera;
+}
+
+SceneObjectID RendererScene::selectObjectAtPixel(
+    int pixelX,
+    int pixelY,
+    int framebufferWidth,
+    int framebufferHeight)
+{
+    if (framebufferWidth <= 0 || framebufferHeight <= 0)
+        return selectedObjectID;
+
+    if (pixelX < 0 || pixelX >= framebufferWidth ||
+        pixelY < 0 || pixelY >= framebufferHeight)
+    {
+        return selectedObjectID;
+    }
+
+    objectPickPass.resize(
+        framebufferWidth,
+        framebufferHeight
+    );
+
+    objectPickPass.begin();
+
+    // Restore picking state even if drawing exits through an exception.
+    struct PickStateGuard
+    {
+        ObjectPickPass& pass;
+        ~PickStateGuard() { pass.end(); }
+    } pickStateGuard{objectPickPass};
+
+    Shader& shader = shaderLibrary.objectPick;
+    shader.use();
+
+    CameraUniformSetter::apply(
+        shader,
+        camera,
+        framebufferWidth,
+        framebufferHeight
+    );
+
+    for (const SceneObject& object :
+         sceneObjectManager.getSceneObjects())
+    {
+        if (!object.isVisible ||
+            object.scene != sceneConfig.sceneSelection)
+        {
+            continue;
+        }
+
+        shader.setUInt("objectID", object.id);
+
+        const glm::mat4 matrix = object.transform.matrix();
+
+        if (const auto* sphereRef =
+            std::get_if<sphereRenderRef>(&object.ref))
+        {
+            if (sphereRef->drawer)
+            {
+                sphereRef->drawer->drawPick(shader, matrix);
+            }
+        }
+        else if (const auto* modelRef =
+                 std::get_if<ModelDrawer*>(&object.ref))
+        {
+            if (*modelRef)
+            {
+                (*modelRef)->draw(shader, matrix);
+            }
+        }
+    }
+
+    selectedObjectID =
+        objectPickPass.readID(pixelX, pixelY);
+
+    objectPickPass.end();
+
+    if (SceneObject* object =
+        sceneObjectManager.getSceneObject(selectedObjectID))
+    {
+        std::cout
+            << "Selected: " << object->name
+            << ", ID: " << object->id
+            << '\n';
+    }
+    else
+    {
+        std::cout << "Selection cleared\n";
+    }
+
+    return selectedObjectID;
 }

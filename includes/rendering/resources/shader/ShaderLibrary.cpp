@@ -59,4 +59,7 @@ ShaderLibrary::ShaderLibrary()
     , editLine(
         "../src/shader/renderer/edit/editLine.vs",
         "../src/shader/renderer/edit/editLine.fs")
+    , objectPick(
+        "../src/shader/renderer/edit/objectPick.vs",
+        "../src/shader/renderer/edit/objectPick.fs")
 {}

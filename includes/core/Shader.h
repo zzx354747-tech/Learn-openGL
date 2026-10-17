@@ -224,6 +224,10 @@ public:
     {
         glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
     }
+    void setUInt(const std::string &name, unsigned int value) const
+    {
+        glUniform1ui(glGetUniformLocation(ID, name.c_str()), value);
+    }
 
 private:
     static std::string getShaderInfoLog(unsigned int shader)

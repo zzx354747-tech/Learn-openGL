@@ -22,6 +22,7 @@ struct ShaderLibrary
     Shader downSample;
     Shader upSample;
     Shader editLine;
+    Shader objectPick;
 
     ShaderLibrary();
 };

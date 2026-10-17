@@ -26,11 +26,16 @@ void ModelDrawer::setVisibleInScene(SceneSelection scene)
     visibleScene = scene;
 }
 
-void ModelDrawer::draw(Shader& shader) const
+void ModelDrawer::draw(Shader& shader, const glm::mat4& transform) const
 {
     if (config && config->sceneSelection != visibleScene)
         return;
+        
+    model.Draw(shader, transform);
+}
 
+void ModelDrawer::draw(Shader& shader) const
+{
     // model 矩阵：per-object owner，既不属于 CameraUniformSetter 也不属于 RenderParams
     model.Draw(shader, modelMatrix);
 }
