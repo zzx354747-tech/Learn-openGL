@@ -17,6 +17,7 @@
 #include "rendering/passes/shadow/SpotShadowPass.h"
 #include "rendering/passes/screen/ScreenPass.h"
 #include "rendering/passes/editor/EditScreenPass.h"
+#include "rendering/passes/editor/OutlinePass.h"
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/resources/render/SceneRenderResources.h"
@@ -35,11 +36,11 @@ public:
         GeometryPass& geometryPass, LightingPass& lightingPass,
         GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
         SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
-        Screenquad& screenQuad, Shader& editShader);
+        Screenquad& screenQuad, Shader& editShader, OutlinePass& outlinePass);
 
     void render( int bfwidth, int bfheight,
         Shader& screenShader, Screenquad& screenQuad,
-        Framebuffer& framebuffer);
+        Framebuffer& framebuffer, const SceneObject* selectedObject);
 
 private:
     SceneRenderConfig& config;
@@ -50,6 +51,7 @@ private:
     DirectionalShadowPass& directionalShadowPass;
     PointShadowPass& pointShadowPass;
     SpotShadowPass& spotShadowPass;
+    OutlinePass& outlinePass;
     ShadowDebugPass shadowDebugPass;
     DeferredRenderPass deferredRenderPass;
     ForwardHDRPass forwardHDRPass;

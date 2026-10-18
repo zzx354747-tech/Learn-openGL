@@ -197,6 +197,7 @@ add_executable(fbo_demo
     includes/rendering/passes/forward/SceneObjectPass.cpp
     includes/rendering/passes/editor/EditScreenPass.cpp
     includes/rendering/passes/editor/ObjectPickPass.cpp
+    includes/rendering/passes/editor/OutlinePass.cpp
     includes/rendering/passes/geometry/GeometryPass.cpp
     includes/rendering/passes/lighting/LightingPass.cpp
     includes/rendering/passes/ssao/SSAOCommonPass.cpp

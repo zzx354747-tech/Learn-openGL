@@ -62,4 +62,7 @@ ShaderLibrary::ShaderLibrary()
     , objectPick(
         "../src/shader/renderer/edit/objectPick.vs",
         "../src/shader/renderer/edit/objectPick.fs")
+    , outline(
+        "../src/shader/renderer/edit/outline.vs",
+        "../src/shader/renderer/edit/outline.fs")
 {}

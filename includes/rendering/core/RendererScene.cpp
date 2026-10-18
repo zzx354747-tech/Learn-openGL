@@ -15,6 +15,7 @@ RendererScene::RendererScene(int width, int height)
     , livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig)
     , sceneObjectManager(&livingRoomDrawer, &sphereDrawer)
     , objectPickPass(width, height)
+    , outlinePass(shaderLibrary.outline, camera)
     , brightPrefilterPass(width, height, shaderLibrary.brightPrefilter, screenQuad)
     , pointShadowPass(pointShadowMap,
                     shaderLibrary.pointShadowMap,
@@ -89,7 +90,8 @@ RendererScene::RendererScene(int width, int height)
                     sphereDrawer,
                     livingRoomDrawer,
                     screenQuad,
-                    shaderLibrary.editLine)
+                    shaderLibrary.editLine,
+                    outlinePass)
 
     , renderModeIndex(0)
     , environmentIndex(getEnvironmentIndex(sceneConfig.environmentSelection))
@@ -148,7 +150,8 @@ void RendererScene::render(int width, int height)
         height,
         shaderLibrary.screen,
         screenQuad,
-        fb
+        fb,
+        sceneObjectManager.getSceneObject(selectedObjectID)
     );
 }
 

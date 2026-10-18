@@ -36,6 +36,7 @@
 
 #include "scene/sceneObjectManager.h"
 #include "rendering/passes/editor/ObjectPickPass.h"
+#include "rendering/passes/editor/OutlinePass.h"
 
 // 第一轮:仅第 0 层(无依赖对象)。
 // 顺序为main栈上对象的构造顺序
@@ -77,6 +78,7 @@ struct RendererScene
     // 第三轮新增:第 2 层
     SceneObjectManager sceneObjectManager;
     ObjectPickPass objectPickPass;
+    OutlinePass outlinePass;
     BrightPrefilterPass brightPrefilterPass;
     PointShadowPass pointShadowPass;
     DirectionalShadowPass directionalShadowPass;

@@ -9,7 +9,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     GeometryPass& geometryPass, LightingPass& lightingPass,
     GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
     SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
-    Screenquad& screenQuad, Shader& editShader)
+    Screenquad& screenQuad, Shader& editShader, OutlinePass& outlinePass)
     : config(config)
     , resources(resources)
     , state(state)
@@ -18,6 +18,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     , directionalShadowPass(directionalShadowPass)
     , pointShadowPass(pointShadowPass)
     , spotShadowPass(spotShadowPass)
+    , outlinePass(outlinePass)
     , shadowDebugPass(resources, shadowResources)
     , deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass)
     , forwardHDRPass(camera, resources, config, state, sphereDrawer, modelDrawer)
@@ -28,7 +29,8 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
         (void)lightSettings;
     }
 
-void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Screenquad& screenQuad, Framebuffer& framebuffer)
+void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Screenquad& screenQuad,
+    Framebuffer& framebuffer, const SceneObject* selectedObject)
 {
         directionalShadowPass.render();
         pointShadowPass.render(state.lightPositions);
@@ -61,6 +63,11 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         if (config.enableEdit)
         {
             editScreenPass.render(bfwidth, bfheight, framebuffer);
+
+            if (selectedObject && selectedObject->scene == config.sceneSelection)
+            {
+                outlinePass.render(framebuffer, selectedObject, bfwidth, bfheight);
+            }
         }
 
         screenPass.render(bfwidth, bfheight, screenShader, screenQuad, framebuffer);
