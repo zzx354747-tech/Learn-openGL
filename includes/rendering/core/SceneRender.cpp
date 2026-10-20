@@ -64,9 +64,11 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         {
             editScreenPass.render(bfwidth, bfheight, framebuffer);
 
-            if (selectedObject && selectedObject->scene == config.sceneSelection)
+            // This outline path copies current-frame depth from the G-buffer.
+            if (config.renderMode == RenderMode::Lighting &&
+                selectedObject && selectedObject->scene == config.sceneSelection)
             {
-                outlinePass.render(framebuffer, selectedObject, bfwidth, bfheight);
+                outlinePass.render(selectedObject, bfwidth, bfheight);
             }
         }
 

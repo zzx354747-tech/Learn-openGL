@@ -22,6 +22,8 @@ void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
     glViewport(0, 0, bfwidth, bfheight);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     SceneObjectPass::renderSceneObjectPass(

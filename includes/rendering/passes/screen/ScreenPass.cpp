@@ -8,6 +8,8 @@ void ScreenPass::render(
     Framebuffer& framebuffer
 )
 {
+    // Present to the window; never sample the HDR texture while drawing into it.
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, bfwidth, bfheight);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);

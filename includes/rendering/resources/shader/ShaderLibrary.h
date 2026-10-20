@@ -24,6 +24,8 @@ struct ShaderLibrary
     Shader editLine;
     Shader objectPick;
     Shader outline;
+    Shader outlineMask;
+    Shader outlineScreen;
 
     ShaderLibrary();
 };

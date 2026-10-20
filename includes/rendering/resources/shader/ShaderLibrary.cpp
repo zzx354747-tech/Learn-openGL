@@ -65,4 +65,10 @@ ShaderLibrary::ShaderLibrary()
     , outline(
         "../src/shader/renderer/edit/outline.vs",
         "../src/shader/renderer/edit/outline.fs")
+    , outlineMask(
+        "../src/shader/renderer/edit/outlineMask.vs",
+        "../src/shader/renderer/edit/outlineMask.fs")
+    , outlineScreen(
+        "../src/shader/renderer/edit/outlineScreen.vs",
+        "../src/shader/renderer/edit/outlineScreen.fs")
 {}

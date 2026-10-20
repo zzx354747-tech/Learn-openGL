@@ -19,6 +19,9 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform vec3 cameraPos;
 
+// The depth-tested selection mask must reproduce exactly the same clip position.
+invariant gl_Position;
+
 void main()
 {
     mat3 normalMatrix = transpose(inverse(mat3(model)));

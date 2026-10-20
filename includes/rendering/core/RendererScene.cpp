@@ -15,7 +15,8 @@ RendererScene::RendererScene(int width, int height)
     , livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig)
     , sceneObjectManager(&livingRoomDrawer, &sphereDrawer)
     , objectPickPass(width, height)
-    , outlinePass(shaderLibrary.outline, camera)
+    , outlinePass(fb, sceneGBuffer, shaderLibrary.outlineMask, shaderLibrary.outlineScreen,
+                  camera, screenQuad, width, height)
     , brightPrefilterPass(width, height, shaderLibrary.brightPrefilter, screenQuad)
     , pointShadowPass(pointShadowMap,
                     shaderLibrary.pointShadowMap,
@@ -138,6 +139,9 @@ void RendererScene::resize(int width, int height)
     fb.resize(width, height);
     sceneGBuffer.resize(width, height);
     objectPickPass.resize(width, height);
+
+    outlinePass.resize(width, height);
+
     sceneSSAO.resize(width, height);
     brightPrefilterPass.resize(width, height);
     bloomPass.resize(width, height);
