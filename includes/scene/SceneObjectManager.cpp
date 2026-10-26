@@ -122,3 +122,70 @@ void SceneObjectManager::drawObjects(Shader& shader, SceneSelection scene, bool 
         }
     }
 }
+
+std::vector<SceneObjectData> SceneObjectManager::describeObjects() const
+{
+    std::vector<SceneObjectData> result;
+    for (const auto& o : m_sceneObjects)
+    {
+        SceneObjectData data;
+        data.id = o.id; data.name = o.name; data.transform = o.transform;
+        data.scene = o.scene; data.isVisible = o.isVisible;
+        if (const auto* sphere = std::get_if<sphereRenderRef>(&o.ref))
+        {
+            data.type = "sphere";
+            data.materialIndex = sphere->materialIndex;
+        }
+        else
+        {
+            const auto* drawer = std::get<ModelDrawer*>(o.ref);
+            if (drawer == m_livingRoomDrawer) data.type = "livingRoom";
+            else
+            {
+                data.type = "model";
+                for (const auto& resource : m_importedModels)
+                    if (resource.second.get() == drawer) { data.modelPath = resource.first; break; }
+                if (data.modelPath.empty()) throw std::runtime_error("Model has no persistent source.");
+            }
+        }
+        result.push_back(std::move(data));
+    }
+    return result;
+}
+
+void SceneObjectManager::restoreObjects(const std::vector<SceneObjectData>& objects)
+{
+    SceneObjectManager next(m_livingRoomDrawer, m_sphereDrawer);
+    SceneObjectID nextID = MaterialSphereCount + 2;
+    for (const auto& data : objects)
+    {
+        SceneObject object;
+        if (data.type == "sphere") object.ref = sphereRenderRef{m_sphereDrawer, data.materialIndex};
+        else if (data.type == "livingRoom")
+        {
+            if (m_livingRoomDrawer && !m_livingRoomDrawer->isLoaded())
+                throw std::runtime_error("Built-in living room model is unavailable.");
+            object.ref = m_livingRoomDrawer;
+        }
+        else if (data.type == "model")
+        {
+            next.importModel(data.modelPath, data.scene, glm::vec3(0));
+            object.ref = next.m_sceneObjects.back().ref;
+            next.m_sceneObjects.pop_back();
+        }
+        else throw std::runtime_error("Unknown object type.");
+        object.id = data.id; object.name = data.name; object.transform = data.transform;
+        object.scene = data.scene; object.isVisible = data.isVisible;
+        next.m_sceneObjects.push_back(std::move(object));
+        nextID = std::max(nextID, data.id + 1);
+    }
+    next.m_nextID = nextID;
+    swapContents(next);
+}
+
+void SceneObjectManager::swapContents(SceneObjectManager& other) noexcept
+{
+    m_sceneObjects.swap(other.m_sceneObjects);
+    m_importedModels.swap(other.m_importedModels);
+    std::swap(m_nextID, other.m_nextID);
+}

@@ -452,14 +452,10 @@ void SceneRenderUI::renderUI(
         if (ImGui::MenuItem("Save scene", nullptr, false, static_cast<bool>(uiState.saveSceneToFile)))
         {
             uiState.sceneFileFailed = !uiState.saveSceneToFile();
-            uiState.sceneFileMessage = uiState.sceneFileFailed ?
-                "Failed to save scene." : "Saved to build/json/scene.json";
         }
         if (ImGui::MenuItem("Load scene", nullptr, false, static_cast<bool>(uiState.loadSceneFromFile)))
         {
             uiState.sceneFileFailed = !uiState.loadSceneFromFile();
-            uiState.sceneFileMessage = uiState.sceneFileFailed ?
-                "Failed to read scene file." : "File read; scene restore is not implemented yet.";
         }
         ImGui::EndPopup();
     }

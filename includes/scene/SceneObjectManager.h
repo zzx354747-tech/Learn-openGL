@@ -16,6 +16,10 @@ public:
     ~SceneObjectManager() = default;
 
     void addSceneObject();
+    std::vector<SceneObjectData> describeObjects() const;
+    // Build on a temporary manager, then commit with swapContents after all resources load.
+    void restoreObjects(const std::vector<SceneObjectData>& objects);
+    void swapContents(SceneObjectManager& other) noexcept;
 
     SceneObject* getSceneObject(SceneObjectID id);
 

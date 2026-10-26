@@ -14,6 +14,7 @@
 #include <GLFW/glfw3.h>
 #include "rendering/core/WindowContext.h"
 #include "rendering/core/RendererScene.h"
+#include "../../tests/ScenePersistenceCheck.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -128,6 +129,8 @@ int main(int argc, char** argv)
     float swapWaitMs = 0.0f;
     const char* capturePath = argc == 3 && std::string(argv[1]) == "--capture-ui" ? argv[2] : nullptr;
     int frameNumber = 0;
+    const bool persistenceCheck = argc == 2 && std::string(argv[1]) == "--check-scene-persistence";
+    int exitCode = 0;
 
 
     if (!glfwInit())
@@ -192,6 +195,12 @@ int main(int argc, char** argv)
 
     ctx.rendererScene = &scene;
 
+    if (persistenceCheck)
+    {
+        scene.resize(320, 240);
+        exitCode = runScenePersistenceCheck(scene) ? 0 : 1;
+        glfwSetWindowShouldClose(window, true);
+    }
     while (!glfwWindowShouldClose(window))
     {
         // 准备开始新一帧ui渲染
@@ -265,5 +274,5 @@ int main(int argc, char** argv)
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     glfwTerminate();
-    return 0;
+    return exitCode;
 }

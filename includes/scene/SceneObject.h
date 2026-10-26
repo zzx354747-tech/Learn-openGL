@@ -54,3 +54,16 @@ struct SceneObject
 
     bool isVisible = true;
 };
+
+// Serialized resource description; runtime drawer pointers are rebuilt on load.
+struct SceneObjectData
+{
+    SceneObjectID id = InvalidSceneObjectID;
+    std::string name;
+    Transform transform;
+    SceneSelection scene = SceneSelection::Default;
+    bool isVisible = true;
+    std::string type;
+    std::string modelPath;
+    unsigned int materialIndex = 0;
+};

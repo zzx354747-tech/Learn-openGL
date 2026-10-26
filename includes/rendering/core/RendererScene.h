@@ -1,6 +1,7 @@
 // rendering/core/RendererScene.h
 #pragma once
 #include <deque>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -127,8 +128,9 @@ struct RendererScene
     RendererScene(int width, int height);
 
 private:
-    bool saveSceneToFile();
-    bool loadSceneFromFile();
+    friend bool runScenePersistenceCheck(RendererScene& scene);
+    bool saveSceneToFile(const std::filesystem::path& requestedPath = {});
+    bool loadSceneFromFile(const std::filesystem::path& requestedPath = {});
 
     std::deque<std::string> pendingModelImports;
     int viewportPixelWidth = 1;

@@ -145,29 +145,107 @@ RendererScene::RendererScene(int width, int height)
     environmentController.applyPreset();
 }
 
-bool RendererScene::saveSceneToFile()
+bool RendererScene::saveSceneToFile(const std::filesystem::path& requestedPath)
 {
     try
     {
-        return saveScene(
-            sceneObjectManager,
-            lightSettings,
-            sceneConfig,
-            renderParams,
-            sceneState,
-            camera);
+        const auto path = requestedPath.empty() ? sceneFilePath(sceneConfig.environmentSelection) : requestedPath;
+        SceneDocument document;
+        document.objects = sceneObjectManager.describeObjects();
+        document.config = sceneConfig;
+        document.lighting = lightSettings;
+        document.surface = renderParams;
+        document.state = sceneState;
+        document.camera = {camera.Getposition(), camera.GetWorldUp(), camera.GetYaw(),
+            camera.GetPitch(), camera.GetMovementSpeed(), camera.GetMouseSensitivity()};
+        document.editor = {selectedObjectID, sceneRenderUI.gizmoOperation,
+            sceneRenderUI.gizmoSpace, sceneRenderUI.gizmoSnap};
+        saveScene(document, path);
+        uiState.sceneFileMessage = "Saved: " + path.string();
+        return true;
     }
     catch (const std::exception& error)
     {
-        std::cerr << "Failed to save scene: " << error.what() << '\n';
+        uiState.sceneFileMessage = std::string("Save failed: ") + error.what();
+        std::cerr << uiState.sceneFileMessage << '\n';
         return false;
     }
 }
 
-bool RendererScene::loadSceneFromFile()
+bool RendererScene::loadSceneFromFile(const std::filesystem::path& requestedPath)
 {
-    // The current loader validates camera data but does not restore scene members yet.
-    return loadScene(camera);
+    try
+    {
+        const auto path = requestedPath.empty() ? sceneFilePath(sceneConfig.environmentSelection) : requestedPath;
+        auto document = loadScene(path);
+        if (requestedPath.empty() && document.config.environmentSelection != sceneConfig.environmentSelection)
+            throw std::runtime_error("Save file belongs to a different environment.");
+        // Resolve hand-authored relative model paths against the save file.
+        for (auto& object : document.objects)
+            if (object.type == "model" && std::filesystem::u8path(object.modelPath).is_relative())
+                object.modelPath = (std::filesystem::absolute(path).parent_path() /
+                    std::filesystem::u8path(object.modelPath)).generic_string();
+        SceneObjectManager nextObjects(&livingRoomDrawer, &sphereDrawer);
+        nextObjects.restoreObjects(document.objects);
+
+        // EnvironmentController stages its textures internally; failures keep old textures alive.
+        const auto previousConfig = sceneConfig;
+        const auto previousLighting = lightSettings;
+        if (document.config.environmentSelection != sceneConfig.environmentSelection ||
+            document.config.sunThreshold != sceneConfig.sunThreshold ||
+            !sceneResources.skybox || !sceneResources.irradianceMap || !sceneResources.prefilterMap)
+        {
+            sceneConfig = document.config;
+            try
+            {
+                if (!environmentController.load()) throw std::runtime_error("Cannot rebuild saved environment.");
+            }
+            catch (...)
+            {
+                sceneConfig = previousConfig;
+                lightSettings = previousLighting;
+                throw;
+            }
+        }
+
+        // All fallible work is finished. Keep the existing renderer objects/references alive.
+        sceneObjectManager.swapContents(nextObjects);
+        sceneConfig = document.config;
+        lightSettings = document.lighting; // Restore after environment sun extraction.
+        renderParams = document.surface;
+        sceneState = document.state;
+        camera.setCameraState(document.camera.position, document.camera.worldUp,
+            document.camera.yaw, document.camera.pitch, document.camera.movementSpeed,
+            document.camera.mouseSensitivity);
+        selectedObjectID = document.editor.selectedObjectID;
+        sceneRenderUI.gizmoOperation = document.editor.gizmoOperation;
+        sceneRenderUI.gizmoSpace = document.editor.gizmoSpace;
+        sceneRenderUI.gizmoSnap = document.editor.gizmoSnap;
+        sceneRenderUI.gizmoUsing = false;
+        sceneRenderUI.gizmoHovered = false;
+        pendingModelImports.clear();
+        uiState.importMessage.clear();
+        uiState.importFailed = false;
+        uiState.environmentLoadFailed = false;
+        switch (sceneConfig.renderMode)
+        {
+        case RenderMode::Basic: renderModeIndex = 1; break;
+        case RenderMode::Reflection: renderModeIndex = 2; break;
+        case RenderMode::ShadowDebug: renderModeIndex = 3; break;
+        default: renderModeIndex = 0; break;
+        }
+        environmentIndex = getEnvironmentIndex(sceneConfig.environmentSelection);
+        uiState.renderModeIndex = renderModeIndex;
+        uiState.environmentIndex = environmentIndex;
+        uiState.sceneFileMessage = "Restored: " + path.string();
+        return true;
+    }
+    catch (const std::exception& error)
+    {
+        uiState.sceneFileMessage = std::string("Load failed: ") + error.what();
+        std::cerr << uiState.sceneFileMessage << '\n';
+        return false;
+    }
 }
 
 void RendererScene::resize(int width, int height)
