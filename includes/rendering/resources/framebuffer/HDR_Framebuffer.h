@@ -5,6 +5,8 @@
 class Framebuffer
 {
 public:
+    // HDR RGB stores scene radiance; alpha marks Bloom eligibility
+    // (opaque geometry/light visuals = 1, skybox = 0).
     Framebuffer(int width, int height);
 
     Framebuffer(const Framebuffer&) = delete;

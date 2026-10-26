@@ -16,7 +16,7 @@ ForwardHDRPass::ForwardHDRPass(
     , modelDrawer(modelDrawer)
 {}
 
-void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
+void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer, const SceneObjectManager& objects)
 {
     framebuffer.bind();
     glViewport(0, 0, bfwidth, bfheight);
@@ -32,6 +32,7 @@ void ForwardHDRPass::render(int bfwidth, int bfheight, Framebuffer& framebuffer)
         config,
         sphereDrawer,
         modelDrawer,
+        objects,
         bfwidth,
         bfheight);
 

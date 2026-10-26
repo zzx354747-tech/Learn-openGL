@@ -10,5 +10,6 @@ void main()
 {    
     vec3 color = pow(texture(skybox, TexCoords).rgb, vec3(2.2));
 
-    FragColor = vec4(color, 1.0);
+    // HDR alpha marks Bloom eligibility: skybox is visible but never a source.
+    FragColor = vec4(color, 0.0);
 }

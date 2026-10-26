@@ -20,6 +20,12 @@ class Model
 {
 public:
     explicit Model(const std::string& path);
+    ~Model();
+
+    bool isLoaded() const { return !meshes.empty(); }
+    const std::string& getLoadError() const { return loadError; }
+    glm::vec3 getBoundsMin() const { return boundsMin; }
+    glm::vec3 getBoundsMax() const { return boundsMax; }
 
     void Draw(Shader& shader) const;
     void Draw(Shader& shader, const glm::mat4& transform) const;
@@ -27,6 +33,10 @@ public:
 private:
     std::vector<Mesh> meshes;
     std::string directory;
+    std::string loadError;
+    glm::vec3 boundsMin{0.0f};
+    glm::vec3 boundsMax{0.0f};
+    bool hasBounds = false;
 
     // path -> 已加载的 Texture，避免同一张贴图被多个 mesh 重复上传 GPU
     std::unordered_map<std::string, Texture> textureCache;

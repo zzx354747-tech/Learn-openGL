@@ -70,6 +70,10 @@ target_include_directories(imgui PUBLIC
 )
 target_link_libraries(imgui PUBLIC glfw)
 
+add_library(imguizmo STATIC third_party/ImGuizmo/ImGuizmo.cpp)
+target_include_directories(imguizmo PUBLIC ${CMAKE_SOURCE_DIR}/third_party/ImGuizmo)
+target_link_libraries(imguizmo PUBLIC imgui)
+
 # ── 辅助宏：统一设置输出目录 ──────────────────────────────
 macro(set_output_dir target)
     set_target_properties(${target} PROPERTIES
@@ -81,7 +85,7 @@ endmacro()
 
 add_executable(3Ddemo
     src/demo/3Ddemo.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     ${GLAD_SOURCES}
 )
 target_link_libraries(3Ddemo glfw ${PLATFORM_LIBS})
@@ -89,7 +93,7 @@ set_output_dir(3Ddemo)
 
 add_executable(3Dbkp
     src/example/3Dbkp.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     ${GLAD_SOURCES}
 )
 target_link_libraries(3Dbkp glfw ${PLATFORM_LIBS})
@@ -110,7 +114,7 @@ target_link_libraries(texture_demo glfw ${PLATFORM_LIBS})
 
 add_executable(light_demo
     src/example/light.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     ${GLAD_SOURCES}
 )
 target_link_libraries(light_demo glfw ${PLATFORM_LIBS})
@@ -118,7 +122,7 @@ set_output_dir(light_demo)
 
 add_executable(parallel_demo
     src/example/parallel.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     ${GLAD_SOURCES}
 )
 target_link_libraries(parallel_demo glfw ${PLATFORM_LIBS})
@@ -126,7 +130,7 @@ set_output_dir(parallel_demo)
 
 add_executable(diffuse_demo
     src/example/light_example.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     src/uni_light.cpp
     src/Graphics.cpp
     ${GLAD_SOURCES}
@@ -136,7 +140,7 @@ set_output_dir(diffuse_demo)
 
 add_executable(backpack_demo
     src/demo/backpack_demo.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     src/stb_image_impl.cpp
     includes/rendering/modelload/Model.cpp
     includes/rendering/modelload/Mesh.cpp
@@ -147,7 +151,7 @@ set_output_dir(backpack_demo)
 
 add_executable(stencil_demo
     src/demo/stencil_demo.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     src/stb_image_impl.cpp
     includes/rendering/assets/texture/Texture.cpp
     ${GLAD_SOURCES}
@@ -157,7 +161,7 @@ set_output_dir(stencil_demo)
 
 add_executable(newbackpack
     src/demo/newbackpack.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     src/stb_image_impl.cpp
     includes/rendering/modelload/Model.cpp
     includes/rendering/modelload/Mesh.cpp
@@ -169,7 +173,7 @@ set_output_dir(newbackpack)
 
 add_executable(fbo_demo
     src/demo/Frabuffer.cpp
-    src/camera.cpp
+    includes/scene/Camera.cpp
     src/stb_image_impl.cpp
     includes/rendering/core/EnvironmentController.cpp
     includes/rendering/imgui/ui_import.cpp
@@ -231,7 +235,11 @@ add_executable(fbo_demo
     includes/rendering/assets/ibl/BrdfLUT.cpp
     includes/rendering/core/RendererScene.cpp
     includes/rendering/passes/blur/BrightPrefilterPass.cpp
-    includes/scene/sceneObjectManager.cpp
+    includes/scene/SceneObjectManager.cpp
 )
-target_link_libraries(fbo_demo imgui glfw assimp z ${PLATFORM_LIBS})
+target_link_libraries(fbo_demo imguizmo imgui glfw assimp z ${PLATFORM_LIBS})
+target_compile_definitions(fbo_demo PRIVATE
+    OPENGL_SCENE_SAVE_DIR="${CMAKE_SOURCE_DIR}/build/json"
+    OPENGL_SCENE_SAVE_FILE="${CMAKE_SOURCE_DIR}/build/json/scene.json"
+)
 set_output_dir(fbo_demo)

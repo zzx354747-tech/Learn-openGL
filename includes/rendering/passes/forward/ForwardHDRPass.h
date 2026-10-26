@@ -1,4 +1,5 @@
 #pragma once
+#include "scene/SceneObjectManager.h"
 
 #include <glad/gl.h>
 
@@ -25,7 +26,8 @@ public:
     void render(
         int bfwidth,
         int bfheight,
-        Framebuffer& framebuffer
+        Framebuffer& framebuffer,
+        const SceneObjectManager& objects
     );
 
 private:

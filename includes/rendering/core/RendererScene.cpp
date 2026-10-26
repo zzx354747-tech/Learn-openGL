@@ -1,10 +1,15 @@
 // rendering/core/RendererScene.cpp
 #include "rendering/core/RendererScene.h"
+#include "scene/SceneSaver.h"
+#include "scene/SceneLoder.h"
 #include <algorithm>
+#include <filesystem>
+#include <exception>
 #include <glm/gtc/matrix_transform.hpp>
 
 RendererScene::RendererScene(int width, int height)
     : fb(width, height)
+    , editorOutput(width, height)
     , sceneGBuffer(width, height)
     , sceneSSAO(width, height)
     , shadowMap(4096, 4096)
@@ -92,7 +97,8 @@ RendererScene::RendererScene(int width, int height)
                     livingRoomDrawer,
                     screenQuad,
                     shaderLibrary.editLine,
-                    outlinePass)
+                    outlinePass,
+                    sceneObjectManager)
 
     , renderModeIndex(0)
     , environmentIndex(getEnvironmentIndex(sceneConfig.environmentSelection))
@@ -107,6 +113,11 @@ RendererScene::RendererScene(int width, int height)
                     [this]() { environmentController.applyPreset(); }
     }
 {
+    viewportPixelWidth = width;
+    viewportPixelHeight = height;
+    uiState.queueModelImport = [this](const std::string& path) { queueModelImport(path); };
+    uiState.saveSceneToFile = [this]() { return saveSceneToFile(); };
+    uiState.loadSceneFromFile = [this]() { return loadSceneFromFile(); };
     sceneResources.shaderLibrary = &shaderLibrary;
     sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
@@ -134,9 +145,38 @@ RendererScene::RendererScene(int width, int height)
     environmentController.applyPreset();
 }
 
+bool RendererScene::saveSceneToFile()
+{
+    try
+    {
+        return saveScene(
+            sceneObjectManager,
+            lightSettings,
+            sceneConfig,
+            renderParams,
+            sceneState,
+            camera);
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "Failed to save scene: " << error.what() << '\n';
+        return false;
+    }
+}
+
+bool RendererScene::loadSceneFromFile()
+{
+    // The current loader validates camera data but does not restore scene members yet.
+    return loadScene(camera);
+}
+
 void RendererScene::resize(int width, int height)
 {
+    if (width <= 0 || height <= 0) return;
+    viewportPixelWidth = width;
+    viewportPixelHeight = height;
     fb.resize(width, height);
+    editorOutput.resize(width, height);
     sceneGBuffer.resize(width, height);
     objectPickPass.resize(width, height);
 
@@ -155,18 +195,22 @@ void RendererScene::render(int width, int height)
         shaderLibrary.screen,
         screenQuad,
         fb,
-        sceneObjectManager.getSceneObject(selectedObjectID)
+        sceneObjectManager.getSceneObject(selectedObjectID),
+        editorOutput.getFBO()
     );
 }
 
-void RendererScene::renderUI(float fps, float swapWaitMs)
+void RendererScene::renderUI(float fps, float swapWaitMs, bool cameraCaptured)
 {
    sceneRenderUI.renderUI(
         uiState,
         sceneObjectManager,
         selectedObjectID,
         fps,
-        swapWaitMs
+        swapWaitMs,
+        editorOutput.getTextureID(0),
+        cameraCaptured,
+        camera
     );
 }
 
@@ -274,4 +318,64 @@ SceneObjectID RendererScene::selectObjectAtPixel(
     }
 
     return selectedObjectID;
+}
+
+
+void RendererScene::queueModelImport(const std::string& path)
+{
+    if (path.empty()) return;
+    pendingModelImports.push_back(path);
+    uiState.importFailed = false;
+    uiState.importMessage = "Queued: " + std::filesystem::u8path(path).filename().string();
+}
+
+void RendererScene::acceptModelDrop(const std::vector<std::string>& paths, float x, float y)
+{
+    if (!sceneRenderUI.acceptsModelDrop(x, y))
+    {
+        uiState.importFailed = true;
+        uiState.importMessage = "Drop models onto the scene view or the model import area.";
+        return;
+    }
+    for (const auto& path : paths) queueModelImport(path);
+}
+
+void RendererScene::processModelImports()
+{
+    if (pendingModelImports.empty() || sceneRenderUI.gizmoUsing) return;
+    const std::string path = pendingModelImports.front();
+    pendingModelImports.pop_front();
+    try
+    {
+        float distance = 4.0f;
+        if (sceneConfig.renderMode == RenderMode::Lighting && viewportPixelWidth > 0 && viewportPixelHeight > 0)
+        {
+            GLint readFBO;
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFBO);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, sceneGBuffer.getFBO());
+            float depth = 1.0f;
+            glReadPixels(viewportPixelWidth / 2, viewportPixelHeight / 2, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, readFBO);
+            if (depth < 1.0f)
+            {
+                const glm::mat4 projection = glm::perspective(glm::radians(45.0f),
+                    static_cast<float>(viewportPixelWidth) / viewportPixelHeight, 0.1f, 100.0f);
+                const glm::vec3 hit = glm::unProject(glm::vec3(viewportPixelWidth / 2, viewportPixelHeight / 2, depth),
+                    camera.GetViewMatrix(), projection, glm::vec4(0, 0, viewportPixelWidth, viewportPixelHeight));
+                distance = std::clamp(glm::length(hit - camera.Getposition()) * 0.4f, 0.15f, 4.0f);
+            }
+        }
+        selectedObjectID = sceneObjectManager.importModel(path, sceneConfig.sceneSelection,
+            camera.Getposition() + camera.GetFront() * distance, distance * 0.45f);
+        sceneConfig.enableEdit = true;
+        sceneConfig.renderMode = RenderMode::Lighting;
+        renderModeIndex = 0;
+        uiState.importFailed = false;
+        uiState.importMessage = "Imported: " + std::filesystem::u8path(path).filename().string();
+    }
+    catch (const std::exception& error)
+    {
+        uiState.importFailed = true;
+        uiState.importMessage = std::filesystem::u8path(path).filename().string() + ": " + error.what();
+    }
 }

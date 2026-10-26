@@ -5,11 +5,12 @@ void ScreenPass::render(
     int bfheight,
     Shader& screenShader,
     Screenquad& screenQuad,
-    Framebuffer& framebuffer
+    Framebuffer& framebuffer,
+    unsigned int outputFramebuffer
 )
 {
-    // Present to the window; never sample the HDR texture while drawing into it.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // The editor output is distinct from the sampled HDR scene texture.
+    glBindFramebuffer(GL_FRAMEBUFFER, outputFramebuffer);
     glViewport(0, 0, bfwidth, bfheight);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -43,6 +44,7 @@ void ScreenPass::render(
     }
 
     screenQuad.draw();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 ScreenPass::ScreenPass(SceneRenderConfig& config, BloomPass& bloomPass)

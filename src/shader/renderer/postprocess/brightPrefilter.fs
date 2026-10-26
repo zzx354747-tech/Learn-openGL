@@ -10,7 +10,15 @@ uniform float knee;
 
 void main()
 {
-    vec3 color = texture(sceneColor, TexCoords).rgb;
+    vec4 scene = texture(sceneColor, TexCoords);
+    // Skybox writes alpha 0; opaque geometry and light visuals write alpha 1.
+    // Write black rather than discard so the previous frame cannot leak through.
+    if (scene.a <= 0.0)
+    {
+        FragColor = vec3(0.0);
+        return;
+    }
+    vec3 color = scene.rgb;
     float brightness = dot(color, vec3(0.2126, 0.7152, 0.0722)); // Calculate brightness using luminance formula
 
     float safeKnee = max(knee, 0.0001); // Avoid division by zero

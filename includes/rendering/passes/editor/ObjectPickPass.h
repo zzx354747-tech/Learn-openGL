@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "scene/sceneObject.h"
+#include "scene/SceneObject.h"
 
 #include <glad/gl.h>
 #include <iostream>

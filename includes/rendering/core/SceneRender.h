@@ -36,11 +36,13 @@ public:
         GeometryPass& geometryPass, LightingPass& lightingPass,
         GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
         SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
-        Screenquad& screenQuad, Shader& editShader, OutlinePass& outlinePass);
+        Screenquad& screenQuad, Shader& editShader, OutlinePass& outlinePass,
+        SceneObjectManager& objects);
 
     void render( int bfwidth, int bfheight,
         Shader& screenShader, Screenquad& screenQuad,
-        Framebuffer& framebuffer, const SceneObject* selectedObject);
+        Framebuffer& framebuffer, const SceneObject* selectedObject,
+        unsigned int outputFramebuffer = 0);
 
 private:
     SceneRenderConfig& config;
@@ -52,6 +54,7 @@ private:
     PointShadowPass& pointShadowPass;
     SpotShadowPass& spotShadowPass;
     OutlinePass& outlinePass;
+    SceneObjectManager& objects;
     ShadowDebugPass shadowDebugPass;
     DeferredRenderPass deferredRenderPass;
     ForwardHDRPass forwardHDRPass;

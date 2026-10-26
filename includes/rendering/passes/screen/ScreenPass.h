@@ -18,7 +18,8 @@ public:
         int bfheight,
         Shader& screenShader,
         Screenquad& screenQuad,
-        Framebuffer& framebuffer
+        Framebuffer& framebuffer,
+        unsigned int outputFramebuffer = 0
     );
 
 private:

@@ -7,6 +7,7 @@ void SceneObjectPass::renderSceneObjectPass(
     SceneRenderConfig&    config,
     SphereDrawer&         sphereDrawer,
     ModelDrawer&          modelDrawer,
+    const SceneObjectManager& objects,
     int                   bfwidth,
     int                   bfheight)
 {
@@ -36,14 +37,5 @@ void SceneObjectPass::renderSceneObjectPass(
         resources.skybox->bind(0);
     }
 
-    if (config.forwardLightMode == ForwardLightMode::Basic)
-    {
-        sphereDrawer.drawBasic(*shader);
-    }
-    else
-    {
-        sphereDrawer.drawReflect(*shader);
-    }
-
-    modelDrawer.draw(*shader);
+    objects.drawObjects(*shader, config.sceneSelection, true, true, true);
 }

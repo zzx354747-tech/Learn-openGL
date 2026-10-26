@@ -1,5 +1,8 @@
 // rendering/core/RendererScene.h
 #pragma once
+#include <deque>
+#include <string>
+#include <vector>
 
 #include "rendering/assets/mesh/Screenquad.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
@@ -34,7 +37,7 @@
 #include "rendering/passes/blur/BrightPrefilterPass.h"
 #include "rendering/passes/blur/BloomPass.h"
 
-#include "scene/sceneObjectManager.h"
+#include "scene/SceneObjectManager.h"
 #include "rendering/passes/editor/ObjectPickPass.h"
 #include "rendering/passes/editor/OutlinePass.h"
 
@@ -47,6 +50,7 @@ struct RendererScene
     Screenquad screenQuad;
 
     Framebuffer fb;
+    Framebuffer editorOutput;
     GBuffer sceneGBuffer;
     SSAO sceneSSAO;
 
@@ -102,7 +106,11 @@ struct RendererScene
 
     void render(int width, int height);
 
-    void renderUI(float FPS, float swapWaitMs);
+    void renderUI(float FPS, float swapWaitMs, bool cameraCaptured = false);
+
+    void queueModelImport(const std::string& path);
+    void acceptModelDrop(const std::vector<std::string>& paths, float x, float y);
+    void processModelImports();
 
     void toggleEditMode();
 
@@ -117,4 +125,12 @@ struct RendererScene
     int framebufferHeight);
 
     RendererScene(int width, int height);
+
+private:
+    bool saveSceneToFile();
+    bool loadSceneFromFile();
+
+    std::deque<std::string> pendingModelImports;
+    int viewportPixelWidth = 1;
+    int viewportPixelHeight = 1;
 };

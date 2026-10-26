@@ -4,6 +4,7 @@
 #include <stb_image.h>
 #include <iostream>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace
 {
@@ -21,6 +22,14 @@ glm::mat4 toGlm(const aiMatrix4x4& m)
 Model::Model(const std::string& path)
 {
     loadModel(path);
+}
+
+Model::~Model()
+{
+    std::unordered_set<GLuint> released;
+    for (const auto& entry : textureCache)
+        if (entry.second.id != 0 && released.insert(entry.second.id).second)
+            glDeleteTextures(1, &entry.second.id);
 }
 
 void Model::Draw(Shader& shader) const
@@ -48,7 +57,8 @@ void Model::loadModel(const std::string& path)
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
-        std::cerr << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
+        loadError = importer.GetErrorString();
+        std::cerr << "ERROR::ASSIMP:: " << loadError << std::endl;
         return;
     }
 
@@ -96,6 +106,17 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& nod
         Mesh::Vertex vertex{};
 
         vertex.Position = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
+        const glm::vec3 point(nodeTransform * glm::vec4(vertex.Position, 1.0f));
+        if (!hasBounds)
+        {
+            boundsMin = boundsMax = point;
+            hasBounds = true;
+        }
+        else
+        {
+            boundsMin = glm::min(boundsMin, point);
+            boundsMax = glm::max(boundsMax, point);
+        }
 
         if (mesh->HasNormals())
             vertex.Normal = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };

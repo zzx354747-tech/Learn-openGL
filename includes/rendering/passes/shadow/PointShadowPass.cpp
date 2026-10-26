@@ -1,6 +1,6 @@
 #include "PointShadowPass.h"
 
-void PointShadowPass::render(const glm::vec3& lightpos)
+void PointShadowPass::render(const glm::vec3& lightpos, const SceneObjectManager& objects, SceneSelection scene)
 {
     float nearPlane = pointShadowMap.getNearPlane();
     float farPlane = pointShadowMap.getFarPlane();
@@ -27,8 +27,7 @@ void PointShadowPass::render(const glm::vec3& lightpos)
     glBindFramebuffer(GL_FRAMEBUFFER, pointShadowMap.getFBO());
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    sphereDrawer.draw(shadowShader);
-    modelDrawer.draw(shadowShader);
+    objects.drawObjects(shadowShader, scene);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

@@ -9,7 +9,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     GeometryPass& geometryPass, LightingPass& lightingPass,
     GBuffer& gBuffer, SSAOCommonPass& ssaoCommonPass,
     SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
-    Screenquad& screenQuad, Shader& editShader, OutlinePass& outlinePass)
+    Screenquad& screenQuad, Shader& editShader, OutlinePass& outlinePass, SceneObjectManager& objects)
     : config(config)
     , resources(resources)
     , state(state)
@@ -19,6 +19,7 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     , pointShadowPass(pointShadowPass)
     , spotShadowPass(spotShadowPass)
     , outlinePass(outlinePass)
+    , objects(objects)
     , shadowDebugPass(resources, shadowResources)
     , deferredRenderPass(config, geometryPass, ssaoCommonPass, gBuffer, lightingPass)
     , forwardHDRPass(camera, resources, config, state, sphereDrawer, modelDrawer)
@@ -30,15 +31,17 @@ SceneRender::SceneRender( Camera& camera, ShadowResources& shadowResources,
     }
 
 void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Screenquad& screenQuad,
-    Framebuffer& framebuffer, const SceneObject* selectedObject)
+    Framebuffer& framebuffer, const SceneObject* selectedObject, unsigned int outputFramebuffer)
 {
-        directionalShadowPass.render();
-        pointShadowPass.render(state.lightPositions);
-        spotShadowPass.render();
+        directionalShadowPass.render(objects, config.sceneSelection);
+        pointShadowPass.render(state.lightPositions, objects, config.sceneSelection);
+        spotShadowPass.render(objects, config.sceneSelection);
 
         if (config.renderMode == RenderMode::ShadowDebug && resources.shaderLibrary)
         {
+            glBindFramebuffer(GL_FRAMEBUFFER, outputFramebuffer);
             shadowDebugPass.render(bfwidth, bfheight, screenQuad);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
             return;
         }
 
@@ -49,7 +52,7 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         }
         else
         {
-            forwardHDRPass.render(bfwidth, bfheight, framebuffer);
+            forwardHDRPass.render(bfwidth, bfheight, framebuffer, objects);
         }
 
         if (config.enableBloom && resources.shaderLibrary)
@@ -72,5 +75,5 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
             }
         }
 
-        screenPass.render(bfwidth, bfheight, screenShader, screenQuad, framebuffer);
+        screenPass.render(bfwidth, bfheight, screenShader, screenQuad, framebuffer, outputFramebuffer);
     }

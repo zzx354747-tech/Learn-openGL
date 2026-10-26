@@ -1,4 +1,5 @@
 #pragma once
+#include "scene/SceneObjectManager.h"
 
 #include "scene/Camera.h"
 #include "rendering/resources/render/SceneRenderTypes.h"
@@ -15,6 +16,7 @@ public:
         SceneRenderConfig&    config,
         SphereDrawer&         sphereDrawer,
         ModelDrawer&          modelDrawer,
+        const SceneObjectManager& objects,
         int                   bfwidth,
         int                   bfheight
     );

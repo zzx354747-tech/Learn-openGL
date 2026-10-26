@@ -13,7 +13,7 @@ SpotShadowPass::SpotShadowPass( SpotShadowMap& spotShadowMap, Shader& spotShadow
 {
     }
 
-void SpotShadowPass::render()
+void SpotShadowPass::render(const SceneObjectManager& objects, SceneSelection scene)
 {
         lightSpaceMatrix = createLightSpaceMatrix();
         state.spotLightSpaceMatrix = lightSpaceMatrix;
@@ -34,8 +34,7 @@ void SpotShadowPass::render()
         glBindFramebuffer(GL_FRAMEBUFFER, spotShadowMap.getFBO());
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        sphereDrawer.draw(spotShadowShader);
-        modelDrawer.draw(spotShadowShader);
+        objects.drawObjects(spotShadowShader, scene);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

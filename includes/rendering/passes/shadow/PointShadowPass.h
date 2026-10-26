@@ -1,4 +1,5 @@
 #pragma once
+#include "scene/SceneObjectManager.h"
 
 #include <vector>
 #include <glm/glm.hpp>
@@ -18,7 +19,7 @@ public:
         SphereDrawer& sphereDrawer, ModelDrawer& modelDrawer,
         ResourceRegistry& registry, ResourceHandle depthCubeMapHandle);
 
-    void render(const glm::vec3& lightpos);
+    void render(const glm::vec3& lightpos, const SceneObjectManager& objects, SceneSelection scene);
 
 private:
     PointShadowMap& pointShadowMap;

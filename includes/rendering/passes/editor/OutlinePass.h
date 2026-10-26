@@ -2,7 +2,7 @@
 
 #include "core/Shader.h"
 #include "scene/Camera.h"
-#include "scene/sceneObject.h"
+#include "scene/SceneObject.h"
 #include "rendering/resources/framebuffer/HDR_Framebuffer.h"
 #include "rendering/assets/mesh/Screenquad.h"
 #include "rendering/resources/framebuffer/Gbuffer.h"

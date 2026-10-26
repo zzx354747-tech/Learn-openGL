@@ -11,7 +11,7 @@ DirectionalShadowPass::DirectionalShadowPass( DirectionalShadowMap& shadowMap, S
 {
     }
 
-void DirectionalShadowPass::render()
+void DirectionalShadowPass::render(const SceneObjectManager& objects, SceneSelection scene)
 {
         state.dirLightSpaceMatrix = createLightSpaceMatrix();
 
@@ -25,8 +25,7 @@ void DirectionalShadowPass::render()
         glBindFramebuffer(GL_FRAMEBUFFER, shadowMap.getFBO());
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        sphereDrawer.draw(shadowShader);
-        modelDrawer.draw(shadowShader);
+        objects.drawObjects(shadowShader, scene);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 

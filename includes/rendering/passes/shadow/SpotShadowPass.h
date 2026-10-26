@@ -1,4 +1,5 @@
 #pragma once
+#include "scene/SceneObjectManager.h"
 
 #include <glad/gl.h>
 #include <glm/glm.hpp>
@@ -22,7 +23,7 @@ public:
         LightSettings& lightSettings, ResourceRegistry& registry,
          ResourceHandle spotShadowMapHandle);
 
-    void render();
+    void render(const SceneObjectManager& objects, SceneSelection scene);
 
 private:
     ResourceRegistry& registry;

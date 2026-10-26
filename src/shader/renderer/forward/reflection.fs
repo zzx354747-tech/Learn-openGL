@@ -16,7 +16,8 @@ void main()
     {
         vec3 color = texture(skybox, TexCoords).rgb;
         color = pow(color, vec3(2.2));
-        FragColor = vec4(color, 1.0);
+        // HDR alpha is Bloom eligibility. Keep sky visible, exclude its emission.
+        FragColor = vec4(color, 0.0);
     }
     else
     {

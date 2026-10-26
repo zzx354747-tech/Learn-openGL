@@ -32,6 +32,11 @@ public:
 glm::mat4 GetViewMatrix() const;
 	glm::vec3 Getposition () const { return Position;}
 	glm::vec3 GetFront() const { return Front; }
+	glm::vec3 GetWorldUp() const { return WorldUp; }
+	float GetYaw() const { return Yaw; }
+	float GetPitch() const { return Pitch; }
+	float GetMovementSpeed() const { return MovementSpeed; }
+	float GetMouseSensitivity() const { return MouseSensitivity; }
 	void ProcessKeyboard(Camera_Movement direction, float deltaTime);
 	void ProcessSmoothKeyboard(
 		bool forward,
@@ -44,6 +49,14 @@ glm::mat4 GetViewMatrix() const;
 	);
 	void ProcessMouseMovement(float xpos, float ypos);
 	void Resetmouse();
+    void setCameraState(
+        const glm::vec3& position,
+        const glm::vec3& up,
+        float yaw,
+        float pitch,
+        float movementSpeed,
+        float mouseSensitivity
+    );
 
 private:
     glm::vec3 Position;

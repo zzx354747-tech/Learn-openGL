@@ -8,7 +8,7 @@
 #include "rendering/resources/framebuffer/Gbuffer.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
 #include "rendering/uniforms/RenderParams.h"
-#include "scene/sceneObjectManager.h"
+#include "scene/SceneObjectManager.h"
 
 class GeometryPass
 {

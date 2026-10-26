@@ -1,9 +1,15 @@
 #include "imgui.h"
+#include "ImGuizmo.h"
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
 #include <iostream>
+#include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <string>
+#include <vector>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include "rendering/core/WindowContext.h"
@@ -11,15 +17,8 @@
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // 设置这次绘制的范围
+    // Render-target dimensions follow the editor viewport, not the outer window.
     glViewport(0, 0, width, height);
-    // glfwGetWindowUserPointer(window) 返回的是 void*，需要强制转换为 WindowContext* 才能访问其成员。
-    // void*和WindowContext*本身都是存的地址，但编译器处理void*和WindowContext*的方式不同，所以需要强制转换。
-    auto* ctx = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
-
-    if (!ctx || !ctx->rendererScene) return;
-
-    ctx->rendererScene->resize(width, height);
 }
 
 // 并非回调，所以显式传引用
@@ -44,7 +43,8 @@ void processInput(GLFWwindow* window, WindowContext& ctx, float deltaTime)
     bool gravePressed =
         glfwGetKey(window, GLFW_KEY_GRAVE_ACCENT) == GLFW_PRESS;
 
-    if (gravePressed && !ctx.gravePressLastFrame)
+    if (gravePressed && !ctx.gravePressLastFrame && !ImGui::GetIO().WantTextInput &&
+        (!ctx.rendererScene || !ctx.rendererScene->sceneRenderUI.gizmoUsing))
     {
         ctx.cursorLocked = !ctx.cursorLocked;
 
@@ -70,7 +70,8 @@ void processInput(GLFWwindow* window, WindowContext& ctx, float deltaTime)
     bool editPressed =
         glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS;
 
-    if (editPressed && !ctx.editKeyPressLastFrame)
+    if (editPressed && !ctx.editKeyPressLastFrame && !ImGui::GetIO().WantCaptureKeyboard &&
+        (!ctx.rendererScene || !ctx.rendererScene->sceneRenderUI.gizmoUsing))
     {
         if (ctx.rendererScene)
             ctx.rendererScene->toggleEditMode();
@@ -78,58 +79,18 @@ void processInput(GLFWwindow* window, WindowContext& ctx, float deltaTime)
 
     ctx.editKeyPressLastFrame = editPressed;
 
-    bool mousePressed =
-        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
 
-    if (mousePressed && !ctx.mousePressedLastFrame)
-    {
-        if (ctx.rendererScene)
-        {
-            bool editMode = ctx.rendererScene->getEditMode();
+}
 
-            if (editMode &&
-                !ctx.cursorLocked &&
-                !ImGui::GetIO().WantCaptureMouse)
-            {
-                double mouseX, mouseY;
-                glfwGetCursorPos(window, &mouseX, &mouseY);
-
-                int windowWidth, windowHeight;
-                glfwGetWindowSize(
-                    window, &windowWidth, &windowHeight
-                );
-
-                int framebufferWidth, framebufferHeight;
-                glfwGetFramebufferSize(
-                    window, &framebufferWidth, &framebufferHeight
-                );
-
-                if (windowWidth > 0 && windowHeight > 0 &&
-                    framebufferWidth > 0 && framebufferHeight > 0 &&
-                    mouseX >= 0.0 && mouseX < windowWidth &&
-                    mouseY >= 0.0 && mouseY < windowHeight)
-                {
-                    int pixelX = static_cast<int>(
-                        mouseX * framebufferWidth / windowWidth
-                    );
-
-                    int pixelY = framebufferHeight - 1
-                        - static_cast<int>(
-                            mouseY * framebufferHeight / windowHeight
-                        );
-
-                    ctx.rendererScene->selectObjectAtPixel(
-                        pixelX,
-                        pixelY,
-                        framebufferWidth,
-                        framebufferHeight
-                    );
-                }
-            }
-        }
-    }
-
-    ctx.mousePressedLastFrame = mousePressed;
+void model_drop_callback(GLFWwindow* window, int count, const char** paths)
+{
+    auto* ctx = static_cast<WindowContext*>(glfwGetWindowUserPointer(window));
+    if (!ctx || !ctx->rendererScene) return;
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    std::vector<std::string> files;
+    for (int i = 0; i < count; ++i) files.emplace_back(paths[i]);
+    ctx->rendererScene->acceptModelDrop(files, static_cast<float>(x), static_cast<float>(y));
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos)
@@ -141,7 +102,22 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         static_cast<float>(xpos), static_cast<float>(ypos));
 }
 
-int main()
+// Capture the application's own framebuffer for visual regression checks.
+bool captureFrame(const char* path, int width, int height)
+{
+    std::vector<unsigned char> pixels(static_cast<size_t>(width) * height * 3);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadBuffer(GL_BACK);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+    std::ofstream output(path, std::ios::binary);
+    output << "P6\n" << width << ' ' << height << "\n255\n";
+    for (int y = height - 1; y >= 0; --y)
+        output.write(reinterpret_cast<const char*>(pixels.data() + static_cast<size_t>(y) * width * 3), width * 3);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    return static_cast<bool>(output);
+}
+
+int main(int argc, char** argv)
 {
     // 此时ctx仍是一个局部变量
     WindowContext ctx;
@@ -150,6 +126,8 @@ int main()
     float lastFrame = 0.0f;
     float currentFrame = 0.0f;
     float swapWaitMs = 0.0f;
+    const char* capturePath = argc == 3 && std::string(argv[1]) == "--capture-ui" ? argv[2] : nullptr;
+    int frameNumber = 0;
 
 
     if (!glfwInit())
@@ -162,20 +140,23 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Framebuffer Demo", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1440, 900, "Render Studio | Scene Editor", nullptr, nullptr);
     if (!window)    
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
+    glfwSetWindowSizeLimits(window, 960, 600, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    ctx.cursorLocked = false;
     // 到这里把ctx的地址交给GLFW,把地址存进它自己内部维护的，属于window的user pointer里。
     glfwSetWindowUserPointer(window, &ctx);
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetDropCallback(window, model_drop_callback);
 
     if (!gladLoadGL(glfwGetProcAddress))
     {
@@ -193,7 +174,8 @@ int main()
     ImGui::CreateContext();
     // 拿到ImGui的IO对象
     // 默认暗色主题
-    ImGui::StyleColorsDark();
+    SceneRenderUI::configureStyle();
+    ImGuizmo::SetImGuiContext(ImGui::GetCurrentContext());
     // 将ImGui绑定到GLFW
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     // imgui使用GLSL 330版shader来画ui
@@ -204,6 +186,9 @@ int main()
     {
 
     RendererScene scene(bfwidth, bfheight);
+    scene.sceneConfig.enableEdit = true;
+    int renderWidth = bfwidth;
+    int renderHeight = bfheight;
 
     ctx.rendererScene = &scene;
 
@@ -213,29 +198,63 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
 
         currentFrame = static_cast<float>(glfwGetTime());
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        float FPS = 1.0f / deltaTime;
+        float FPS = ImGui::GetIO().Framerate;
+        deltaTime = std::min(deltaTime, 0.1f);
 
-        scene.renderUI(FPS, swapWaitMs);
+        scene.renderUI(FPS, swapWaitMs, ctx.cursorLocked);
 
         processInput(window, ctx, deltaTime);
 
         glfwGetFramebufferSize(window, &bfwidth, &bfheight);
 
-        scene.render(bfwidth, bfheight);
+        auto& editor = scene.sceneRenderUI;
+        const ImVec2 pixelScale = ImGui::GetIO().DisplayFramebufferScale;
+        const int viewportWidth = std::max(1, static_cast<int>(std::lround(editor.viewportWidth * pixelScale.x)));
+        const int viewportHeight = std::max(1, static_cast<int>(std::lround(editor.viewportHeight * pixelScale.y)));
+        if (viewportWidth != renderWidth || viewportHeight != renderHeight)
+        {
+            scene.resize(viewportWidth, viewportHeight);
+            renderWidth = viewportWidth;
+            renderHeight = viewportHeight;
+        }
+        if (editor.viewportClicked && scene.getEditMode() && !ctx.cursorLocked)
+        {
+            const ImVec2 mouse = ImGui::GetIO().MousePos;
+            const int x = std::clamp(static_cast<int>((mouse.x - editor.viewportX) * pixelScale.x), 0, renderWidth - 1);
+            const int y = renderHeight - 1 - std::clamp(static_cast<int>((mouse.y - editor.viewportY) * pixelScale.y), 0, renderHeight - 1);
+            scene.selectObjectAtPixel(x, y, renderWidth, renderHeight);
+        }
+        if (editor.viewportVisible && bfwidth > 0 && bfheight > 0)
+            scene.render(renderWidth, renderHeight);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, bfwidth, bfheight);
+        glClearColor(0.045f, 0.055f, 0.07f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         // 渲染ImGui界面
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        if (capturePath && ++frameNumber == 12)
+        {
+            if (!captureFrame(capturePath, bfwidth, bfheight))
+                std::cerr << "Could not write UI capture: " << capturePath << '\n';
+            glfwSetWindowShouldClose(window, true);
+        }
+
         double beforeSwap = glfwGetTime();
         glfwSwapBuffers(window);
         double afterSwap = glfwGetTime();
         swapWaitMs = static_cast<float>((afterSwap - beforeSwap) * 1000.0);
+        // A queued frame is presented before loading; imports keep the GL context on this thread.
+        scene.processModelImports();
         glfwPollEvents();
     }
     glfwSetWindowUserPointer(window, nullptr);

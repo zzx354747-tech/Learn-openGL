@@ -1,5 +1,5 @@
 #include "rendering/passes/geometry/GeometryPass.h"
-#include "scene/sceneObject.h"
+#include "scene/SceneObject.h"
 
 GeometryPass::GeometryPass(
     SceneRenderResources& resources,
@@ -62,26 +62,7 @@ void GeometryPass::renderSpheres(int bfwidth, int bfheight)
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
     renderParams.apply(*shader);                                     // Owner B
 
-     // 传递sphere矩阵
-    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
-    {
-        SceneObject* object = sceneObjectManager.getSceneObject(i + 1);  // 获取小球对象
-        // 若该小球对象不可用，则跳过处理下一个小球对象
-        if (!object || !object->isVisible)
-            continue;
-
-        // 读取object对象中的ref成员，并根据它是否为sphereRenderRef类型来决定是否继续处理
-        // 此为variant有关的语法
-        auto* sphereRef = std::get_if<sphereRenderRef>(&object->ref);
-        if (!sphereRef || !sphereRef->drawer)
-            continue;
-        
-        // 传递小球的模型矩阵
-        glm::mat4 modelMatrix = object->transform.matrix();
-        shader->setMat4("model", modelMatrix);
-
-        sphereRef->drawer->drawInstance(*shader, modelMatrix, sphereRef->materialIndex);
-    }
+    sceneObjectManager.drawObjects(*shader, config.sceneSelection, true, false, true);
 }
 
 void GeometryPass::renderModels(int bfwidth, int bfheight)
@@ -96,17 +77,7 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
     renderParams.apply(*shader);                 // Owner B
 
-    SceneObject* object =
-    sceneObjectManager.getSceneObject(MaterialSphereCount + 1);
-
-    if (!object ||
-        !object->isVisible ||
-        object->scene != config.sceneSelection)
-    {
-        return;
-    }
-
-    modelDrawer.draw(*shader, object->transform.matrix());
+    sceneObjectManager.drawObjects(*shader, config.sceneSelection, false, true);
 }
 
 Shader* GeometryPass::getPBRShader()

@@ -1,4 +1,5 @@
 #include "rendering/core/ModelDrawer.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 ModelDrawer::ModelDrawer(const std::string& path)
     : model(path)
@@ -16,6 +17,12 @@ void ModelDrawer::setTransform(const glm::mat4& transform)
     modelMatrix = transform;
 }
 
+void ModelDrawer::centerPivot()
+{
+    const glm::vec3 center = (model.getBoundsMin() + model.getBoundsMax()) * 0.5f;
+    assetTransform = glm::translate(glm::mat4(1.0f), -center);
+}
+
 void ModelDrawer::setSceneConfig(SceneRenderConfig* nextConfig)
 {
     config = nextConfig;
@@ -31,11 +38,11 @@ void ModelDrawer::draw(Shader& shader, const glm::mat4& transform) const
     if (config && config->sceneSelection != visibleScene)
         return;
         
-    model.Draw(shader, transform);
+    model.Draw(shader, transform * assetTransform);
 }
 
 void ModelDrawer::draw(Shader& shader) const
 {
     // model 矩阵：per-object owner，既不属于 CameraUniformSetter 也不属于 RenderParams
-    model.Draw(shader, modelMatrix);
+    model.Draw(shader, modelMatrix * assetTransform);
 }

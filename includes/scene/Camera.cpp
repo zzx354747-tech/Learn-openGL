@@ -140,6 +140,27 @@ void Camera::Resetmouse()
     firstMouse = true;
 }
 
+void Camera::setCameraState(
+    const glm::vec3& position,
+    const glm::vec3& up,
+    float yaw,
+    float pitch,
+    float movementSpeed,
+    float mouseSensitivity
+)
+{
+    Position = position;
+    WorldUp = up;
+    Yaw = yaw;
+    Pitch = pitch;
+    MovementSpeed = movementSpeed;
+    MouseSensitivity = mouseSensitivity;
+
+    updateCameraVectors();
+    MovementVelocity = glm::vec3(0.0f);
+    Resetmouse();
+}
+
 void Camera::updateCameraVectors()
 {
     glm::vec3 front;
