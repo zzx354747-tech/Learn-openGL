@@ -36,7 +36,7 @@ void DownSamplePass::initResources()
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void DownSamplePass::render(GLuint inputTexture)
+void DownSamplePass::render(GLuint inputTexture, float threshold, float knee, float filterRadius)
 {
     const GLboolean depthTestWasEnabled = glIsEnabled(GL_DEPTH_TEST);
 
@@ -49,6 +49,9 @@ void DownSamplePass::render(GLuint inputTexture)
     downSampleShader.use();
     // sceneColor从纹理单元0读取
     downSampleShader.setInt("sceneColor", 0);
+    downSampleShader.setFloat("threshold", threshold);
+    downSampleShader.setFloat("knee", knee);
+    downSampleShader.setFloat("filterRadius", filterRadius);
 
     glActiveTexture(GL_TEXTURE0);
     // inputTexture为纹理对象id

@@ -5,7 +5,8 @@
 class GLTexture
 {
 public:
-    explicit GLTexture(const std::string& path);
+    // Color maps use sRGB storage; normal/roughness/metallic maps remain linear.
+    explicit GLTexture(const std::string& path, bool srgb = false);
 
     GLTexture(int width, int height,
           GLenum internalFormat,

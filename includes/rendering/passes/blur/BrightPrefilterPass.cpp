@@ -46,6 +46,7 @@ void BrightPrefilterPass::render(GLuint inputTexture)
     brightPrefilterShader.setFloat("threshold", threshold);
     // 设置软阈值过渡范围
     brightPrefilterShader.setFloat("knee", knee);
+    brightPrefilterShader.setFloat("maxBrightness", maxBrightness);
     // sceneColor从纹理单元0读取
     brightPrefilterShader.setInt("sceneColor", 0);
 

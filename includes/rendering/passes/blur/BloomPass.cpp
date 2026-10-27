@@ -13,47 +13,23 @@ BloomPass::BloomPass(int width, int height,
 
 }
 
-void BloomPass::render(GLuint inputTexture)
+void BloomPass::render(GLuint inputTexture, const std::array<float, 5>& thresholds,
+                       float knee, int levels, float filterRadius)
 {
-    // Downsample
-    downSamplePassL1.render(inputTexture);
-    downSamplePassL2.render(downSamplePassL1.GetDownSampleTextureID());
-    downSamplePassL3.render(downSamplePassL2.GetDownSampleTextureID());
-    downSamplePassL4.render(downSamplePassL3.GetDownSampleTextureID());
-    downSamplePassL5.render(downSamplePassL4.GetDownSampleTextureID());
-
-    // Upsample and blend
-    // L5 → L4
-    upsamplePass.render(
-        downSamplePassL4.GetDownSampleWidth(),
-        downSamplePassL4.GetDownSampleHeight(),
-        downSamplePassL5.GetDownSampleTextureID(),
-        downSamplePassL4.GetDownSampleFBO(),
-        1.0f);
-
-    // L4 → L3
-    upsamplePass.render(
-        downSamplePassL3.GetDownSampleWidth(),
-        downSamplePassL3.GetDownSampleHeight(),
-        downSamplePassL4.GetDownSampleTextureID(),
-        downSamplePassL3.GetDownSampleFBO(),
-        1.0f);
-
-    // L3 → L2
-    upsamplePass.render(
-        downSamplePassL2.GetDownSampleWidth(),
-        downSamplePassL2.GetDownSampleHeight(),
-        downSamplePassL3.GetDownSampleTextureID(),
-        downSamplePassL2.GetDownSampleFBO(),
-        1.0f);
-
-    // L2 → L1
-    upsamplePass.render(
-        downSamplePassL1.GetDownSampleWidth(),
-        downSamplePassL1.GetDownSampleHeight(),
-        downSamplePassL2.GetDownSampleTextureID(),
-        downSamplePassL1.GetDownSampleFBO(),
-        1.0f);
+    DownSamplePass* chain[] = {&downSamplePassL1, &downSamplePassL2, &downSamplePassL3,
+                               &downSamplePassL4, &downSamplePassL5};
+    levels = std::clamp(levels, 1, 5);
+    for (int level = 0; level < levels; ++level)
+    {
+        chain[level]->render(inputTexture, thresholds[level], knee, filterRadius);
+        inputTexture = chain[level]->GetDownSampleTextureID();
+    }
+    // Only active levels are read, so shrinking the chain cannot reuse stale wide halos.
+    for (int level = levels - 1; level > 0; --level)
+        upsamplePass.render(chain[level - 1]->GetDownSampleWidth(),
+                            chain[level - 1]->GetDownSampleHeight(),
+                            chain[level]->GetDownSampleTextureID(),
+                            chain[level - 1]->GetDownSampleFBO(), filterRadius);
 }
 
 void BloomPass::resize(int width, int height)

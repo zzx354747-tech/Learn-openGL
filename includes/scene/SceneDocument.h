@@ -33,7 +33,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SceneRenderConfig,
     enableIBL, enableEdit, fixedAmbientStrength,
     iblAmbientStrength, phongDiffuseStrength, phongSpecularStrength,
     phongIBLDiffuseStrength, phongIBLSpecularStrength, ssaoStrength,
-    exposure, bloomStrength, bloomThreshold,
+    exposure, bloomStrength, bloomThreshold, bloomKnee, bloomLevelThresholds,
+    bloomLevels, bloomFilterRadius, bloomMaxBrightness,
     sunThreshold, directionalShadowLightSize, directionalShadowBlockerSearchRadius,
     directionalShadowMinFilterRadius, directionalShadowMaxFilterRadius, directionalShadowBiasSlope,
     directionalShadowBiasMin, fixedAmbientColor, iblAmbientTint,
@@ -120,6 +121,18 @@ inline nlohmann::json sceneToJson(const SceneDocument& d)
 
 inline void validateScene(const SceneDocument& d)
 {
+    auto bloomValue = [](float value) {
+        if (!std::isfinite(value) || value < 0.0f)
+            throw std::runtime_error("Bloom parameters must be finite and nonnegative.");
+    };
+    bloomValue(d.config.bloomThreshold);
+    bloomValue(d.config.bloomStrength);
+    bloomValue(d.config.bloomKnee);
+    bloomValue(d.config.bloomFilterRadius);
+    bloomValue(d.config.bloomMaxBrightness);
+    if (d.config.bloomLevels < 1 || d.config.bloomLevels > 5)
+        throw std::runtime_error("Bloom levels must be between one and five.");
+    for (float threshold : d.config.bloomLevelThresholds) bloomValue(threshold);
     auto range = [](int v, int max) { if (v < 0 || v > max) throw std::runtime_error("Invalid enum value."); };
     range(static_cast<int>(d.config.renderMode), 3);
     range(static_cast<int>(d.config.forwardLightMode), 2);
@@ -185,7 +198,17 @@ inline SceneDocument sceneFromJson(const nlohmann::json& j)
     };
     checkNumbers(checkNumbers, j);
     SceneDocument d;
-    j.at("config").get_to(d.config);
+    auto config = j.at("config");
+    // Old saves retain the original unfiltered downsample chain and soft knee.
+    if (!config.contains("bloomKnee")) config["bloomKnee"] = d.config.bloomKnee;
+    if (!config.contains("bloomLevels")) config["bloomLevels"] = d.config.bloomLevels;
+    if (!config.contains("bloomFilterRadius")) config["bloomFilterRadius"] = d.config.bloomFilterRadius;
+    if (!config.contains("bloomMaxBrightness")) config["bloomMaxBrightness"] = d.config.bloomMaxBrightness;
+    integer(config.at("bloomLevels"), 1, 5);
+    if (!config.contains("bloomLevelThresholds")) config["bloomLevelThresholds"] = d.config.bloomLevelThresholds;
+    if (!config.at("bloomLevelThresholds").is_array() || config.at("bloomLevelThresholds").size() != 5)
+        throw std::runtime_error("Expected five Bloom level thresholds.");
+    config.get_to(d.config);
     j.at("lighting").get_to(d.lighting);
     j.at("surface").get_to(d.surface);
     j.at("camera").get_to(d.camera);

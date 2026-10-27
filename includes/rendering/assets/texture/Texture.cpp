@@ -3,7 +3,7 @@
 
 #include "stb_image.h"
 
-GLTexture::GLTexture(const std::string& path)
+GLTexture::GLTexture(const std::string& path, bool srgb)
 {
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
@@ -15,7 +15,8 @@ GLTexture::GLTexture(const std::string& path)
 
     int width, height, channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+    // sRGB storage requires RGB/RGBA, including grayscale source color maps.
+    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, srgb ? 4 : 0);
 
     if (!data)
     {
@@ -24,14 +25,20 @@ GLTexture::GLTexture(const std::string& path)
         throw std::runtime_error("GLTexture: failed to load " + path);
     }
 
+    if (srgb) channels = 4;
     GLenum format = GL_RGB;
     if      (channels == 1) format = GL_RED;
     else if (channels == 3) format = GL_RGB;
     else if (channels == 4) format = GL_RGBA;
 
-    glTexImage2D(GL_TEXTURE_2D, 0, format,
+    GLenum internalFormat = srgb ? GL_SRGB8_ALPHA8 : format;
+    GLint previousUnpackAlignment;
+    glGetIntegerv(GL_UNPACK_ALIGNMENT, &previousUnpackAlignment);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat,
                  width, height, 0,
                  format, GL_UNSIGNED_BYTE, data);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, previousUnpackAlignment);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     stbi_image_free(data);

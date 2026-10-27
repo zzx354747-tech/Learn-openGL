@@ -218,7 +218,19 @@ void postProcessing(SceneRenderUIState& uiState)
     Property::Checkbox("Bloom", &uiState.sceneConfig.enableBloom);
     Property::SliderFloat("Exposure", &uiState.sceneConfig.exposure, 0.1f, 5.0f, "%.1f");
     Property::SliderFloat("Bloom Strength", &uiState.sceneConfig.bloomStrength, 0.0f, 3.0f, "%.2f");
-    Property::SliderFloat("Bloom Threshold", &uiState.sceneConfig.bloomThreshold, 0.0f, 3.0f, "%.2f");
+    Property::DragFloat("Bloom Max Brightness", &uiState.sceneConfig.bloomMaxBrightness, 0.05f, 0.0f, 1000.0f, "%.2f");
+    ImGui::TextWrapped("Caps the Bloom source only (0 = unlimited). Level thresholds operate after this cap.");
+    Property::SliderInt("Bloom Levels", &uiState.sceneConfig.bloomLevels, 1, 5);
+    Property::SliderFloat("Bloom Filter Radius", &uiState.sceneConfig.bloomFilterRadius, 0.0f, 2.0f, "%.2f");
+    ImGui::TextWrapped("For a tight halo, use 1 level and a small filter radius. Thresholds select brightness; they do not set halo size.");
+    Property::DragFloat("Bloom Threshold", &uiState.sceneConfig.bloomThreshold, 0.05f, 0.0f, 1000.0f, "%.2f");
+    Property::DragFloat("Bloom Soft Knee", &uiState.sceneConfig.bloomKnee, 0.01f, 0.0f, 1000.0f, "%.2f");
+    ImGui::TextWrapped("Level thresholds: 0 = bypass. Higher levels create wider halos. Filtering a level also affects all coarser levels.");
+    const char* levelLabels[] = {"Bloom L1 (1/2)", "Bloom L2 (1/4)", "Bloom L3 (1/8)",
+                                 "Bloom L4 (1/16)", "Bloom L5 (1/32)"};
+    for (int level = 0; level < 5; ++level)
+        Property::DragFloat(levelLabels[level], &uiState.sceneConfig.bloomLevelThresholds[level],
+                            0.05f, 0.0f, 1000.0f, "%.2f");
 
 
 }

@@ -28,6 +28,11 @@ inline bool runScenePersistenceCheck(RendererScene& scene)
         scene.sceneObjectManager.getSceneObject(1)->scene = SceneSelection::LivingRoom;
         scene.camera.setCameraState(glm::vec3(4,5,6), glm::vec3(0,1,0), -112, 23, 4.1f, 0.17f);
         scene.sceneConfig.exposure = 1.73f;
+        scene.sceneConfig.bloomLevelThresholds = {0.1f, 0.2f, 0.4f, 0.8f, 1.6f};
+        scene.sceneConfig.bloomKnee = 0.35f;
+        scene.sceneConfig.bloomLevels = 2;
+        scene.sceneConfig.bloomFilterRadius = 0.15f;
+        scene.sceneConfig.bloomMaxBrightness = 3.5f;
         scene.lightSettings.sunDirection = glm::vec3(-0.3f, -0.8f, 0.2f);
         scene.lightSettings.sunIntensity = 3.4f;
         scene.renderParams.numLayers = 41;

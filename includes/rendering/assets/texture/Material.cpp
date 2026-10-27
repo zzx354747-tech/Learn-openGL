@@ -22,7 +22,7 @@ Material Material::loadFromDirectory(const std::string& directoryPath)
         std::string filename = entry.path().filename().string();
         std::string fullPath = entry.path().string();
 
-        auto assignOnce = [&](std::optional<GLTexture>& slot, const char* keyword)
+        auto assignOnce = [&](std::optional<GLTexture>& slot, const char* keyword, bool srgb = false)
         {
             if (filename.find(keyword) == std::string::npos)
                 return false;
@@ -34,11 +34,11 @@ Material Material::loadFromDirectory(const std::string& directoryPath)
                     " (offending file: " + filename + ")"
                 );
             }
-            slot.emplace(fullPath);
+            slot.emplace(fullPath, srgb);
             return true;
         };
 
-        if (assignOnce(mat.albedoTex,    "_albedo"))    continue;
+        if (assignOnce(mat.albedoTex,    "_albedo", true)) continue;
         if (assignOnce(mat.normalTex,    "_normal"))    continue;
         if (assignOnce(mat.metallicTex,  "_metallic"))  continue;
         if (assignOnce(mat.roughnessTex, "_roughness")) continue;

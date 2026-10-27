@@ -15,6 +15,7 @@ public:
     void resize(int width, int height);
     void setThreshold(float value) { threshold = value; }
     void setKnee(float value) { knee = value; }
+    void setMaxBrightness(float value) { maxBrightness = value; }
 
 private:
     Shader& brightPrefilterShader;
@@ -23,6 +24,7 @@ private:
     GLTexture brightPrefilterTexture;
     float threshold = 1.0f;
     float knee = 0.5f;
+    float maxBrightness = 0.0f;
 
     void initResources();  // 只负责 FBO 创建+附加,不再创建纹理
 };

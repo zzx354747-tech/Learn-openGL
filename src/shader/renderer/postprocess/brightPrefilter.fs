@@ -7,6 +7,7 @@ out vec3 FragColor;
 uniform sampler2D sceneColor;
 uniform float threshold;
 uniform float knee;
+uniform float maxBrightness;
 
 void main()
 {
@@ -27,5 +28,14 @@ void main()
     float edge1 = threshold + safeKnee;
 
     float weight = smoothstep(edge0, edge1, brightness);
-    FragColor = color * weight;
+    vec3 extracted = color * weight;
+    // Preserve hue while bounding the energy sent into the blur pyramid.
+    // Thresholding alone passes extreme specular peaks at their full HDR value.
+    // The scene HDR texture remains untouched. Zero explicitly disables this cap.
+    if (maxBrightness > 0.0)
+    {
+        float peak = max(max(extracted.r, extracted.g), extracted.b);
+        extracted *= min(1.0, maxBrightness / max(peak, 0.0001));
+    }
+    FragColor = extracted;
 }

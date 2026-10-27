@@ -11,7 +11,8 @@ public:
     DownSamplePass(int width, int height, Shader& shader, Screenquad& quad);
     ~DownSamplePass();
 
-    void render(GLuint inputTexture);
+    void render(GLuint inputTexture, float threshold = 0.0f, float knee = 0.5f,
+                float filterRadius = 1.0f);
     void resize(int width, int height);
     GLuint GetDownSampleTextureID() const { return downSampleTexture.getID(); }
     GLuint GetDownSampleFBO() const { return downSampleFBO; }

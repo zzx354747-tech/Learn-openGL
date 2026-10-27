@@ -94,9 +94,11 @@ void main()
 
     vec3 albedo;
     if (hasAlbedoMap)
-        albedo = pow(texture(albedoTexture, texCoords).rgb, vec3(2.2));
+        // Both imported models and material spheres use hardware sRGB decoding.
+        albedo = texture(albedoTexture, texCoords).rgb;
     else
-        albedo = pow(albedoColor, vec3(2.2));
+        // Material factors (including glTF baseColorFactor) are already linear.
+        albedo = albedoColor;
 
      // 新增：alpha discard，注意这里要用未经 gamma 处理的原始 alpha 通道
     if (alphaMask && hasAlbedoMap)

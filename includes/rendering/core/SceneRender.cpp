@@ -58,9 +58,13 @@ void SceneRender::render( int bfwidth, int bfheight, Shader& screenShader, Scree
         if (config.enableBloom && resources.shaderLibrary)
         {
             brightPrefilterPass.setThreshold(config.bloomThreshold);
+            brightPrefilterPass.setKnee(config.bloomKnee);
+            brightPrefilterPass.setMaxBrightness(config.bloomMaxBrightness);
             brightPrefilterPass.render(framebuffer.getTextureID(0));
 
-            bloomPass.render(brightPrefilterPass.GetBrightPrefilterTextureID());
+            bloomPass.render(brightPrefilterPass.GetBrightPrefilterTextureID(),
+                             config.bloomLevelThresholds, config.bloomKnee,
+                             config.bloomLevels, config.bloomFilterRadius);
         }
 
         if (config.enableEdit)

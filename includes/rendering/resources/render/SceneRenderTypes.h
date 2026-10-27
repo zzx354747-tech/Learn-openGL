@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <array>
 
 // 编译期常量，无法在运行时修改
 constexpr unsigned int MaterialSphereCount = 8;
@@ -57,6 +58,13 @@ struct SceneRenderConfig
     float exposure = 1.0f;
     float bloomStrength = 0.4f;
     float bloomThreshold = 1.1f;
+    float bloomKnee = 0.5f;
+    int bloomLevels = 5;
+    float bloomFilterRadius = 1.0f;
+    // Limit only Bloom source radiance; zero restores unlimited HDR extraction.
+    float bloomMaxBrightness = 1.0f;
+    // L1 (1/2 resolution) through L5 (1/32). Zero bypasses level filtering.
+    std::array<float, 5> bloomLevelThresholds{};
     float sunThreshold = 100.0f;
     float directionalShadowLightSize = 0.006f;
     float directionalShadowBlockerSearchRadius = 0.006f;

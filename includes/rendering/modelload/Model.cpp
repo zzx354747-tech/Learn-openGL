@@ -297,7 +297,7 @@ std::vector<Texture> Model::loadMaterialTextures(
                 data = stbi_load_from_memory(
                     reinterpret_cast<unsigned char*>(embeddedTex->pcData),
                     embeddedTex->mWidth,
-                    &width, &height, &channels, 0);
+                    &width, &height, &channels, isColorData ? 4 : 0);
             }
             else
             {
@@ -318,7 +318,7 @@ std::vector<Texture> Model::loadMaterialTextures(
         }
         else
         {
-            data = stbi_load(cacheKey.c_str(), &width, &height, &channels, 0);
+            data = stbi_load(cacheKey.c_str(), &width, &height, &channels, isColorData ? 4 : 0);
         }
 
         Texture texture{};
@@ -327,6 +327,8 @@ std::vector<Texture> Model::loadMaterialTextures(
 
         if (data)
         {
+            // Decode every color map through sRGB storage, including grayscale sources.
+            if (isColorData) channels = 4;
             // sourceFormat：告诉 GL 传入 data 的实际通道排布，必须和 channels 对应
             GLenum sourceFormat = channels == 1 ? GL_RED
                      : channels == 2 ? GL_RG
