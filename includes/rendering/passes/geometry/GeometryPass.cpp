@@ -33,6 +33,7 @@ void GeometryPass::render(int bfwidth, int bfheight)
 
     renderSpheres(bfwidth, bfheight);
     renderModels(bfwidth, bfheight);
+    renderMountains(bfwidth, bfheight);
 
     gBuffer.unbind();
 
@@ -62,7 +63,7 @@ void GeometryPass::renderSpheres(int bfwidth, int bfheight)
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
     renderParams.apply(*shader);                                     // Owner B
 
-    sceneObjectManager.drawObjects(*shader, config.sceneSelection, true, false, true);
+    sceneObjectManager.drawObjects(*shader, config.sceneSelection, true, false, false, SphereDrawMode::Material);
 }
 
 void GeometryPass::renderModels(int bfwidth, int bfheight)
@@ -77,7 +78,22 @@ void GeometryPass::renderModels(int bfwidth, int bfheight)
     CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
     renderParams.apply(*shader);                 // Owner B
 
-    sceneObjectManager.drawObjects(*shader, config.sceneSelection, false, true);
+    sceneObjectManager.drawObjects(*shader, config.sceneSelection, false, true, false);
+}
+
+void GeometryPass::renderMountains(int bfwidth, int bfheight)
+{
+    Shader* shader = getPBRShader();   // 复用同一份 GeometryPass shader
+
+    if (!shader)
+        return;
+
+    shader->use();
+
+    CameraUniformSetter::apply(*shader, camera, bfwidth, bfheight);  // Owner A
+    renderParams.apply(*shader);                 // Owner B
+
+    sceneObjectManager.drawObjects(*shader, config.sceneSelection, false, false, true, SphereDrawMode::Material);
 }
 
 Shader* GeometryPass::getPBRShader()

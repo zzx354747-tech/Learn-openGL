@@ -185,6 +185,7 @@ add_executable(fbo_demo
     includes/rendering/assets/mesh/Screenquad.cpp
     includes/rendering/assets/mesh/SkyboxMesh.cpp
     includes/rendering/assets/mesh/SphereMesh.cpp
+    includes/rendering/assets/mesh/MountainMesh.cpp
     includes/rendering/assets/texture/CubeMap.cpp
     includes/rendering/assets/texture/Texture.cpp
     includes/rendering/assets/texture/Material.cpp
@@ -192,6 +193,7 @@ add_executable(fbo_demo
     includes/rendering/core/ModelDrawer.cpp
     includes/rendering/core/SceneRender.cpp
     includes/rendering/core/SphereDrawer.cpp
+    includes/rendering/core/MountainDrawer.cpp
     includes/rendering/passes/debug/LightVisualPass.cpp
     includes/rendering/passes/debug/ShadowDebugPass.cpp
     includes/rendering/passes/deferred/DeferredRenderPass.cpp

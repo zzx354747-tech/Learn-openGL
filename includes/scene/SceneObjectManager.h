@@ -3,16 +3,22 @@
 #include "rendering/resources/render/SceneRenderTypes.h"
 #include "rendering/core/ModelDrawer.h"
 #include "rendering/core/SphereDrawer.h"
+#include "rendering/core/MountainDrawer.h"
 #include "scene/SceneObject.h"
 #include <vector>
 #include <memory>
 #include <unordered_map>
 
+// Also selects the draw path for procedural Mountain objects.
+enum class SphereDrawMode { Depth, Material, Basic, Reflect };
+
 class SceneObjectManager
 {
 public:
-    SceneObjectManager(ModelDrawer* livingRoomDrawer, SphereDrawer* sphereDrawer)
-        : m_livingRoomDrawer(livingRoomDrawer), m_sphereDrawer(sphereDrawer) {}
+    SceneObjectManager(ModelDrawer* livingRoomDrawer, SphereDrawer* sphereDrawer,
+                       MountainDrawer* mountainDrawer)
+        : m_livingRoomDrawer(livingRoomDrawer), m_sphereDrawer(sphereDrawer),
+          m_mountainDrawer(mountainDrawer) {}
     ~SceneObjectManager() = default;
 
     void addSceneObject();
@@ -26,7 +32,8 @@ public:
     SceneObjectID importModel(const std::string& path, SceneSelection scene,
                               const glm::vec3& position, float fitSize = 2.0f);
     void drawObjects(Shader& shader, SceneSelection scene, bool spheres = true,
-                     bool models = true, bool sphereMaterials = false) const;
+                    bool models = true, bool mountains = true,
+                    SphereDrawMode sphereMode = SphereDrawMode::Depth) const;
 
     // 第一个const,既不复制容器，也不能通过这个引用修改容器和容器里的元素
     // 第二个const,函数既不能修改类的成员变量，也不能调用非const成员函数
@@ -37,7 +44,8 @@ private:
     std::vector<SceneObject> m_sceneObjects;
     ModelDrawer* m_livingRoomDrawer;
     SphereDrawer* m_sphereDrawer;
+    MountainDrawer* m_mountainDrawer;
     std::unordered_map<std::string, std::unique_ptr<ModelDrawer>> m_importedModels;
-    SceneObjectID m_nextID = MaterialSphereCount + 2;
+    SceneObjectID m_nextID = MaterialUseCount + 3;
 };
    

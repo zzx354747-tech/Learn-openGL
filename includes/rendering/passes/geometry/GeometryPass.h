@@ -37,6 +37,7 @@ private:
 
     void renderSpheres(int bfwidth, int bfheight);
     void renderModels(int bfwidth, int bfheight);
+    void renderMountains(int bfwidth, int bfheight);
 
     Shader* getPBRShader();
 };

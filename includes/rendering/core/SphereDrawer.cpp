@@ -10,7 +10,7 @@ SphereDrawer::SphereDrawer(SphereMesh*        sphereMesh,
 
 void SphereDrawer::loadMaterials(const std::string& baseDir)
 {
-    static const char* dirs[MaterialSphereCount] = {
+    static const char* dirs[MaterialUseCount] = {
         "Bricks066_2K-PNG",
         "Grass005_2K-PNG",
         "Gravel023_2K-PNG",
@@ -21,7 +21,7 @@ void SphereDrawer::loadMaterials(const std::string& baseDir)
         "Rock060_2K-PNG",
     };
 
-    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    for (unsigned int i = 0; i < MaterialUseCount; ++i)
         materials[i] = Material::loadFromDirectory(baseDir + dirs[i]);
 }
 
@@ -30,13 +30,13 @@ void SphereDrawer::draw(Shader& shader)
     if (!isDefaultScene() || !sphereMesh || !state)
         return;
 
-    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    for (unsigned int i = 0; i < MaterialUseCount; ++i)
         drawOne(shader, i);
 }
 
 void SphereDrawer::drawOne(Shader& shader, unsigned int index)
 {
-    if (index >= MaterialSphereCount)
+    if (index >= MaterialUseCount)
         return;
 
     materials[index].bind(shader);
@@ -54,17 +54,24 @@ void SphereDrawer::drawBasic(Shader& shader)
     if (!isDefaultScene() || !sphereMesh || !state)
         return;
 
-    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    for (unsigned int i = 0; i < MaterialUseCount; ++i)
     {
-        materials[i].bindAlbedoOnly(shader);   // 只绑 albedo，unlit forward 只需要这个
-
         glm::mat4 model(1.0f);
         model = glm::translate(model, state->materialSpherePositions[i]);
         model = glm::scale(model, glm::vec3(0.65f));
-        shader.setMat4("model", model);
-
-        sphereMesh->draw();
+        drawBasic(shader, model, i);
     }
+}
+
+void SphereDrawer::drawBasic(Shader& shader, const glm::mat4& matrix,
+                             unsigned int materialIndex)
+{
+    if (!isDefaultScene() || !sphereMesh || materialIndex >= MaterialUseCount)
+        return;
+
+    materials[materialIndex].bindAlbedoOnly(shader);
+    shader.setMat4("model", matrix);
+    sphereMesh->draw();
 }
 
 void SphereDrawer::drawReflect(Shader& shader)
@@ -72,16 +79,23 @@ void SphereDrawer::drawReflect(Shader& shader)
     if (!isDefaultScene() || !sphereMesh || !state)
         return;
 
-    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    for (unsigned int i = 0; i < MaterialUseCount; ++i)
     {
         // 纯反射：不需要材质贴图，只需要 model matrix 算法线
         glm::mat4 model(1.0f);
         model = glm::translate(model, state->materialSpherePositions[i]);
         model = glm::scale(model, glm::vec3(0.65f));
-        shader.setMat4("model", model);
-
-        sphereMesh->draw();
+        drawReflect(shader, model);
     }
+}
+
+void SphereDrawer::drawReflect(Shader& shader, const glm::mat4& matrix)
+{
+    if (!isDefaultScene() || !sphereMesh)
+        return;
+
+    shader.setMat4("model", matrix);
+    sphereMesh->draw();
 }
 
 
@@ -91,7 +105,7 @@ void SphereDrawer::drawInstance(Shader& shader, const glm::mat4& matrix,
     if (!isDefaultScene() || !sphereMesh)
         return;
 
-    if (materialIndex >= MaterialSphereCount)
+    if (materialIndex >= MaterialUseCount)
         return;
 
     materials[materialIndex].bind(shader);

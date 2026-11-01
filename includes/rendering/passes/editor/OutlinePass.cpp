@@ -1,4 +1,5 @@
 #include "rendering/passes/editor/OutlinePass.h"
+#include "rendering/core/MountainDrawer.h"
 #include "rendering/core/ModelDrawer.h"
 #include "rendering/core/SphereDrawer.h"
 #include "rendering/uniforms/CameraUniformSetter.h"
@@ -372,5 +373,10 @@ void OutlinePass::drawObject(Shader& shader, const SceneObject* object)
     {
         if (*modelRef)
             (*modelRef)->draw(shader, modelMatrix);
+    }
+    else if (const auto* mountainRef = std::get_if<MountainDrawer*>(&object->ref))
+    {
+        if (*mountainRef)
+            (*mountainRef)->drawDepth(shader, modelMatrix);
     }
 }

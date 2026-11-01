@@ -492,6 +492,16 @@ void SceneRenderUI::renderUI(
     for (const auto& object : manager.getSceneObjects())
         if (object.scene == config.sceneSelection) ++sceneObjectCount;
 
+    const SceneSelection sceneOptions[] = {
+        SceneSelection::Default,
+        SceneSelection::LivingRoom,
+        SceneSelection::Mountain
+    };
+    const char* sceneNames[] = {"Material study", "Living room", "Mountain"};
+    int sceneIndex = 0;
+    for (int i = 0; i < 3; ++i)
+        if (config.sceneSelection == sceneOptions[i]) sceneIndex = i;
+
     if (showScenePanel)
     {
         panel("##scenePanel", ImVec2(origin.x, origin.y + top + gap), ImVec2(left, bodyHeight));
@@ -499,12 +509,10 @@ void SceneRenderUI::renderUI(
         ImGui::Spacing();
         ImGui::TextUnformatted("Scene hierarchy");
         ImGui::Separator();
-        int sceneIndex = config.sceneSelection == SceneSelection::LivingRoom ? 1 : 0;
-        const char* sceneNames[] = {"Material study", "Living room"};
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##scene", &sceneIndex, sceneNames, 2))
+        if (ImGui::Combo("##scene", &sceneIndex, sceneNames, 3))
         {
-            config.sceneSelection = sceneIndex == 1 ? SceneSelection::LivingRoom : SceneSelection::Default;
+            config.sceneSelection = sceneOptions[sceneIndex];
             selectedObjectID = InvalidSceneObjectID;
         }
         ImGui::SetNextItemWidth(-1);
@@ -587,7 +595,7 @@ void SceneRenderUI::renderUI(
     ImGui::SetCursorPos(ImVec2(14, 10));
     ImGui::TextUnformatted("Scene view");
     ImGui::SameLine();
-    ImGui::TextDisabled(" / %s", config.sceneSelection == SceneSelection::LivingRoom ? "Living room" : "Material study");
+    ImGui::TextDisabled(" / %s", sceneNames[sceneIndex]);
     if (centerWidth > 380)
     {
         ImGui::SameLine(centerWidth - 165);
@@ -693,7 +701,10 @@ void SceneRenderUI::renderUI(
                 if (object)
                 {
                     ImGui::Spacing();
-                    ImGui::TextColored(accent, "%s", std::holds_alternative<sphereRenderRef>(object->ref) ? "SPHERE INSTANCE" : "MODEL INSTANCE");
+                    const char* instanceType = std::holds_alternative<sphereRenderRef>(object->ref)
+                        ? "SPHERE INSTANCE" : (std::holds_alternative<MountainDrawer*>(object->ref)
+                            ? "MOUNTAIN INSTANCE" : "MODEL INSTANCE");
+                    ImGui::TextColored(accent, "%s", instanceType);
                     ImGui::PushTextWrapPos();
                     ImGui::TextUnformatted(object->name.c_str());
                     ImGui::PopTextWrapPos();

@@ -91,10 +91,10 @@ inline void from_json(const nlohmann::json& j, SceneObjectData& o)
     j.at("scene").get_to(o.scene);
     j.at("isVisible").get_to(o.isVisible);
     // Old saves can identify built-in objects by their stable IDs.
-    o.type = j.value("type", o.id <= MaterialSphereCount ? "sphere" : "livingRoom");
+    o.type = j.value("type", o.id <= MaterialUseCount ? "sphere" : "livingRoom");
     o.modelPath = j.value("modelPath", std::string{});
     o.materialIndex = j.value("materialIndex", o.id > 0 ? o.id - 1 : 0);
-    if (!j.contains("type") && o.id > MaterialSphereCount + 1)
+    if (!j.contains("type") && o.id > MaterialUseCount + 1)
         throw std::runtime_error("Old save lacks imported model sources; save again with the current version.");
 }
 
@@ -136,7 +136,7 @@ inline void validateScene(const SceneDocument& d)
     auto range = [](int v, int max) { if (v < 0 || v > max) throw std::runtime_error("Invalid enum value."); };
     range(static_cast<int>(d.config.renderMode), 3);
     range(static_cast<int>(d.config.forwardLightMode), 2);
-    range(static_cast<int>(d.config.sceneSelection), 2);
+    range(static_cast<int>(d.config.sceneSelection), static_cast<int>(SceneSelection::Mountain));
     range(static_cast<int>(d.config.environmentSelection), 2);
     range(d.editor.gizmoOperation, 2);
     range(d.editor.gizmoSpace, 1);
@@ -150,12 +150,12 @@ inline void validateScene(const SceneDocument& d)
     std::set<SceneObjectID> ids;
     for (const auto& o : d.objects)
     {
-        range(static_cast<int>(o.scene), 2);
+        range(static_cast<int>(o.scene), static_cast<int>(SceneSelection::Mountain));
         if (o.id == 0 || o.id == std::numeric_limits<SceneObjectID>::max() || !ids.insert(o.id).second)
             throw std::runtime_error("Invalid or duplicate object ID.");
-        if (o.type != "sphere" && o.type != "livingRoom" && o.type != "model")
+        if (o.type != "sphere" && o.type != "livingRoom" && o.type != "model" && o.type != "mountain")
             throw std::runtime_error("Unknown object type.");
-        if (o.type == "sphere" && o.materialIndex >= MaterialSphereCount)
+        if (o.type == "sphere" && o.materialIndex >= MaterialUseCount)
             throw std::runtime_error("Invalid sphere material index.");
         if (o.type == "model" && o.modelPath.empty()) throw std::runtime_error("Missing model source.");
         if (o.transform.scale.x == 0 || o.transform.scale.y == 0 || o.transform.scale.z == 0)
@@ -178,7 +178,7 @@ inline SceneDocument sceneFromJson(const nlohmann::json& j)
     for (const auto& object : j.at("objects"))
     {
         integer(object.at("id"), 1, std::numeric_limits<SceneObjectID>::max() - 1);
-        integer(object.at("scene"), 0, 2);
+        integer(object.at("scene"), 0, static_cast<int>(SceneSelection::Mountain));
         if (object.contains("materialIndex")) integer(object.at("materialIndex"), 0, std::numeric_limits<unsigned>::max());
     }
     if (j.contains("editor"))
@@ -219,8 +219,8 @@ inline SceneDocument sceneFromJson(const nlohmann::json& j)
     if (state.contains("materialSpherePositions"))
     {
         const auto& p = state.at("materialSpherePositions");
-        if (!p.is_array() || p.size() != MaterialSphereCount) throw std::runtime_error("Invalid sphere positions.");
-        for (unsigned i = 0; i < MaterialSphereCount; ++i) p.at(i).get_to(d.state.materialSpherePositions[i]);
+        if (!p.is_array() || p.size() != MaterialUseCount) throw std::runtime_error("Invalid sphere positions.");
+        for (unsigned i = 0; i < MaterialUseCount; ++i) p.at(i).get_to(d.state.materialSpherePositions[i]);
     }
     if (j.contains("editor")) j.at("editor").get_to(d.editor);
     validateScene(d);

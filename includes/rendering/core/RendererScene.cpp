@@ -18,7 +18,8 @@ RendererScene::RendererScene(int width, int height)
     , sceneConfig(makeLivingRoomPreset())
     , sphereDrawer(&sphereMesh, &sceneState, &sceneConfig)
     , livingRoomDrawer("../3D_model/living_room_interior_free.glb", &sceneConfig)
-    , sceneObjectManager(&livingRoomDrawer, &sphereDrawer)
+    , mountainDrawer(&mountainMesh, &sceneState, &sceneConfig)
+    , sceneObjectManager(&livingRoomDrawer, &sphereDrawer, &mountainDrawer)
     , objectPickPass(width, height)
     , outlinePass(fb, sceneGBuffer, shaderLibrary.outlineMask, shaderLibrary.outlineScreen,
                   camera, screenQuad, width, height)
@@ -122,6 +123,7 @@ RendererScene::RendererScene(int width, int height)
     sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
     sceneResources.skyboxMesh = &skyboxMesh;
+    mountainMesh.generate();
 
     sphereDrawer.loadMaterials("../textures/PBR/");
 
@@ -185,7 +187,7 @@ bool RendererScene::loadSceneFromFile(const std::filesystem::path& requestedPath
             if (object.type == "model" && std::filesystem::u8path(object.modelPath).is_relative())
                 object.modelPath = (std::filesystem::absolute(path).parent_path() /
                     std::filesystem::u8path(object.modelPath)).generic_string();
-        SceneObjectManager nextObjects(&livingRoomDrawer, &sphereDrawer);
+        SceneObjectManager nextObjects(&livingRoomDrawer, &sphereDrawer, &mountainDrawer);
         nextObjects.restoreObjects(document.objects);
 
         // EnvironmentController stages its textures internally; failures keep old textures alive.
@@ -374,6 +376,11 @@ SceneObjectID RendererScene::selectObjectAtPixel(
             {
                 (*modelRef)->draw(shader, matrix);
             }
+        }
+        else if (const auto* mountainRef = std::get_if<MountainDrawer*>(&object.ref))
+        {
+            if (*mountainRef)
+                (*mountainRef)->drawDepth(shader, matrix);
         }
     }
 

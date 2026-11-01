@@ -15,6 +15,7 @@
 #include "rendering/core/WindowContext.h"
 #include "rendering/core/RendererScene.h"
 #include "../../tests/ScenePersistenceCheck.h"
+#include "../../tests/MountainIntegrationCheck.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -130,6 +131,7 @@ int main(int argc, char** argv)
     const char* capturePath = argc == 3 && std::string(argv[1]) == "--capture-ui" ? argv[2] : nullptr;
     int frameNumber = 0;
     const bool persistenceCheck = argc == 2 && std::string(argv[1]) == "--check-scene-persistence";
+    const bool mountainCheck = argc == 2 && std::string(argv[1]) == "--check-mountain";
     int exitCode = 0;
 
 
@@ -199,6 +201,12 @@ int main(int argc, char** argv)
     {
         scene.resize(320, 240);
         exitCode = runScenePersistenceCheck(scene) ? 0 : 1;
+        glfwSetWindowShouldClose(window, true);
+    }
+    if (mountainCheck)
+    {
+        scene.resize(320, 240);
+        exitCode = runMountainIntegrationCheck(scene) ? 0 : 1;
         glfwSetWindowShouldClose(window, true);
     }
     while (!glfwWindowShouldClose(window))

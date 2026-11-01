@@ -137,7 +137,11 @@ inline bool runScenePersistenceCheck(RendererScene& scene)
         // Legacy built-in saves remain loadable, but cannot invent missing imported sources.
         auto legacy = expected;
         legacy.erase("formatVersion"); legacy.erase("editor");
-        legacy["objects"].erase(legacy["objects"].end() - 1);
+        // The legacy format predates both Mountain and imported objects.
+        legacy["objects"] = nlohmann::json::array();
+        for (const auto& object : expected["objects"])
+            if (object["type"] == "sphere" || object["type"] == "livingRoom")
+                legacy["objects"].push_back(object);
         for (auto& o : legacy["objects"]) { o.erase("type"); o.erase("modelPath"); o.erase("materialIndex"); }
         sceneFromJson(legacy);
         const auto newID = scene.sceneObjectManager.importModel(model.string(), SceneSelection::Default, glm::vec3(0));

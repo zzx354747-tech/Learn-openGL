@@ -8,7 +8,7 @@
 void SceneObjectManager::addSceneObject()
 {
     // 名称顺序对应 SphereDrawer::loadMaterials() 中的材质编号。
-    const char* sphereNames[MaterialSphereCount] = {
+    const char* sphereNames[MaterialUseCount] = {
         "Sphere_bricks066",
         "Sphere_grass005",
         "Sphere_gravel023",
@@ -22,7 +22,7 @@ void SceneObjectManager::addSceneObject()
     // 使用当前 SceneRenderState 中的小球初始位置。
     const SceneRenderState initialState;
 
-    for (unsigned int i = 0; i < MaterialSphereCount; ++i)
+    for (unsigned int i = 0; i < MaterialUseCount; ++i)
     {
         SceneObject sphere{};
         sphere.id = i + 1;
@@ -38,7 +38,7 @@ void SceneObjectManager::addSceneObject()
 
     // 与 RendererScene 中实际加载的客厅模型及其初始变换保持一致。
     SceneObject model_livingroom{};
-    model_livingroom.id = MaterialSphereCount + 1;
+    model_livingroom.id = MaterialUseCount + 1;
     model_livingroom.name = "model_livingroom";
     model_livingroom.ref = m_livingRoomDrawer;
     model_livingroom.transform.position = glm::vec3(0.0f, 0.0f, -3.0f);
@@ -47,6 +47,17 @@ void SceneObjectManager::addSceneObject()
     model_livingroom.scene = SceneSelection::LivingRoom;
     model_livingroom.isVisible = true;
     m_sceneObjects.push_back(model_livingroom);
+
+    SceneObject model_mountain{};
+    model_mountain.id = MaterialUseCount + 2;
+    model_mountain.name = "model_mountain";
+    model_mountain.ref = m_mountainDrawer;
+    model_mountain.transform.position = glm::vec3(0.0f, -1.0f, 0.0f);
+    model_mountain.transform.rotationDegrees = glm::vec3(0.0f);
+    model_mountain.transform.scale = glm::vec3(1.0f);
+    model_mountain.scene = SceneSelection::Mountain;
+    model_mountain.isVisible = true;
+    m_sceneObjects.push_back(model_mountain);
 }
 
 SceneObject* SceneObjectManager::getSceneObject(SceneObjectID id)
@@ -104,7 +115,7 @@ SceneObjectID SceneObjectManager::importModel(const std::string& path, SceneSele
 }
 
 void SceneObjectManager::drawObjects(Shader& shader, SceneSelection scene, bool spheres,
-                                    bool models, bool sphereMaterials) const
+                                    bool models, bool mountains, SphereDrawMode sphereMode) const
 {
     for (const auto& object : m_sceneObjects)
     {
@@ -113,12 +124,44 @@ void SceneObjectManager::drawObjects(Shader& shader, SceneSelection scene, bool 
         if (const auto* sphere = std::get_if<sphereRenderRef>(&object.ref))
         {
             if (!spheres || !sphere->drawer) continue;
-            if (sphereMaterials) sphere->drawer->drawInstance(shader, matrix, sphere->materialIndex);
-            else sphere->drawer->drawPick(shader, matrix);
+            switch (sphereMode)
+            {
+            case SphereDrawMode::Basic:
+                sphere->drawer->drawBasic(shader, matrix, sphere->materialIndex);
+                break;
+            case SphereDrawMode::Reflect:
+                sphere->drawer->drawReflect(shader, matrix);
+                break;
+            case SphereDrawMode::Material:
+                sphere->drawer->drawInstance(shader, matrix, sphere->materialIndex);
+                break;
+            case SphereDrawMode::Depth:
+                sphere->drawer->drawPick(shader, matrix);
+                break;
+            }
         }
         else if (const auto* model = std::get_if<ModelDrawer*>(&object.ref))
         {
             if (models && *model) (*model)->draw(shader, matrix);
+        }
+        else if (const auto* mountain = std::get_if<MountainDrawer*>(&object.ref))
+        {
+            if (!mountains || !*mountain) continue;
+            switch (sphereMode)
+            {
+            case SphereDrawMode::Material:
+                (*mountain)->draw(shader, matrix);
+                break;
+            case SphereDrawMode::Basic:
+                (*mountain)->drawBasic(shader, matrix);
+                break;
+            case SphereDrawMode::Reflect:
+                (*mountain)->drawReflect(shader, matrix);
+                break;
+            case SphereDrawMode::Depth:
+                (*mountain)->drawDepth(shader, matrix);
+                break;
+            }
         }
     }
 }
@@ -136,9 +179,9 @@ std::vector<SceneObjectData> SceneObjectManager::describeObjects() const
             data.type = "sphere";
             data.materialIndex = sphere->materialIndex;
         }
-        else
+        else if (const auto* model = std::get_if<ModelDrawer*>(&o.ref))
         {
-            const auto* drawer = std::get<ModelDrawer*>(o.ref);
+            const auto drawer = *model;
             if (drawer == m_livingRoomDrawer) data.type = "livingRoom";
             else
             {
@@ -148,6 +191,10 @@ std::vector<SceneObjectData> SceneObjectManager::describeObjects() const
                 if (data.modelPath.empty()) throw std::runtime_error("Model has no persistent source.");
             }
         }
+        else if (const auto* mountain = std::get_if<MountainDrawer*>(&o.ref))
+        {
+            data.type = "mountain";
+        }
         result.push_back(std::move(data));
     }
     return result;
@@ -155,8 +202,8 @@ std::vector<SceneObjectData> SceneObjectManager::describeObjects() const
 
 void SceneObjectManager::restoreObjects(const std::vector<SceneObjectData>& objects)
 {
-    SceneObjectManager next(m_livingRoomDrawer, m_sphereDrawer);
-    SceneObjectID nextID = MaterialSphereCount + 2;
+    SceneObjectManager next(m_livingRoomDrawer, m_sphereDrawer, m_mountainDrawer);
+    SceneObjectID nextID = MaterialUseCount + 3;
     for (const auto& data : objects)
     {
         SceneObject object;
@@ -172,6 +219,12 @@ void SceneObjectManager::restoreObjects(const std::vector<SceneObjectData>& obje
             next.importModel(data.modelPath, data.scene, glm::vec3(0));
             object.ref = next.m_sceneObjects.back().ref;
             next.m_sceneObjects.pop_back();
+        }
+        else if (data.type == "mountain")
+        {
+            if (!m_mountainDrawer)
+                throw std::runtime_error("Built-in mountain drawer is unavailable.");
+            object.ref = m_mountainDrawer;
         }
         else throw std::runtime_error("Unknown object type.");
         object.id = data.id; object.name = data.name; object.transform = data.transform;

@@ -3,7 +3,7 @@
 #include <array>
 
 // 编译期常量，无法在运行时修改
-constexpr unsigned int MaterialSphereCount = 8;
+constexpr unsigned int MaterialUseCount = 8;
 
 enum class RenderMode
 {
@@ -23,6 +23,7 @@ enum class SceneSelection
     Default,
     LivingRoom,
     AnotherScene,    
+    Mountain,
 };
 
 enum class EnvironmentSelection
@@ -81,7 +82,7 @@ struct SceneRenderConfig
 
 struct SceneRenderState
 {
-    glm::vec3 materialSpherePositions[MaterialSphereCount] =
+    glm::vec3 materialSpherePositions[MaterialUseCount] =
     {
         glm::vec3(-2.4f, 0.0f, -3.9f),
         glm::vec3(-0.8f, 0.0f, -3.9f),

@@ -11,6 +11,7 @@
 
 class ModelDrawer;
 class SphereDrawer;
+class MountainDrawer;
 
 using SceneObjectID = std::uint32_t;
 // 编译器常量，表示无效的场景对象ID
@@ -38,9 +39,10 @@ struct sphereRenderRef
 {
     SphereDrawer* drawer = nullptr;
     unsigned int materialIndex = 0;
+
 };
 
-using SceneObjectRef = std::variant<ModelDrawer*, sphereRenderRef>;
+using SceneObjectRef = std::variant<ModelDrawer*, MountainDrawer*, sphereRenderRef>;
 
 struct SceneObject
 {

@@ -16,7 +16,9 @@ public:
     void loadMaterials(const std::string& baseDir);
     void draw(Shader& shader);
     void drawBasic(Shader& shader);
+    void drawBasic(Shader& shader, const glm::mat4& matrix, unsigned int materialIndex);
     void drawReflect(Shader& shader);
+    void drawReflect(Shader& shader, const glm::mat4& matrix);
     void drawInstance(
     Shader& shader,
     const glm::mat4& matrix,
@@ -34,5 +36,5 @@ private:
     SceneRenderState*  state;
     SceneRenderConfig* config;
 
-    Material materials[MaterialSphereCount];
+    Material materials[MaterialUseCount];
 };

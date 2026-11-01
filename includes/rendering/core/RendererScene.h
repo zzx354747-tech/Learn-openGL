@@ -14,6 +14,7 @@
 #include "rendering/assets/mesh/SphereMesh.h"
 #include "rendering/assets/mesh/LightMesh.h"
 #include "rendering/assets/mesh/SkyboxMesh.h"
+#include "rendering/assets/mesh/MountainMesh.h"
 #include "rendering/resources/shadow/DirectionalShadowMap.h"
 #include "rendering/resources/shadow/PointShadowMap.h"
 #include "rendering/resources/shadow/SpotShadowMap.h"
@@ -23,6 +24,7 @@
 #include "rendering/resources/render/SceneRenderResources.h"
 #include "rendering/core/ModelDrawer.h"
 #include "rendering/core/SphereDrawer.h"
+#include "rendering/core/MountainDrawer.h"
 #include "rendering/passes/shadow/PointShadowPass.h"
 #include "rendering/passes/shadow/DirectionalShadowPass.h"
 #include "rendering/passes/shadow/SpotShadowPass.h"
@@ -62,7 +64,7 @@ struct RendererScene
     SphereMesh sphereMesh;
     LightMesh lightMesh;
     SkyboxMesh skyboxMesh;
-
+    MountainMesh mountainMesh{100, 10.0f};
     DirectionalShadowMap shadowMap;
     PointShadowMap pointShadowMap;
     SpotShadowMap spotShadowMap;   
@@ -79,6 +81,7 @@ struct RendererScene
     SceneRenderResources sceneResources;
     SphereDrawer sphereDrawer;
     ModelDrawer livingRoomDrawer;
+    MountainDrawer mountainDrawer;
 
     // 第三轮新增:第 2 层
     SceneObjectManager sceneObjectManager;
@@ -129,6 +132,7 @@ struct RendererScene
 
 private:
     friend bool runScenePersistenceCheck(RendererScene& scene);
+    friend bool runMountainIntegrationCheck(RendererScene& scene);
     bool saveSceneToFile(const std::filesystem::path& requestedPath = {});
     bool loadSceneFromFile(const std::filesystem::path& requestedPath = {});
 

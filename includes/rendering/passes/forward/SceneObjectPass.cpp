@@ -37,5 +37,7 @@ void SceneObjectPass::renderSceneObjectPass(
         resources.skybox->bind(0);
     }
 
-    objects.drawObjects(*shader, config.sceneSelection, true, true, true);
+    const SphereDrawMode sphereMode = config.forwardLightMode == ForwardLightMode::Basic
+        ? SphereDrawMode::Basic : SphereDrawMode::Reflect;
+    objects.drawObjects(*shader, config.sceneSelection, true, true, true, sphereMode);
 }
