@@ -6,9 +6,9 @@
 
 struct MountainVertex
 {
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec2 texCoords;
+    glm::vec3 position{0.0f};
+    glm::vec3 normal{0.0f};
+    glm::vec2 texCoords{0.0f};
     glm::vec3 tangent{0.0f};
     glm::vec3 bitangent{0.0f};
 };
@@ -28,6 +28,7 @@ public:
 private:
     void setupMesh();
     void initResources();
+    float getHeight(float x, float z) const;
 
     int resolution;
     float spacing;

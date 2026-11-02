@@ -12,15 +12,18 @@ void MountainMesh::generate()
     vertices.clear();
     indices.clear();
 
+    float textureWorldSize = 0.5f;
+
     for (int z = 0; z < resolution; ++z)
     {
         for (int x = 0; x < resolution; ++x)
         {
             MountainVertex vertex{};
-            vertex.position = glm::vec3(x * spacing, 0.0f, z * spacing);
-            vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-            vertex.texCoords = glm::vec2(static_cast<float>(x) / (resolution - 1),
-                                         static_cast<float>(z) / (resolution - 1));
+            float worldY = getHeight(x * spacing, z * spacing);
+            vertex.position = glm::vec3(x * spacing, worldY, z * spacing);
+            vertex.normal = glm::vec3(0.0f, 0.0f, 0.0f);
+            vertex.texCoords = glm::vec2(vertex.position.x / textureWorldSize,
+                                        vertex.position.z / textureWorldSize);
             vertices.push_back(vertex);
         }
     }
@@ -42,6 +45,30 @@ void MountainMesh::generate()
             indices.push_back(bottomLeft);
             indices.push_back(bottomRight);
         }
+    }
+
+    for (std::size_t i = 0; i < indices.size(); i += 3)
+    {
+        auto& a = vertices[indices[i]];
+        auto& b = vertices[indices[i + 1]];
+        auto& c = vertices[indices[i + 2]];
+
+        glm::vec3 edge1 = b.position - a.position;
+        glm::vec3 edge2 = c.position - a.position;
+
+        glm::vec3 faceNormal = glm::cross(edge1, edge2);
+
+        a.normal += faceNormal;
+        b.normal += faceNormal;
+        c.normal += faceNormal;
+    }
+
+    for (auto& vertex : vertices)
+    {
+        if (glm::dot(vertex.normal, vertex.normal) > 1e-12f)
+            vertex.normal = glm::normalize(vertex.normal);
+        else
+            vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
     }
 
     // Derive the tangent basis from the existing positions, UVs and triangles.
@@ -99,6 +126,13 @@ void MountainMesh::setupMesh()
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+}
+
+float MountainMesh::getHeight(float x, float z) const
+{
+    return 15.0f
+        * std::sin(0.2f * x)
+        * std::cos(0.2f * z);
 }
 
 void MountainMesh::initResources()
