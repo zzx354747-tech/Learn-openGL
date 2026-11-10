@@ -15,7 +15,7 @@ void EditScreenPass::render(
     static_cast<float>(bfwidth) /
         static_cast<float>(bfheight),
     0.1f,
-    100.0f
+    Camera::FarPlane
     );
 
     glm::mat4 viewProjection = projection * view;

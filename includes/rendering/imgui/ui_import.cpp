@@ -637,7 +637,7 @@ void SceneRenderUI::renderUI(
     viewportClicked = ImGui::IsItemClicked(ImGuiMouseButton_Left) && !cameraCaptured;
     if (SceneObject* selected = manager.getSceneObject(selectedObjectID))
     {
-        const glm::vec4 clip = glm::perspective(glm::radians(45.0f), imageSize.x / imageSize.y, 0.1f, 100.0f) *
+        const glm::vec4 clip = glm::perspective(glm::radians(45.0f), imageSize.x / imageSize.y, 0.1f, Camera::FarPlane) *
             camera.GetViewMatrix() * glm::vec4(selected->transform.position, 1.0f);
         const bool validScale = std::abs(selected->transform.scale.x) > 1e-6f &&
             std::abs(selected->transform.scale.y) > 1e-6f && std::abs(selected->transform.scale.z) > 1e-6f;
@@ -645,7 +645,7 @@ void SceneRenderUI::renderUI(
             ((clip.w > 0 && clip.z >= -clip.w && validScale) || ImGuizmo::IsUsingAny()))
         {
             const glm::mat4 view = camera.GetViewMatrix();
-            const glm::mat4 projection = glm::perspective(glm::radians(45.0f), imageSize.x / imageSize.y, 0.1f, 100.0f);
+            const glm::mat4 projection = glm::perspective(glm::radians(45.0f), imageSize.x / imageSize.y, 0.1f, Camera::FarPlane);
             glm::mat4 matrix = selected->transform.matrix();
             const ImGuizmo::OPERATION operations[] = {ImGuizmo::TRANSLATE, ImGuizmo::ROTATE, ImGuizmo::SCALEU};
             const auto operation = operations[gizmoOperation];

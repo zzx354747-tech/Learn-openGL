@@ -2,6 +2,11 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
 
+namespace
+{
+constexpr float MovementSpeedMultiplier = 5.0f;
+}
+
 Camera::Camera(
     glm::vec3 position,
     glm::vec3 worldup,
@@ -34,7 +39,7 @@ glm::mat4 Camera::GetViewMatrix() const
 
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)
 {
-    float velocity = MovementSpeed * deltaTime;
+    float velocity = MovementSpeed * MovementSpeedMultiplier * deltaTime;
     glm::vec3 flatFront = glm::normalize(glm::vec3(Front.x, 0.0f, Front.z));
     if (glm::length(flatFront) < 0.001f)
         flatFront = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -86,7 +91,7 @@ void Camera::ProcessSmoothKeyboard(
     if (glm::length(inputDirection) > 0.001f)
         inputDirection = glm::normalize(inputDirection);
 
-    const float maxSpeed = MovementSpeed * 0.75f;
+    const float maxSpeed = MovementSpeed * MovementSpeedMultiplier * 0.75f;
     const float acceleration = maxSpeed / 1.1f;
     const float deceleration = maxSpeed / 0.35f;
     glm::vec3 targetVelocity = inputDirection * maxSpeed;

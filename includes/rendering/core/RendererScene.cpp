@@ -444,7 +444,7 @@ void RendererScene::processModelImports()
             if (depth < 1.0f)
             {
                 const glm::mat4 projection = glm::perspective(glm::radians(45.0f),
-                    static_cast<float>(viewportPixelWidth) / viewportPixelHeight, 0.1f, 100.0f);
+                    static_cast<float>(viewportPixelWidth) / viewportPixelHeight, 0.1f, Camera::FarPlane);
                 const glm::vec3 hit = glm::unProject(glm::vec3(viewportPixelWidth / 2, viewportPixelHeight / 2, depth),
                     camera.GetViewMatrix(), projection, glm::vec4(0, 0, viewportPixelWidth, viewportPixelHeight));
                 distance = std::clamp(glm::length(hit - camera.Getposition()) * 0.4f, 0.15f, 4.0f);

@@ -8,7 +8,7 @@ void SSAOCameraUniformSetter::apply( Shader& shader, Camera& camera, float width
             glm::radians(45.0f),
             static_cast<float>(width) / static_cast<float>(height),
             0.1f,
-            100.0f
+            Camera::FarPlane
         );
 
         glm::mat3 normalMatrix = glm::mat3(transpose(inverse(view)));
