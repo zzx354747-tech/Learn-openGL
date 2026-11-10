@@ -132,6 +132,8 @@ int main(int argc, char** argv)
     int frameNumber = 0;
     const bool persistenceCheck = argc == 2 && std::string(argv[1]) == "--check-scene-persistence";
     const bool mountainCheck = argc == 2 && std::string(argv[1]) == "--check-mountain";
+    const bool latestSceneCheck = argc == 2 && std::string(argv[1]) == "--check-latest-scene";
+    const char* visibilityCheckDirectory = argc == 3 && std::string(argv[1]) == "--check-ui-visibility" ? argv[2] : nullptr;
     int exitCode = 0;
 
 
@@ -197,6 +199,11 @@ int main(int argc, char** argv)
 
     ctx.rendererScene = &scene;
 
+    if (latestSceneCheck)
+    {
+        exitCode = runLatestSceneCheck(scene) ? 0 : 1;
+        glfwSetWindowShouldClose(window, true);
+    }
     if (persistenceCheck)
     {
         scene.resize(320, 240);
@@ -214,6 +221,13 @@ int main(int argc, char** argv)
         // 准备开始新一帧ui渲染
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        if (visibilityCheckDirectory)
+        {
+            // The regression can run without OS focus; feed focused ImGui key events.
+            ImGui::GetIO().AddFocusEvent(true);
+            if (frameNumber == 2 || frameNumber == 6) ImGui::GetIO().AddKeyEvent(ImGuiKey_F1, true);
+            if (frameNumber == 3 || frameNumber == 7) ImGui::GetIO().AddKeyEvent(ImGuiKey_F1, false);
+        }
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
 
@@ -259,6 +273,33 @@ int main(int argc, char** argv)
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        if (visibilityCheckDirectory)
+        {
+            bool ok = true;
+            const char* name = nullptr;
+            if (frameNumber == 1) { name = "shown.ppm"; ok = editor.uiVisible; }
+            if (frameNumber == 4)
+            {
+                name = "hidden.ppm";
+                ok = !editor.uiVisible && !editor.gizmoUsing && !editor.viewportClicked &&
+                    viewportWidth == bfwidth && viewportHeight == bfheight;
+            }
+            if (frameNumber == 9) { name = "restored.ppm"; ok = editor.uiVisible; }
+            if (name)
+            {
+                std::cout << name << ": UI=" << editor.uiVisible << ", viewport=" << viewportWidth
+                    << 'x' << viewportHeight << ", framebuffer=" << bfwidth << 'x' << bfheight << '\n';
+                std::filesystem::create_directories(visibilityCheckDirectory);
+                const auto path = std::filesystem::path(visibilityCheckDirectory) / name;
+                ok = captureFrame(path.string().c_str(), bfwidth, bfheight) && ok;
+            }
+            if (!ok) exitCode = 1;
+            if (++frameNumber == 10)
+            {
+                std::cout << "UI_VISIBILITY_CHECK " << (exitCode == 0 ? "PASS" : "FAIL") << '\n';
+                glfwSetWindowShouldClose(window, true);
+            }
+        }
         if (capturePath && ++frameNumber == 12)
         {
             if (!captureFrame(capturePath, bfwidth, bfheight))

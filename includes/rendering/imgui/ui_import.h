@@ -29,6 +29,7 @@ struct SceneRenderUIState
     std::function<bool()> loadSceneFromFile;
     std::string sceneFileMessage;
     bool sceneFileFailed = false;
+    std::function<bool(EnvironmentSelection)> loadEnvironmentScene;
 };
 
 class SceneRenderUI
@@ -51,6 +52,7 @@ public:
     int gizmoOperation = 0; // Translate, rotate, scale.
     int gizmoSpace = 0;     // World, local.
     bool gizmoSnap = false;
+    bool uiVisible = true;
 
     // Logical ImGui coordinates; convert to framebuffer pixels at the input boundary.
     float viewportX = 0.0f;

@@ -18,6 +18,27 @@ inline bool runScenePersistenceCheck(RendererScene& scene)
     auto write = [](const auto& path, const nlohmann::json& j) { std::ofstream f(path); f << j.dump(2); };
     try
     {
+        // A restart returns to Night; the latest saved slot can belong to Sunny/Mountain.
+        bool noSaveRejected = false;
+        try { latestSceneFilePath(directory); } catch (const std::exception&) { noSaveRejected = true; }
+        require(noSaveRejected, "An empty save directory was accepted.");
+        auto mountainDocument = SceneDocument{};
+        mountainDocument.objects = scene.sceneObjectManager.describeObjects();
+        mountainDocument.config.sceneSelection = SceneSelection::Mountain;
+        mountainDocument.config.environmentSelection = EnvironmentSelection::Sunny;
+        const auto sunnySlot = sceneFilePath(EnvironmentSelection::Sunny, directory);
+        const auto nightSlot = sceneFilePath(EnvironmentSelection::Night, directory);
+        require(saveScene(mountainDocument, sunnySlot), "Mountain slot save failed.");
+        auto nightDocument = mountainDocument;
+        nightDocument.config.sceneSelection = SceneSelection::Default;
+        nightDocument.config.environmentSelection = EnvironmentSelection::Night;
+        require(saveScene(nightDocument, nightSlot), "Night slot save failed.");
+        std::filesystem::last_write_time(nightSlot,
+            std::filesystem::last_write_time(sunnySlot) - std::chrono::seconds(2));
+        require(latestSceneFilePath(directory) == sunnySlot, "Latest save resolved to the startup environment.");
+        require(scene.loadSceneFromFile(latestSceneFilePath(directory)), "Latest Mountain slot failed to load.");
+        require(scene.sceneConfig.sceneSelection == SceneSelection::Mountain &&
+            scene.sceneConfig.environmentSelection == EnvironmentSelection::Sunny, "Wrong scene or environment restored.");
         { std::ofstream f(model); f << "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvn 0 0 1\nf 1/1/1 2/2/1 3/3/1\n"; }
         auto id = scene.sceneObjectManager.importModel(model.string(), SceneSelection::LivingRoom, glm::vec3(1,2,3));
         auto* object = scene.sceneObjectManager.getSceneObject(id);
@@ -152,6 +173,36 @@ inline bool runScenePersistenceCheck(RendererScene& scene)
     catch (const std::exception& e)
     {
         std::cerr << "SCENE_PERSISTENCE_CHECK FAIL: " << e.what() << '\n';
+        return false;
+    }
+}
+
+// Run in a fresh process against existing saves without overwriting them.
+inline bool runLatestSceneCheck(RendererScene& scene)
+{
+    try
+    {
+        const auto source = latestSceneFilePath();
+        const auto expected = sceneToJson(loadScene(source));
+        const auto after = std::filesystem::temp_directory_path() /
+            ("opengl-restart-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".json");
+        bool ok = scene.loadSceneFromFile() && scene.saveSceneToFile(after);
+        if (ok)
+        {
+            ok = sceneToJson(loadScene(after)) == expected;
+            scene.resize(320, 240);
+            scene.render(320, 240);
+            glFinish();
+            ok = ok && glGetError() == GL_NO_ERROR;
+        }
+        std::error_code ignored;
+        std::filesystem::remove(after, ignored);
+        std::cout << "LATEST_SCENE_CHECK " << (ok ? "PASS: " : "FAIL: ") << source << '\n';
+        return ok;
+    }
+    catch (const std::exception& error)
+    {
+        std::cerr << "LATEST_SCENE_CHECK FAIL: " << error.what() << '\n';
         return false;
     }
 }

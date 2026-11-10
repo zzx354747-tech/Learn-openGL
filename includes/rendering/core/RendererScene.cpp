@@ -119,6 +119,9 @@ RendererScene::RendererScene(int width, int height)
     uiState.queueModelImport = [this](const std::string& path) { queueModelImport(path); };
     uiState.saveSceneToFile = [this]() { return saveSceneToFile(); };
     uiState.loadSceneFromFile = [this]() { return loadSceneFromFile(); };
+    uiState.loadEnvironmentScene = [this](EnvironmentSelection environment) {
+        return loadSceneFromFile(sceneFilePath(environment));
+    };
     sceneResources.shaderLibrary = &shaderLibrary;
     sceneResources.sphereMesh = &sphereMesh;
     sceneResources.lightMesh = &lightMesh;
@@ -178,10 +181,8 @@ bool RendererScene::loadSceneFromFile(const std::filesystem::path& requestedPath
 {
     try
     {
-        const auto path = requestedPath.empty() ? sceneFilePath(sceneConfig.environmentSelection) : requestedPath;
+        const auto path = requestedPath.empty() ? latestSceneFilePath() : requestedPath;
         auto document = loadScene(path);
-        if (requestedPath.empty() && document.config.environmentSelection != sceneConfig.environmentSelection)
-            throw std::runtime_error("Save file belongs to a different environment.");
         // Resolve hand-authored relative model paths against the save file.
         for (auto& object : document.objects)
             if (object.type == "model" && std::filesystem::u8path(object.modelPath).is_relative())

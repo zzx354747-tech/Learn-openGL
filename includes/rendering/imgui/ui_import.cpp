@@ -430,6 +430,19 @@ void SceneRenderUI::renderUI(
     gizmoHovered = false;
     gizmoUsing = false;
     importWidth = importHeight = 0;
+    if (ImGui::IsKeyPressed(ImGuiKey_F1, false) && !ImGuizmo::IsUsingAny())
+        uiVisible = !uiVisible;
+    if (!uiVisible)
+    {
+        viewportX = origin.x;
+        viewportY = origin.y;
+        viewportWidth = std::max(1.0f, width);
+        viewportHeight = std::max(1.0f, height);
+        viewportVisible = true;
+        ImGui::GetBackgroundDrawList()->AddImage(static_cast<ImTextureID>(viewportTexture),
+            origin, ImVec2(origin.x + width, origin.y + height), ImVec2(0, 1), ImVec2(1, 0));
+        return;
+    }
     if (!cameraCaptured && !ImGuizmo::IsUsingAny() && !ImGui::GetIO().WantTextInput && !ImGui::IsAnyItemActive())
     {
         if (ImGui::IsKeyPressed(ImGuiKey_W)) gizmoOperation = 0;
@@ -465,9 +478,19 @@ void SceneRenderUI::renderUI(
         {
             uiState.sceneFileFailed = !uiState.saveSceneToFile();
         }
-        if (ImGui::MenuItem("Load scene", nullptr, false, static_cast<bool>(uiState.loadSceneFromFile)))
+        if (ImGui::MenuItem("Load latest scene", nullptr, false, static_cast<bool>(uiState.loadSceneFromFile)))
         {
             uiState.sceneFileFailed = !uiState.loadSceneFromFile();
+        }
+        if (ImGui::BeginMenu("Load environment scene", static_cast<bool>(uiState.loadEnvironmentScene)))
+        {
+            const EnvironmentSelection environments[] = {EnvironmentSelection::Night,
+                EnvironmentSelection::Sunny, EnvironmentSelection::NightN8_3K};
+            const char* names[] = {"Night", "Sunny", "Night N8 3K"};
+            for (int i = 0; i < 3; ++i)
+                if (ImGui::MenuItem(names[i]))
+                    uiState.sceneFileFailed = !uiState.loadEnvironmentScene(environments[i]);
+            ImGui::EndMenu();
         }
         ImGui::EndPopup();
     }
@@ -477,6 +500,7 @@ void SceneRenderUI::renderUI(
     {
         ImGui::MenuItem("Scene hierarchy", nullptr, &showScenePanel);
         ImGui::MenuItem("Inspector", nullptr, &showInspector);
+        if (ImGui::MenuItem("Hide UI", "F1")) uiVisible = false;
         ImGui::Separator();
         if (ImGui::MenuItem("Reset workspace"))
         {
@@ -797,7 +821,7 @@ void SceneRenderUI::renderUI(
     const char* status = uiState.environmentLoadFailed ? "ENVIRONMENT ERROR" : uiState.importFailed ? "IMPORT ERROR" :
         uiState.sceneFileFailed ? "SCENE FILE ERROR" :
         !uiState.sceneFileMessage.empty() ?
-            (uiState.sceneFileMessage.rfind("Saved", 0) == 0 ? "SCENE SAVED" : "FILE READ ONLY") :
+            (uiState.sceneFileMessage.rfind("Saved", 0) == 0 ? "SCENE SAVED" : "SCENE LOADED") :
         uiState.importMessage.rfind("Queued:", 0) == 0 ? "IMPORT QUEUED" : "OPENGL  /  READY";
     ImGui::TextColored(statusError ? ImVec4(0.96f, 0.48f, 0.40f, 1) : accent, "%s", status);
     if (ImGui::IsItemHovered())

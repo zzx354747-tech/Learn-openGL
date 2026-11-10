@@ -132,6 +132,7 @@ struct RendererScene
 
 private:
     friend bool runScenePersistenceCheck(RendererScene& scene);
+    friend bool runLatestSceneCheck(RendererScene& scene);
     friend bool runMountainIntegrationCheck(RendererScene& scene);
     bool saveSceneToFile(const std::filesystem::path& requestedPath = {});
     bool loadSceneFromFile(const std::filesystem::path& requestedPath = {});
