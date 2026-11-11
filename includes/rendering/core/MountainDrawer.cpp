@@ -22,11 +22,6 @@ void MountainDrawer::draw(Shader& shader, const glm::mat4& transform) const
     // use grass material for mountain
     material.bind(shader);
     shader.setBool("alphaMask", false);
-    // Keep the existing UVs and geometry shader. This grid has a left-handed
-    // UV basis, but geometry.vs rebuilds B = cross(N, T) without handedness.
-    // Use geometric normals until that shader can support the UV basis.
-    shader.setBool("hasNormalMap", false);
-    shader.setBool("hasParallaxMap", false);
     shader.setMat4("model", transform);
     mountainMesh->draw();
 }

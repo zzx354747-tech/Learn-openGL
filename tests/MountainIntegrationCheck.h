@@ -125,7 +125,7 @@ void main() { sourcePosition=p; sourceUV=uv; sourceTangent=t; sourceBitangent=b;
         GLint normalMap = 1, parallaxMap = 1;
         glGetUniformiv(geometry.ID, glGetUniformLocation(geometry.ID, "hasNormalMap"), &normalMap);
         glGetUniformiv(geometry.ID, glGetUniformLocation(geometry.ID, "hasParallaxMap"), &parallaxMap);
-        require(normalMap == 0 && parallaxMap == 0, "Unsupported UV handedness was not gated.");
+        require(normalMap == 1 && parallaxMap == 1, "Mountain material maps were not restored.");
         const auto beforeDepth = bindings();
         require(primitives([&] { scene.directionalShadowPass.render(scene.sceneObjectManager, SceneSelection::Mountain); }) == triangleCount,
                 "Directional shadow draw count differs.");

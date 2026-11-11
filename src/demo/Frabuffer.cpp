@@ -16,6 +16,7 @@
 #include "rendering/core/RendererScene.h"
 #include "../../tests/ScenePersistenceCheck.h"
 #include "../../tests/MountainIntegrationCheck.h"
+#include "../../tests/SSAOPrecisionCheck.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -133,6 +134,7 @@ int main(int argc, char** argv)
     const bool persistenceCheck = argc == 2 && std::string(argv[1]) == "--check-scene-persistence";
     const bool mountainCheck = argc == 2 && std::string(argv[1]) == "--check-mountain";
     const bool latestSceneCheck = argc == 2 && std::string(argv[1]) == "--check-latest-scene";
+    const char* ssaoCheckDirectory = argc == 3 && std::string(argv[1]) == "--check-ssao-precision" ? argv[2] : nullptr;
     const char* visibilityCheckDirectory = argc == 3 && std::string(argv[1]) == "--check-ui-visibility" ? argv[2] : nullptr;
     int exitCode = 0;
 
@@ -199,6 +201,11 @@ int main(int argc, char** argv)
 
     ctx.rendererScene = &scene;
 
+    if (ssaoCheckDirectory)
+    {
+        exitCode = runSSAOPrecisionCheck(scene, ssaoCheckDirectory) ? 0 : 1;
+        glfwSetWindowShouldClose(window, true);
+    }
     if (latestSceneCheck)
     {
         exitCode = runLatestSceneCheck(scene) ? 0 : 1;

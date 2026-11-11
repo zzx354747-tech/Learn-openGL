@@ -16,7 +16,7 @@ class Camera
 {
 
 public:
-    static constexpr float FarPlane = 300.0f;
+    static constexpr float FarPlane = 900.0f;
 //构造函数
     Camera( 
         glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), 
