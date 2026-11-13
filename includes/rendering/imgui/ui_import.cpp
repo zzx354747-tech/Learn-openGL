@@ -109,10 +109,10 @@ bool DragFloat(const char* label, float* value, float speed, float min, float ma
     return changed;
 }
 bool SliderFloat(const char* label, float* value, float min, float max,
-                 const char* format = "%.2f")
+                 const char* format = "%.2f", ImGuiSliderFlags flags = ImGuiSliderFlags_None)
 {
     begin(label);
-    bool changed = ImGui::SliderFloat("##value", value, min, max, format);
+    bool changed = ImGui::SliderFloat("##value", value, min, max, format, flags);
     end();
     return changed;
 }
@@ -795,6 +795,17 @@ void SceneRenderUI::renderUI(
             if (ImGui::BeginTabItem("World"))
             {
                 ImGui::BeginChild("##worldProperties", ImVec2(0, 0), ImGuiChildFlags_None);
+                if (section("Camera"))
+                {
+                    float speed = camera.GetMovementSpeed() / Camera::DefaultMovementSpeed;
+                    if (Property::SliderFloat("Move speed", &speed, 0.1f,
+                        Camera::MaxMovementSpeed / Camera::DefaultMovementSpeed, "%.2fx",
+                        ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp))
+                        camera.SetMovementSpeed(speed * Camera::DefaultMovementSpeed);
+                    ImGui::TextDisabled("1x: normal speed  /  Max: 100x");
+                    if (ImGui::Button("Reset move speed", ImVec2(-1, 0)))
+                        camera.SetMovementSpeed(Camera::DefaultMovementSpeed);
+                }
                 if (section("Environment"))
                 {
                     environment(uiState);

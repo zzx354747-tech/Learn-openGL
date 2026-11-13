@@ -48,6 +48,7 @@ inline bool runScenePersistenceCheck(RendererScene& scene)
         scene.sceneObjectManager.getSceneObject(2)->isVisible = false;
         scene.sceneObjectManager.getSceneObject(1)->scene = SceneSelection::LivingRoom;
         scene.camera.setCameraState(glm::vec3(4,5,6), glm::vec3(0,1,0), -112, 23, 4.1f, 0.17f);
+        scene.camera.SetMovementSpeed(Camera::MaxMovementSpeed);
         scene.sceneConfig.exposure = 1.73f;
         scene.sceneConfig.bloomLevelThresholds = {0.1f, 0.2f, 0.4f, 0.8f, 1.6f};
         scene.sceneConfig.bloomKnee = 0.35f;
@@ -85,6 +86,8 @@ inline bool runScenePersistenceCheck(RendererScene& scene)
         scene.sceneObjectManager.importModel(model.string(), SceneSelection::Default, glm::vec3(0));
         scene.queueModelImport(model.string());
         require(scene.loadSceneFromFile(save), "Restore failed.");
+        require(scene.camera.GetMovementSpeed() == Camera::MaxMovementSpeed,
+            "Camera movement speed did not survive save/load.");
         require(scene.pendingModelImports.empty(), "Queued import survived restore.");
         require(scene.saveSceneToFile(after), "Restored save failed.");
         require(read(after) == expected, "Full state round trip differs.");

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <functional>
 #include <cmath>
+#include <limits>
 
 // Opt-in real-GL check; all save/load operations use an isolated temporary directory.
 inline bool runMountainIntegrationCheck(RendererScene& scene)
@@ -52,8 +53,9 @@ inline bool runMountainIntegrationCheck(RendererScene& scene)
             if (std::holds_alternative<MountainDrawer*>(object.ref)) id = object.id;
         require(id != InvalidSceneObjectID, "Mountain object missing.");
 
-        // Capture vertex inputs on the GPU: original grid and UVs must stay intact,
-        // and locations 4/5 must contain a normalized UV-derived basis.
+        require(scene.sceneObjectManager.getSceneObject(id)->transform.position == glm::vec3(0.0f),
+                "Default Mountain origin is not the world origin.");
+        // Capture the generated 4000 x 4000 grid and its tangent basis on the GPU.
         const char* vertexSource = R"(#version 330 core
 layout(location=0) in vec3 p; layout(location=2) in vec2 uv;
 layout(location=4) in vec3 t; layout(location=5) in vec3 b;
@@ -69,7 +71,7 @@ void main() { sourcePosition=p; sourceUV=uv; sourceTangent=t; sourceBitangent=b;
         glLinkProgram(program);
         GLint linked = 0; glGetProgramiv(program, GL_LINK_STATUS, &linked);
         require(linked == GL_TRUE, "Vertex probe shader failed to link.");
-        constexpr GLuint triangleCount = 99 * 99 * 2;
+        constexpr GLuint triangleCount = 400 * 400 * 2;
         constexpr GLsizeiptr feedbackBytes = triangleCount * 3 * 11 * sizeof(float);
         GLuint feedback = 0; glGenBuffers(1, &feedback);
         glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, feedback);
@@ -80,20 +82,28 @@ void main() { sourcePosition=p; sourceUV=uv; sourceTangent=t; sourceBitangent=b;
         glDisable(GL_RASTERIZER_DISCARD);
         std::vector<float> vertices(feedbackBytes / sizeof(float));
         glGetBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER, 0, feedbackBytes, vertices.data());
+        float minX = std::numeric_limits<float>::max(), minZ = minX;
         float maxX = 0, maxZ = 0;
+        float uvScale = 0.0f;
         for (std::size_t offset = 0; offset < vertices.size(); offset += 11)
         {
             const glm::vec3 p(vertices[offset], vertices[offset + 1], vertices[offset + 2]);
             const glm::vec2 uv(vertices[offset + 3], vertices[offset + 4]);
             const glm::vec3 t(vertices[offset + 5], vertices[offset + 6], vertices[offset + 7]);
             const glm::vec3 b(vertices[offset + 8], vertices[offset + 9], vertices[offset + 10]);
-            require(std::abs(p.y) < 1e-6f && glm::length(uv - glm::vec2(p.x, p.z) / 990.0f) < 1e-5f,
-                    "Original grid positions or UVs changed.");
-            require(glm::length(t - glm::vec3(1, 0, 0)) < 1e-5f && glm::length(b - glm::vec3(0, 0, 1)) < 1e-5f,
+            if (uvScale == 0.0f && (p.x > 0.0f || p.z > 0.0f))
+                uvScale = p.x > 0.0f ? uv.x / p.x : uv.y / p.z;
+            require(std::isfinite(p.y) && std::isfinite(uvScale) &&
+                    glm::length(uv - glm::vec2(p.x, p.z) * uvScale) < 1e-4f,
+                    "Mountain heights or world-scaled UVs are invalid.");
+            require(std::abs(glm::length(t) - 1.0f) < 1e-5f && std::abs(glm::length(b) - 1.0f) < 1e-5f &&
+                    std::abs(glm::dot(t, b)) < 1e-5f,
                     "Invalid tangent/bitangent vertex attributes.");
+            minX = std::min(minX, p.x); minZ = std::min(minZ, p.z);
             maxX = std::max(maxX, p.x); maxZ = std::max(maxZ, p.z);
         }
-        require(maxX == 990 && maxZ == 990, "Original mountain dimensions changed.");
+        require(minX == 0 && minZ == 0 && maxX == 4000 && maxZ == 4000,
+                "Mountain must span [0, 4000] on both X and Z.");
         glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
         glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
         glDeleteBuffers(1, &feedback); glUseProgram(0);

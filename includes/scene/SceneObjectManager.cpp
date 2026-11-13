@@ -52,7 +52,7 @@ void SceneObjectManager::addSceneObject()
     model_mountain.id = MaterialUseCount + 2;
     model_mountain.name = "model_mountain";
     model_mountain.ref = m_mountainDrawer;
-    model_mountain.transform.position = glm::vec3(0.0f, -1.0f, 0.0f);
+    model_mountain.transform.position = glm::vec3(0.0f);
     model_mountain.transform.rotationDegrees = glm::vec3(0.0f);
     model_mountain.transform.scale = glm::vec3(1.0f);
     model_mountain.scene = SceneSelection::Mountain;

@@ -17,6 +17,8 @@ class Camera
 
 public:
     static constexpr float FarPlane = 900.0f;
+    static constexpr float DefaultMovementSpeed = 2.5f;
+    static constexpr float MaxMovementSpeed = DefaultMovementSpeed * 100.0f;
 //构造函数
     Camera( 
         glm::vec3 position = glm::vec3(0.0f, 0.0f, 3.0f), 
@@ -26,7 +28,7 @@ public:
         float lastX = 400.0f, 
         float lastY = 300.0f,
         float sensitivity = 0.1f,
-        float speed = 2.5f
+        float speed = DefaultMovementSpeed
 );
 
 //对外接口
@@ -37,6 +39,7 @@ glm::mat4 GetViewMatrix() const;
 	float GetYaw() const { return Yaw; }
 	float GetPitch() const { return Pitch; }
 	float GetMovementSpeed() const { return MovementSpeed; }
+	void SetMovementSpeed(float speed);
 	float GetMouseSensitivity() const { return MouseSensitivity; }
 	void ProcessKeyboard(Camera_Movement direction, float deltaTime);
 	void ProcessSmoothKeyboard(

@@ -1,6 +1,7 @@
 #include "scene/Camera.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
+#include <algorithm>
 
 namespace
 {
@@ -35,6 +36,17 @@ Camera::Camera(
 glm::mat4 Camera::GetViewMatrix() const
 {
     return glm::lookAt(Position, Position + Front, Up);
+}
+
+void Camera::SetMovementSpeed(float speed)
+{
+    if (!std::isfinite(speed)) return;
+    MovementSpeed = std::clamp(speed, 0.0f, MaxMovementSpeed);
+    // Lowering the speed also limits any existing smooth-movement momentum.
+    const float maxVelocity = MovementSpeed * MovementSpeedMultiplier * 0.75f;
+    const float velocity = glm::length(MovementVelocity);
+    if (velocity > maxVelocity)
+        MovementVelocity *= maxVelocity / velocity;
 }
 
 void Camera::ProcessKeyboard(Camera_Movement direction, float deltaTime)

@@ -64,7 +64,7 @@ struct RendererScene
     SphereMesh sphereMesh;
     LightMesh lightMesh;
     SkyboxMesh skyboxMesh;
-    MountainMesh mountainMesh{100, 10.0f};
+    MountainMesh mountainMesh{401, 10.0f}; // 400 intervals cover 4000 units on X and Z.
     DirectionalShadowMap shadowMap;
     PointShadowMap pointShadowMap;
     SpotShadowMap spotShadowMap;   
