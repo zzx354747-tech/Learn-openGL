@@ -16,7 +16,7 @@ class Camera
 {
 
 public:
-    static constexpr float FarPlane = 900.0f;
+    static constexpr float FarPlane = 10000.0f;
     static constexpr float DefaultMovementSpeed = 2.5f;
     static constexpr float MaxMovementSpeed = DefaultMovementSpeed * 100.0f;
 //构造函数

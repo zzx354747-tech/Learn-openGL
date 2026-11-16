@@ -30,6 +30,7 @@ struct SceneRenderUIState
     std::string sceneFileMessage;
     bool sceneFileFailed = false;
     std::function<bool(EnvironmentSelection)> loadEnvironmentScene;
+    std::function<void(float)> frameMountain;
 };
 
 class SceneRenderUI

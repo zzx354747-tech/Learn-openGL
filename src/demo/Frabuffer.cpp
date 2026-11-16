@@ -129,7 +129,8 @@ int main(int argc, char** argv)
     float lastFrame = 0.0f;
     float currentFrame = 0.0f;
     float swapWaitMs = 0.0f;
-    const char* capturePath = argc == 3 && std::string(argv[1]) == "--capture-ui" ? argv[2] : nullptr;
+    const bool mountainOverviewCapture = argc == 3 && std::string(argv[1]) == "--capture-mountain";
+    const char* capturePath = argc == 3 && (std::string(argv[1]) == "--capture-ui" || mountainOverviewCapture) ? argv[2] : nullptr;
     int frameNumber = 0;
     const bool persistenceCheck = argc == 2 && std::string(argv[1]) == "--check-scene-persistence";
     const bool mountainCheck = argc == 2 && std::string(argv[1]) == "--check-mountain";
@@ -200,6 +201,12 @@ int main(int argc, char** argv)
     int renderHeight = bfheight;
 
     ctx.rendererScene = &scene;
+    if (mountainOverviewCapture)
+    {
+        scene.uiState.loadEnvironmentScene(EnvironmentSelection::Sunny);
+        scene.sceneConfig.sceneSelection = SceneSelection::Mountain;
+        scene.sceneConfig.enableEdit = false;
+    }
 
     if (ssaoCheckDirectory)
     {
@@ -255,6 +262,8 @@ int main(int argc, char** argv)
         const ImVec2 pixelScale = ImGui::GetIO().DisplayFramebufferScale;
         const int viewportWidth = std::max(1, static_cast<int>(std::lround(editor.viewportWidth * pixelScale.x)));
         const int viewportHeight = std::max(1, static_cast<int>(std::lround(editor.viewportHeight * pixelScale.y)));
+        if (mountainOverviewCapture && frameNumber == 0)
+            scene.frameMountain(static_cast<float>(viewportWidth) / viewportHeight);
         if (viewportWidth != renderWidth || viewportHeight != renderHeight)
         {
             scene.resize(viewportWidth, viewportHeight);

@@ -538,6 +538,8 @@ void SceneRenderUI::renderUI(
         {
             config.sceneSelection = sceneOptions[sceneIndex];
             selectedObjectID = InvalidSceneObjectID;
+            if (config.sceneSelection == SceneSelection::Mountain && uiState.frameMountain)
+                uiState.frameMountain(centerWidth / std::max(1.0f, bodyHeight - 75.0f));
         }
         ImGui::SetNextItemWidth(-1);
         ImGui::InputTextWithHint("##search", "Filter objects...", objectSearch, sizeof(objectSearch));
@@ -805,6 +807,10 @@ void SceneRenderUI::renderUI(
                     ImGui::TextDisabled("1x: normal speed  /  Max: 100x");
                     if (ImGui::Button("Reset move speed", ImVec2(-1, 0)))
                         camera.SetMovementSpeed(Camera::DefaultMovementSpeed);
+                    ImGui::BeginDisabled(config.sceneSelection != SceneSelection::Mountain || !uiState.frameMountain);
+                    if (ImGui::Button("View whole mountain", ImVec2(-1, 0)))
+                        uiState.frameMountain(viewportWidth / std::max(1.0f, viewportHeight));
+                    ImGui::EndDisabled();
                 }
                 if (section("Environment"))
                 {

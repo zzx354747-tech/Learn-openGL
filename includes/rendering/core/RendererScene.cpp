@@ -119,6 +119,7 @@ RendererScene::RendererScene(int width, int height)
     uiState.queueModelImport = [this](const std::string& path) { queueModelImport(path); };
     uiState.saveSceneToFile = [this]() { return saveSceneToFile(); };
     uiState.loadSceneFromFile = [this]() { return loadSceneFromFile(); };
+    uiState.frameMountain = [this](float aspect) { frameMountain(aspect); };
     uiState.loadEnvironmentScene = [this](EnvironmentSelection environment) {
         return loadSceneFromFile(sceneFilePath(environment));
     };
@@ -148,6 +149,43 @@ RendererScene::RendererScene(int width, int height)
     sceneResources.brdfLUT = &brdfLUT;
     environmentController.load();
     environmentController.applyPreset();
+}
+
+void RendererScene::frameMountain(float aspectRatio)
+{
+    const auto minimum = mountainMesh.getBoundsMin();
+    const auto maximum = mountainMesh.getBoundsMax();
+    glm::vec3 worldMin(0.0f), worldMax(0.0f);
+    bool found = false;
+    for (const auto& object : sceneObjectManager.getSceneObjects())
+    {
+        if (!std::holds_alternative<MountainDrawer*>(object.ref) ||
+            object.scene != sceneConfig.sceneSelection || !object.isVisible) continue;
+        for (int i = 0; i < 8; ++i)
+        {
+            const auto p = glm::vec3(object.transform.matrix() * glm::vec4(
+                i & 1 ? maximum.x : minimum.x, i & 2 ? maximum.y : minimum.y,
+                i & 4 ? maximum.z : minimum.z, 1.0f));
+            if (!found) { worldMin = worldMax = p; found = true; }
+            else { worldMin = glm::min(worldMin, p); worldMax = glm::max(worldMax, p); }
+        }
+    }
+    if (!found) return;
+    const auto center = (worldMin + worldMax) * 0.5f;
+    const glm::vec3 back(0.0f, 0.8f, 0.6f), right(1.0f, 0.0f, 0.0f), up(0.0f, 0.6f, -0.8f);
+    const float tanY = std::tan(glm::radians(45.0f) * 0.5f);
+    const float tanX = tanY * std::max(0.1f, aspectRatio);
+    float distance = 1.0f;
+    // Fit every corner in both dimensions, including the terrain's actual height.
+    for (int i = 0; i < 8; ++i)
+    {
+        const auto offset = glm::vec3(i & 1 ? worldMax.x : worldMin.x,
+            i & 2 ? worldMax.y : worldMin.y, i & 4 ? worldMax.z : worldMin.z) - center;
+        distance = std::max(distance, glm::dot(offset, back) +
+            std::max(std::abs(glm::dot(offset, right)) / tanX, std::abs(glm::dot(offset, up)) / tanY));
+    }
+    camera.setCameraState(center + back * (distance * 1.1f), glm::vec3(0, 1, 0),
+        -90.0f, glm::degrees(std::asin(-back.y)), camera.GetMovementSpeed(), camera.GetMouseSensitivity());
 }
 
 bool RendererScene::saveSceneToFile(const std::filesystem::path& requestedPath)

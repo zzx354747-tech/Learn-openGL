@@ -121,6 +121,7 @@ struct RendererScene
     bool getEditMode() const;
 
     Camera& getCamera();
+    void frameMountain(float aspectRatio);
 
     SceneObjectID selectObjectAtPixel(
     int pixelX,

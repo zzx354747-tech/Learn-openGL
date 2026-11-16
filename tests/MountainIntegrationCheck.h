@@ -55,6 +55,25 @@ inline bool runMountainIntegrationCheck(RendererScene& scene)
 
         require(scene.sceneObjectManager.getSceneObject(id)->transform.position == glm::vec3(0.0f),
                 "Default Mountain origin is not the world origin.");
+        scene.sceneConfig.sceneSelection = SceneSelection::Mountain;
+        const auto boundsMin = scene.mountainMesh.getBoundsMin();
+        const auto boundsMax = scene.mountainMesh.getBoundsMax();
+        for (float aspect : {4.0f / 3.0f, 0.8f})
+        {
+            const float speed = scene.camera.GetMovementSpeed();
+            scene.uiState.frameMountain(aspect);
+            require(scene.camera.GetMovementSpeed() == speed, "Mountain overview changed movement speed.");
+            const auto clipFromWorld = glm::perspective(glm::radians(45.0f), aspect, 0.1f, Camera::FarPlane) *
+                scene.camera.GetViewMatrix();
+            for (int i = 0; i < 8; ++i)
+            {
+                const auto clip = clipFromWorld * glm::vec4(i & 1 ? boundsMax.x : boundsMin.x,
+                    i & 2 ? boundsMax.y : boundsMin.y, i & 4 ? boundsMax.z : boundsMin.z, 1.0f);
+                require(clip.w > 0.0f && std::abs(clip.x) < clip.w && std::abs(clip.y) < clip.w &&
+                    std::abs(clip.z) < clip.w, "Mountain overview clips a terrain bounding-box corner.");
+            }
+        }
+        std::cout << "Mountain overview frustum bounds PASS\n";
         // Capture the generated 4000 x 4000 grid and its tangent basis on the GPU.
         const char* vertexSource = R"(#version 330 core
 layout(location=0) in vec3 p; layout(location=2) in vec2 uv;
